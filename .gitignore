@@ -1,0 +1,18 @@
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+secrets/
+*.secret
+
+# Installed game, runtime state and backups
+runtime/
+backups/
+logs/
+Servers/
+steamapps/
+Steam/
+*.log
+__pycache__/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,16 @@
+// MRE base configuration example. No credentials are included.
+// Copy the relevant lines to Servers/MRE/Server/Commands.dat after first launch.
+// This file does not configure plugins, MAX4, loot, autosave, or donation delivery.
+// Gameplay settings belong to the generated Servers/MRE/Config.txt.
+Name MRE #1 | PEI | Survival | MAX4 | RU
+Map PEI
+Mode Easy
+MaxPlayers 24
+Perspective Both
+Port 27015
+// Add a password during closed testing:
+// Password REPLACE_WITH_PRIVATE_TEST_PASSWORD
+// Add your private token for public listing, generated for Steam app 304930:
+// GSLT REPLACE_WITH_PRIVATE_TOKEN
+// Add the owner only after replacing the placeholder with the actual SteamID64:
+// Owner REPLACE_WITH_OWNER_STEAMID64
