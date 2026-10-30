@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Translations xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Translation Id="TargetNotFound" Value="Игрок не найден" />
+  <Translation Id="CombatStart" Value="Боевой режим: телепортация временно недоступна" />
+  <Translation Id="CombatExpire" Value="Боевой режим завершён" />
+  <Translation Id="RaidStart" Value="Режим рейда: телепортация временно недоступна" />
+  <Translation Id="RaidExpire" Value="Режим рейда завершён" />
+  <Translation Id="TPAHelp" Value="[[b]]Телепортация:[[/b]]&#xA;/tpa [[игрок]] — отправить запрос&#xA;/tpa accept — принять&#xA;/tpa deny — отклонить&#xA;/tpa cancel — отменить свой запрос" />
+  <Translation Id="TPACooldown" Value="До следующего запроса осталось [[b]]{0}[[/b]] сек." />
+  <Translation Id="TPADuplicate" Value="Вы уже отправили этому игроку запрос" />
+  <Translation Id="TPASent" Value="Запрос отправлен игроку [[b]]{0}[[/b]]" />
+  <Translation Id="TPAReceive" Value="[[b]]{0}[[/b]] хочет переместиться к вам&#xA;Введите [[b]]/tpa accept[[/b]], чтобы разрешить" />
+  <Translation Id="TPANoRequest" Value="Входящих запросов нет" />
+  <Translation Id="TPAAccepted" Value="Запрос игрока [[b]]{0}[[/b]] принят" />
+  <Translation Id="TPADelay" Value="Перемещение к [[b]]{0}[[/b]] через [[b]]{1}[[/b]] сек. Не двигайтесь" />
+  <Translation Id="TPAWhileCombat" Value="Перемещение отменено: [[b]]{0}[[/b]] находится в бою" />
+  <Translation Id="TPAWhileCombatYou" Value="Во время боя телепортация недоступна" />
+  <Translation Id="TPAWhileRaid" Value="Перемещение отменено: [[b]]{0}[[/b]] находится в режиме рейда" />
+  <Translation Id="TPAWhileRaidYou" Value="Во время рейда телепортация недоступна" />
+  <Translation Id="TPADead" Value="Перемещение отменено из-за смерти игрока" />
+  <Translation Id="TPACave" Value="Перемещение отменено: [[b]]{0}[[/b]] находится в пещере" />
+  <Translation Id="TPACaveYou" Value="В пещеру телепортироваться нельзя" />
+  <Translation Id="TPAVehicle" Value="Перемещение отменено: [[b]]{0}[[/b]] находится в транспорте" />
+  <Translation Id="TPAVehicleYou" Value="Сначала выйдите из транспорта" />
+  <Translation Id="TPANoSentRequest" Value="У вас нет исходящих запросов" />
+  <Translation Id="TPACanceled" Value="Запрос к [[b]]{0}[[/b]] отменён" />
+  <Translation Id="TPADenied" Value="Запрос игрока [[b]]{0}[[/b]] отклонён" />
+  <Translation Id="TPACanceledSenderMoved" Value="Перемещение отменено: [[b]]{0}[[/b]] сдвинулся" />
+  <Translation Id="TPACanceledYouMoved" Value="Перемещение отменено: вы сдвинулись" />
+  <Translation Id="TPASuccess" Value="Вы переместились к [[b]]{0}[[/b]]" />
+  <Translation Id="TPAYourself" Value="Нельзя отправить запрос самому себе" />
+</Translations>

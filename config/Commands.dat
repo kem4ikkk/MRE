@@ -1,0 +1,7 @@
+// Базовые параметры MRE. Секреты добавляет локальный установщик.
+Name MRE #1 | PEI | Выживание | MAX4 | BETA
+Map PEI
+Mode Easy
+MaxPlayers 24
+Perspective Both
+Port 27015

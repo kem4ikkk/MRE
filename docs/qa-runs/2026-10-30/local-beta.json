@@ -1,0 +1,77 @@
+{
+    "recorded_date_moscow":  "2026-10-30",
+    "captured_at_utc":  "2026-10-30T01:00:27.1937294Z",
+    "stage":  "local_beta",
+    "game_build":  "25613089",
+    "a2s":  {
+                "query":  "A2S_INFO",
+                "map":  "PEI",
+                "max_players":  24,
+                "players":  0,
+                "password_protected":  true,
+                "vac":  false,
+                "query_version":  "1.0.0.0",
+                "player_join_tested":  false
+            },
+    "runtime":  {
+                    "captured_at_utc":  "2026-10-30T01:00:27.1572511Z",
+                    "purpose":  "Проверка runtime API и установленных патчей; не функциональная проверка кроватей игроками.",
+                    "provider":  {
+                                     "mode":  "EASY",
+                                     "map":  "PEI",
+                                     "max_players":  24,
+                                     "group_cap":  4
+                                 },
+                    "mre_configuration":  {
+                                              "VoteDayEnabled":  true,
+                                              "NightOnly":  true,
+                                              "MinimumPlayers":  2,
+                                              "RequiredPercent":  60,
+                                              "VoteDurationSeconds":  60,
+                                              "VoteCooldownSeconds":  300,
+                                              "AutoSaveEnabled":  true,
+                                              "AutoSaveIntervalSeconds":  300,
+                                              "LocalControlEnabled":  true
+                                          },
+                    "barricade_manager":  {
+                                              "server_set_bed_owner_methods":  [
+                                                                                   "SDG.Unturned.BarricadeManager.ServerSetBedOwnerInternal(SDG.Unturned.InteractableBed, System.Byte, System.Byte, System.UInt16, SDG.Unturned.BarricadeRegion, Steamworks.CSteamID)"
+                                                                               ],
+                                              "server_set_bed_owner_six_parameters_exists":  true
+                                          },
+                    "more_homes_harmony":  {
+                                               "owner_contains":  "com.restoremonarchy.morehomes",
+                                               "harmony_assembly":  "0Harmony, Version=2.2.2.0, Culture=neutral, PublicKeyToken=null",
+                                               "matched_owners":  [
+                                                                      "com.restoremonarchy.morehomes"
+                                                                  ],
+                                               "matched_method_count":  3,
+                                               "matched_methods":  [
+                                                                       "SDG.Unturned.BarricadeManager.destroyBarricade(SDG.Unturned.BarricadeDrop, System.Byte, System.Byte, System.UInt16)",
+                                                                       "SDG.Unturned.BarricadeManager.salvageBarricade(UnityEngine.Transform)",
+                                                                       "SDG.Unturned.InteractableBed.ReceiveClaimRequest(SDG.Unturned.ServerInvocationContext\u0026)"
+                                                                   ]
+                                           }
+                },
+    "checks":  {
+                   "steam_install":  "PASS",
+                   "pei_boot":  "PASS",
+                   "both_workshop_assets_loaded":  "PASS",
+                   "save_and_shutdown":  "PASS",
+                   "real_backup_restore":  "PASS",
+                   "initialize_preserves_configs":  "PASS",
+                   "mre_essentials_isolated":  42,
+                   "teleportation_isolated":  20,
+                   "backup_restore_isolated":  17
+               },
+    "pending":  [
+                    "clean_client_join",
+                    "two_player_home_tpa",
+                    "vote_day_in_game",
+                    "mod_recipes_and_vehicle_spawn",
+                    "load_12_24",
+                    "public_secure_mode",
+                    "vault",
+                    "payment_integration"
+                ]
+}

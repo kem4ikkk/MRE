@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Translations xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Translation Id="HomeCooldown" Value="До следующего HOME осталось [[b]]{0}[[/b]] сек." />
+  <Translation Id="HomeDelayWarn" Value="Перемещение домой через [[b]]{0}[[/b]] сек. Не двигайтесь" />
+  <Translation Id="MaxHomesWarn" Value="Достигнут ваш лимит кроватей" />
+  <Translation Id="BedDestroyed" Value="Кровать уничтожена или отвязана. Перемещение отменено" />
+  <Translation Id="WhileDriving" Value="Сначала выйдите из транспорта" />
+  <Translation Id="NoHome" Value="Подходящий дом не найден" />
+  <Translation Id="HomeSuccess" Value="Вы переместились в дом [[b]]{0}[[/b]]" />
+  <Translation Id="HomeList" Value="Ваши дома [[b]][{0}/{1}][[/b]]: " />
+  <Translation Id="NoHomes" Value="Сначала привяжите кровать" />
+  <Translation Id="DestroyHomeFormat" Value="Использование: /destroyhome [[имя]]" />
+  <Translation Id="HomeNotFound" Value="Дом [[b]]{0}[[/b]] не найден" />
+  <Translation Id="DestroyHomeSuccess" Value="Дом [[b]]{0}[[/b]] удалён из списка" />
+  <Translation Id="RenameHomeFormat" Value="Использование: /renamehome [[старое имя]] [[новое имя]]" />
+  <Translation Id="HomeAlreadyExists" Value="Дом [[b]]{0}[[/b]] уже существует" />
+  <Translation Id="RenameHomeFail" Value="Дом [[b]]{0}[[/b]] уже существует" />
+  <Translation Id="RenameHomeSuccess" Value="Дом [[b]]{0}[[/b]] переименован в [[b]]{1}[[/b]]" />
+  <Translation Id="WhileRaid" Value="Во время рейда HOME недоступен" />
+  <Translation Id="WhileCombat" Value="Во время боя HOME недоступен" />
+  <Translation Id="RestoreHomesSuccess" Value="Восстановлено домов: [[b]]{0}[[/b]]" />
+  <Translation Id="RemoveHome" Value="Ваш дом [[b]]{0}[[/b]] удалён" />
+  <Translation Id="HomeClaimed" Value="Привязана новая кровать: [[b]]{0}[[/b]]" />
+  <Translation Id="HomeTeleportationFailed" Value="Не удалось переместиться в дом [[b]]{0}[[/b]]" />
+  <Translation Id="HomeDestroyed" Value="Ваш дом [[b]]{0}[[/b]] уничтожен" />
+  <Translation Id="HomeCanceledYouMoved" Value="Перемещение отменено: вы сдвинулись" />
+  <Translation Id="CantTeleportToBedUnderground" Value="Кровать [[b]]{0}[[/b]] под землёй. Перемещение запрещено" />
+</Translations>

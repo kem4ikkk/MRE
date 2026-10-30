@@ -1,0 +1,11 @@
+Version 1
+
+Gameplay
+{
+    Max_Group_Members 4
+}
+
+Browser
+{
+    Monetization None
+}

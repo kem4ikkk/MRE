@@ -16,3 +16,9 @@ Steam/
 __pycache__/
 .DS_Store
 Thumbs.db
+
+# Результаты сборки и личные настройки IDE
+**/bin/
+**/obj/
+*.user
+*.suo

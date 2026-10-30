@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-29",
+  "framework": "LDM/Rocket from the installed U3DS distribution",
+  "mre_patch": {
+    "id": "mre-recipient-guard-v1",
+    "assembly_version": "1.8.3.2",
+    "source_path": "src/Teleportation.MRE/Plugin",
+    "build_script": "src/Teleportation.MRE/Build.ps1",
+    "binary_path": "runtime/plugin-builds/Teleportation.MRE/Teleportation.dll",
+    "note": "Installed Teleportation is built from this MIT fork; upstream ZIP hashes below describe the original release, not the installed patched DLL. The actual binary hash is recorded in the ignored build.json and installed-receipt.json."
+  },
+  "plugins": [
+    {
+      "name": "Teleportation",
+      "version": "1.8.3",
+      "tag": "v1.8.3",
+      "source_commit": "9c046b50ab7fc0a456263134d7d6f07b2461fbb9",
+      "license": "MIT",
+      "license_url": "https://raw.githubusercontent.com/RestoreMonarchyPlugins/Teleportation/9c046b50ab7fc0a456263134d7d6f07b2461fbb9/LICENSE",
+      "license_sha256": "1055bb25bc4c9640f306b557f0a1e0c185b3cb76878337a065fb2d972f8556ba",
+      "release_url": "https://github.com/RestoreMonarchyPlugins/Teleportation/releases/tag/v1.8.3",
+      "archive_url": "https://github.com/RestoreMonarchyPlugins/Teleportation/releases/download/v1.8.3/Teleportation-v1.8.3.zip",
+      "archive_name": "Teleportation-v1.8.3.zip",
+      "archive_sha256": "83af8f03fbc9e9bc7e3f4032b707c694aba3e03c63ef2b8c22c8086c4d586e38",
+      "publisher_digest_verified": true,
+      "files": [
+        {
+          "path": "Plugins/Teleportation.dll",
+          "sha256": "f7de79fd24c3de21750b7161363fb8038225b98a23026f7fead3bc471810ddc5"
+        }
+      ],
+      "configuration": [
+        "Teleportation/Teleportation.configuration.xml",
+        "Teleportation/Teleportation.en.translation.xml"
+      ]
+    },
+    {
+      "name": "MoreHomes",
+      "version": "1.10.3",
+      "tag": "v1.10.3",
+      "source_commit": "d57770a30fc9705b1360eb3adc966c4722eaf40c",
+      "license": "MIT",
+      "license_url": "https://raw.githubusercontent.com/RestoreMonarchyPlugins/MoreHomes/d57770a30fc9705b1360eb3adc966c4722eaf40c/LICENSE",
+      "license_sha256": "0ecf5859a8ba2008e56f291c6fba6f66074cb9d41820dc4ba46f6d5a79a56474",
+      "release_url": "https://github.com/RestoreMonarchyPlugins/MoreHomes/releases/tag/v1.10.3",
+      "archive_url": "https://github.com/RestoreMonarchyPlugins/MoreHomes/releases/download/v1.10.3/MoreHomes-v1.10.3.zip",
+      "archive_name": "MoreHomes-v1.10.3.zip",
+      "archive_sha256": "f1ebc2273a5f6b222c75b3ede918a0d2d3c01df02387f7830d92b8fe2c6431d5",
+      "publisher_digest_verified": false,
+      "files": [
+        {
+          "path": "Plugins/MoreHomes.dll",
+          "sha256": "89ca140b4ed0ffd80a009871792e6e03bd8ab853ff3872ec14cbd5469459a738"
+        },
+        {
+          "path": "Libraries/0Harmony.dll",
+          "sha256": "0de0118c8f1d4408de389ca33b46d2ff7778f3a8541b430cae729ec913d899c7",
+          "version": "2.2.2.0",
+          "license": "MIT",
+          "license_url": "https://raw.githubusercontent.com/pardeike/Harmony/5a487785a77a320bb2c014b5ef11f02c94f70130/LICENSE",
+          "license_sha256": "a5883d0c45eb7e176d3d1631220e7f96e958e37064773d40245ae6db560bbd6d"
+        }
+      ],
+      "configuration": [
+        "MoreHomes/MoreHomes.configuration.xml",
+        "MoreHomes/MoreHomes.en.translation.xml"
+      ]
+    }
+  ]
+}

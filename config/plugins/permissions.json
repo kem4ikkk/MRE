@@ -1,0 +1,22 @@
+{
+  "note": "Справочник прав для слияния с Rocket.permissions.xml текущего LDM; этот JSON не загружается игровым сервером автоматически.",
+  "groups": {
+    "default": {
+      "permissions": ["home", "homes", "destroyhome", "renamehome", "tpa"]
+    },
+    "supporter": {
+      "inherits": "default",
+      "permissions": []
+    },
+    "vip": {
+      "inherits": "supporter",
+      "permissions": ["morehomes.vip"]
+    },
+    "elite": {
+      "inherits": "supporter",
+      "permissions": ["morehomes.elite"]
+    }
+  },
+  "not_granted": ["restorehomes", "*", "admin", "combat bypass", "raid bypass"],
+  "expiry": "Не реализован этими плагинами. Автоматическая выдача платных групп и продажи пока выключены."
+}

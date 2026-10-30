@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-29",
+  "mods": [
+    {
+      "id": 1232252658,
+      "name": "More Farming Mod",
+      "default_enabled": true,
+      "source": "https://steamcommunity.com/sharedfiles/filedetails/?id=1232252658",
+      "use_basis": "Оригинальный Workshop автора; описание адресовано владельцам серверов. Разрешение на перепубликацию или изменение не предполагается.",
+      "compatibility": "Требуется проверка загрузкой сервера и чистым клиентом."
+    },
+    {
+      "id": 3485061773,
+      "name": "[Pre-V3-1] William's Vehicles",
+      "default_enabled": false,
+      "source": "https://steamcommunity.com/sharedfiles/filedetails/?id=3485061773",
+      "use_basis": "Автор WW_TC ответил Yes на вопрос о серверном использовании. Использовать оригинальный Workshop без перезаливки.",
+      "compatibility": "Опционально; отдельно проверить текущую версию, спавн PEI и сохранения."
+    }
+  ],
+  "excluded_without_permission": [
+    { "id": 1991009929, "name": "RedLine" },
+    { "id": 2874498147, "name": "RedLine UI" },
+    { "id": 3827785539, "name": "RedLineHalloween" }
+  ]
+}

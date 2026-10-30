@@ -1,0 +1,56 @@
+# MreEssentials
+
+Собственный плагин MRE для LDM/Rocket: голосование за день и автоматическое сохранение. Версия 0.1.0, исходники распространяются по [MIT](LICENSE). Игровые DLL используются только как ссылки при компиляции и не включаются в репозиторий.
+
+## Сборка
+
+```powershell
+.\scripts\Build-MreEssentials.ps1
+
+# Допускается readonly-сборка по установленному клиенту той же версии.
+.\scripts\Build-MreEssentials.ps1 -GameDirectory 'D:\Steam\steamapps\common\Unturned'
+
+# Изолированные проверки чистой логики кворума.
+dotnet run --project .\src\MreEssentials\checks\VoteSessionChecks.csproj --artifacts-path .\runtime\builds\vote-checks
+```
+
+Результат: `runtime/builds/MreEssentials/MreEssentials.dll` и `build-manifest.json` с SHA256 плагина и всех reference. Сборка использует Roslyn установленного .NET SDK и библиотеки Mono из текущего U3DS; внешний пакет NuGet не нужен. Скрипт не копирует DLL в сервер автоматически.
+
+Для установки координатор копирует DLL в `runtime/server/Servers/MRE/Rocket/Plugins` только при остановленном сервере. После первого старта Rocket создает `MreEssentials.configuration.xml`. Обычной группе выдается точное право **`mre.vote`**. Пользовательские команды отсутствуют, если плагин не загружен или право не выдано.
+
+## Контракт голосования
+
+- `/vote day` ночью начинает голосование и сразу учитывает голос инициатора.
+- `/vote day` при действующем голосовании, `/vote yes` и `/cv` добавляют один голос за день.
+- `/vote status` показывает счет и оставшееся время. Консоль может смотреть статус, но не голосовать.
+- По умолчанию: минимум 2 игрока, 60% голосов, 60 секунд на голосование, cooldown 300 секунд от начала попытки.
+- Участники фиксируются по уникальным SteamID64 в начале. Новые подключения не участвуют в текущем голосовании. Выходы не уменьшают необходимое число; голос отключившегося игрока не засчитывается, пока он отсутствует.
+- Днем попытка отклоняется. Если рассвет наступил естественно, голосование отменяется.
+- После окончания срока, выгрузки плагина или рестарта голоса не переносятся. Cooldown хранится в памяти; рестарт сервера его сбрасывает. Это не механизм платных прав или cooldown наборов.
+- Для подписчиков и администраторов нет отдельного права обхода голосования. Порог одинаковый.
+
+## Автосохранение
+
+`AutoSaveEnabled=true`, `AutoSaveIntervalSeconds=300`. Вызов `SaveManager.save()` выполняется из Unity `Update`, на главном игровом потоке и только после загрузки survival-уровня. При ошибке запись появляется в серверном журнале. Сохранение в папке сервера не заменяет резервную копию вне узла.
+
+## Локальное управление без видимой консоли
+
+`LocalControlEnabled=true`, `LocalControlDirectory=../control/MRE` относительно каталога фактического **Unturned.exe**. Он определяется через `Process.GetCurrentProcess().MainModule.FileName`: игра меняет рабочий каталог после загрузки мира, поэтому `Environment.CurrentDirectory` для этого пути не используется. В проекте итоговый путь — `runtime/control/MRE`. Канал не слушает сеть. Каталог должен быть доступен на запись только владельцу сервера и доверенным системным администраторам; права NTFS настраивает запускатель. Значение пути ограничено деревом `runtime/control`, ссылки/junction запрещены.
+
+Запускатель атомарно помещает UTF-8 запрос `requests/<guidN>.cmd`: только `Save`, `Shutdown`, `Players`, `Day`, `Night` или `Diagnostics`, без аргументов, максимум 64 байта. Плагин читает до восьми запросов раз в 0.5 секунды на игровом потоке, после загрузки мира. Ответ `results/<guidN>.json` содержит `id`, `status`, `command`, `at_utc`.
+
+Статусы: `completed` после выполнения, `failed`/`rejected` при отказе; для `Shutdown` — **`accepted` перед выполнением**, затем запускатель обязан дождаться выхода PID. Старые `.cmd`/`.processing` при загрузке плагина получают `discarded_on_start` и не исполняются. GUID уже обработанного запроса не выполняется повторно. Несекретные результаты остаются в игнорируемом `runtime/control`, вне сохраняемого мира и архива его данных.
+
+Это канал администратора локального компьютера, а не право игрока и не интеграция магазина. В нем нет произвольного выполнения текста из чата/сайта.
+
+`Diagnostics` только читает состояние и сохраняет `runtime/control/MRE/diagnostics.json`: фактические mode/map/maxPlayers/MAX4, настройки MRE, найденные runtime-патчи с владельцем `com.restoremonarchy.morehomes` и наличие приватного `ServerSetBedOwnerInternal` с шестью аргументами. Harmony исследуется через reflection без сборочной зависимости; отсутствие API записывается как `error`. Диагностика не устанавливает патчи, не меняет мир и не доказывает работоспособность кроватей или телепорта игроками.
+
+## Первичные API и границы проверки
+
+Сигнатуры сверены с официальными источниками, код SDK в MRE не копируется:
+
+- [SDG: SaveManager](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Managers/SaveManager.cs) — сохранение и проверка загруженного уровня.
+- [SDG: LightingManager](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Managers/LightingManager.cs) и [CommandDay](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Command/CommandDay.cs) — состояние ночи и установка дневного времени.
+- [LDM: IRocketCommand](https://github.com/SmartlyDressedGames/Legally-Distinct-Missile/blob/master/Rocket/Rocket.API/IRocketCommand.cs) — контракт команд.
+
+На 29.10.2026 DLL скомпилирована по установленному клиенту Unturned. Это подтверждает наличие используемых API, но не заменяет загрузку на U3DS и проверку реальными игроками. В runtime-проверке нужны два обычных аккаунта, ночь, повторный голос, поздний вход, отключение, таймаут, cooldown, рассвет и сохранение мира после рестарта. Поведение закрытого REDLINE Voter не объявляется идентичным.
