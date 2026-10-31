@@ -12,7 +12,7 @@ function Write-File([string]$Relative,[string]$Content) {
 $checks=0
 function Check([bool]$Condition,[string]$Name) { if(-not $Condition){throw "FAIL: $Name"}; $script:checks++ }
 function Must-Fail([scriptblock]$Action,[string]$Name) { $failed=$false;try{& $Action | Out-Null}catch{$failed=$true};Check $failed $Name }
-foreach($name in @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight')) {
+foreach($name in @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight','MreVault')) {
     Write-File ("runtime\builds\$name\$name.dll") ("new-$name")
     Write-File ("src\$name\LICENSE") ("test-license-$name")
     $hash=(Get-FileHash -LiteralPath (Join-Path $fixture "runtime\builds\$name\$name.dll")).Hash
@@ -79,6 +79,19 @@ Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash
        (Get-FileHash -LiteralPath (Join-Path $plugins 'MoreHomes\MoreHomes.configuration.xml')).Hash -eq $oldHomes -and
        (Get-FileHash -LiteralPath (Join-Path $plugins 'Teleportation.dll')).Hash -eq $oldTpa) 'admin-only installation preserves existing gameplay and UI dependencies'
 Must-Fail { & $install -InterfaceOnly -AdminOnly } 'conflicting targeted installation modes rejected'
+Must-Fail { & $install -VaultOnly -AdminOnly } 'vault and admin modes cannot be combined'
+Must-Fail { & $install -VaultOnly -InterfaceOnly } 'vault and interface modes cannot be combined'
+$oldCommandMap=[IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml'))
+$oldEssentials=(Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash
+Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreVault.dll' 'old-vault'
+Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreVault\vault-state.json' 'keep-vault-data'
+& $install -Apply -VaultOnly -Confirm:$false | Out-Null
+Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreVault.dll')) -eq 'new-MreVault') 'vault-only installs the validated DLL'
+Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreVault\vault-state.json')) -eq 'keep-vault-data') 'vault-only preserves vault data'
+Check ([IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml')) -eq $oldCommandMap) 'vault-only preserves command mappings exactly'
+Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash -eq $oldEssentials) 'vault-only preserves other plugins'
+$vaultReceipt=Get-Content -LiteralPath (Join-Path $fixture 'runtime\features-installed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+Check ([IO.File]::ReadAllText((Join-Path $vaultReceipt.backup_path 'MreVault.dll')) -eq 'old-vault') 'vault-only backs up previous DLL'
 [xml]$mapping=Get-Content -LiteralPath (Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml') -Raw -Encoding UTF8
 Check ($mapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.CommandAdmin/admin"]').GetAttribute('Enabled') -eq 'false') 'conflicting Rocket admin disabled'
 Check ($mapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.UnturnedCommands/admin"]').GetAttribute('Enabled') -eq 'false') 'conflicting native wrapper disabled'

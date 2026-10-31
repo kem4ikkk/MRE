@@ -1,5 +1,5 @@
 ﻿[CmdletBinding(SupportsShouldProcess = $true)]
-param([switch]$Apply, [switch]$InterfaceOnly, [switch]$AdminOnly)
+param([switch]$Apply, [switch]$InterfaceOnly, [switch]$AdminOnly, [switch]$VaultOnly)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Get-MreProcessPath.ps1')
@@ -9,9 +9,9 @@ $serverRoot = Join-Path $runtimeRoot 'server'
 $pluginRoot = Join-Path $serverRoot 'Servers\MRE\Rocket\Plugins'
 $utf8 = New-Object Text.UTF8Encoding($false)
 $copies = @()
-if ($InterfaceOnly -and $AdminOnly) { throw 'Выберите один режим установки: InterfaceOnly или AdminOnly.' }
-$targetedInstall = $InterfaceOnly -or $AdminOnly
-$names = if ($InterfaceOnly) { @('MreInterface') } elseif ($AdminOnly) { @('MreInterface','MreModeration','MreInventoryAudit','MreFlight') } else { @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight') }
+if (@($InterfaceOnly,$AdminOnly,$VaultOnly | Where-Object { $_ }).Count -gt 1) { throw 'Выберите только один режим установки: InterfaceOnly, AdminOnly или VaultOnly.' }
+$targetedInstall = $InterfaceOnly -or $AdminOnly -or $VaultOnly
+$names = if ($VaultOnly) { @('MreVault') } elseif ($InterfaceOnly) { @('MreInterface') } elseif ($AdminOnly) { @('MreInterface','MreModeration','MreInventoryAudit','MreFlight') } else { @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight') }
 foreach ($name in $names) {
     $buildRoot = Join-Path $runtimeRoot ('builds\' + $name)
     $source = Join-Path $buildRoot ($name + '.dll')
@@ -69,8 +69,10 @@ try {
         [xml]$essentials = Get-Content -LiteralPath $essentialsPath -Raw -Encoding UTF8
         [xml]$homes = Get-Content -LiteralPath $homePath -Raw -Encoding UTF8
     }
+    if (-not $VaultOnly) {
     if (Test-Path -LiteralPath $commandMapPath) { [xml]$commandMap = Get-Content -LiteralPath $commandMapPath -Raw -Encoding UTF8 }
     else { [xml]$commandMap = '<RocketCommands><Commands /></RocketCommands>' }
+    }
     function Set-XmlValue([xml]$Document,[string]$Name,[string]$Value) {
         $node=$Document.DocumentElement.SelectSingleNode($Name)
         if (-not $node) { $node=$Document.CreateElement($Name); [void]$Document.DocumentElement.AppendChild($node) }
@@ -83,6 +85,7 @@ try {
         Set-XmlValue $homes 'DefaultHomeDelay' '10'
     }
     # Rocket читает приоритет из сохраненного mapping, даже при Register(... High).
+    if (-not $VaultOnly) {
     foreach ($mapping in @($commandMap.SelectNodes('/RocketCommands/Commands/Command'))) {
         if ($mapping.InnerText -in @('Rocket.Unturned.Commands.CommandAdmin/admin','Rocket.Unturned.Commands.UnturnedCommands/admin')) {
             $mapping.SetAttribute('Enabled','false')
@@ -98,10 +101,12 @@ try {
         }
         foreach ($node in $mapping) { $node.SetAttribute('Enabled','true'); $node.SetAttribute('Priority','High') }
     }
+    }
 
     $backupRoot=Join-Path $projectRoot ('backups\features-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fffffff'))
     New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
-    $targets=@($copies | ForEach-Object Target) + @($commandMapPath)
+    $targets=@($copies | ForEach-Object Target)
+    if (-not $VaultOnly) { $targets += @($commandMapPath) }
     if (-not $targetedInstall) { $targets += @($essentialsPath,$homePath) }
     foreach ($target in $targets) {
         if (-not (Test-Path -LiteralPath $target)) { continue }
@@ -122,12 +127,12 @@ try {
         else { [IO.File]::Move($temporary,$copy.Target) }
     }
     if (-not $targetedInstall) { $essentials.Save($essentialsPath); $homes.Save($homePath) }
-    $commandMap.Save($commandMapPath)
+    if (-not $VaultOnly) { $commandMap.Save($commandMapPath) }
     $receipt=[ordered]@{
         installed_at_utc=[DateTime]::UtcNow.ToString('o')
         backup_path=$backupRoot
         files=@($copies | Select-Object Name,SHA256)
-        settings=if($targetedInstall){[ordered]@{InterfaceOnly=[bool]$InterfaceOnly;AdminOnly=[bool]$AdminOnly}}else{[ordered]@{MinimumPlayers=1;MaxSkillsEnabled=$true;DefaultMaxHomes=2;DefaultHomeDelay=10}}
+        settings=if($targetedInstall){[ordered]@{InterfaceOnly=[bool]$InterfaceOnly;AdminOnly=[bool]$AdminOnly;VaultOnly=[bool]$VaultOnly}}else{[ordered]@{MinimumPlayers=1;MaxSkillsEnabled=$true;DefaultMaxHomes=2;DefaultHomeDelay=10}}
         gameplay_validation='pending'
     }
     [IO.File]::WriteAllText((Join-Path $runtimeRoot 'features-installed.json'),($receipt | ConvertTo-Json -Depth 6),$utf8)

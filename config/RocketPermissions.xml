@@ -13,6 +13,7 @@
         <Permission Cooldown="0">tpa</Permission>
         <Permission Cooldown="0">mre.vote</Permission>
         <Permission Cooldown="0">mre.kit</Permission>
+        <Permission Cooldown="0">mre.vault</Permission>
         <Permission Cooldown="0">mre.trustscore</Permission>
       </Permissions>
     </Group>

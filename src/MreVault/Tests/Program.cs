@@ -34,7 +34,17 @@ internal static class Program
             int successes = 0; ulong other = 456;
             Parallel.For(0, 8, i => { try { new VaultJournal(dir).Prepare(other, other, Guid.NewGuid(), Empty(0), One(1), One(0), Empty(1)); System.Threading.Interlocked.Increment(ref successes); } catch (IOException) {} });
             Check(successes == 1);
-            Console.WriteLine("Проверки ограниченного журнала VAULT пройдены.");
+            var store = new VaultSessionStore(Path.Combine(dir, "store"));
+            Check(store.Read(owner).Count == 0 && !store.Locked(owner));
+            store.Begin(owner); Check(store.Locked(owner));
+            Check(Reject(() => store.Begin(owner)));
+            store.Write(owner, new [] { new VaultStoredItem { Id = 42, X = 3, Y = 2, Rotation = 1, Amount = 3, Quality = 94, State = new byte[] { 2, 3, 4 } } });
+            Check(new VaultSessionStore(Path.Combine(dir, "store")).Locked(owner));
+            var result = store.Read(owner); Check(result.Count == 1 && result[0].Id == 42 && result[0].Amount == 3 && result[0].State[2] == 4);
+            store.End(owner); Check(!store.Locked(owner));
+            string vaultPath = Path.Combine(dir, "store", "123.vault"); byte[] vaultBytes = File.ReadAllBytes(vaultPath); vaultBytes[5] ^= 1; File.WriteAllBytes(vaultPath, vaultBytes);
+            Check(Reject(() => store.Read(owner)));
+            Console.WriteLine("Проверки ограниченного журнала и файла VAULT пройдены.");
         }
         finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
     }

@@ -11,7 +11,7 @@ namespace MreShared
     internal static class MreChat
     {
         // Доступен клиентам только после публикации assets/server-chat.png в ветке.
-        private const string IconUrl = "https://raw.githubusercontent.com/kem4ikkk/MRE/feature/start-kit-chat-icon/assets/server-chat.png";
+        private const string IconUrl = "https://raw.githubusercontent.com/kem4ikkk/MRE/draft/vault-s/assets/server-chat.png";
 
         public static void Say(string message)
         {
