@@ -8,7 +8,7 @@ internal static class Program
     private static void Check(bool value) { if (!value) throw new Exception("Проверка журнала VAULT не пройдена."); }
     private static VaultSnapshot Empty(long version) { return new VaultSnapshot { Version = version, Items = new VaultItem[0] }; }
     private static VaultSnapshot One(long version, byte x = 0) { return new VaultSnapshot { Version = version, Items = new[] { new VaultItem { Id = 42, Amount = 1, Quality = 99, X = x, State = new byte[] { 0, 1, 255 } } } }; }
-    private static bool Reject(Action action) { try { action(); return false; } catch (Exception e) when (e is ArgumentException || e is UnauthorizedAccessException || e is InvalidOperationException || e is IOException) { return true; } }
+    private static bool Reject(Action action) { try { action(); return false; } catch (Exception e) when (e is ArgumentException || e is UnauthorizedAccessException || e is InvalidOperationException || e is IOException || e is InvalidDataException) { return true; } }
     private static void Main()
     {
         string dir = Path.Combine(Path.GetTempPath(), "mre-vault-test-" + Guid.NewGuid().ToString("N"));
