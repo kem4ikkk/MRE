@@ -19,7 +19,7 @@ namespace MreKits
         public static MreKitsPlugin Instance { get; private set; }
         private KitLedger ledger;
         private int gameThread;
-        private static readonly ushort[] StartItems = { 353, 16, 348, 348, 348, 348, 348, 95, 95, 13, 13, 14, 14 };
+        private static readonly ushort[] StartItems = { 353, 16, 294, 348, 348, 348, 348, 348, 95, 95, 13, 13, 14, 14 };
         private static readonly TimeSpan Cooldown = TimeSpan.FromHours(1);
         protected override void Load() { gameThread = Thread.CurrentThread.ManagedThreadId; ledger = new KitLedger(Path.Combine(Directory, "claims")); Instance = this; }
         protected override void Unload() { Instance = null; ledger = null; }
