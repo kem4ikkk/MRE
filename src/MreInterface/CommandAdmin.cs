@@ -1,3 +1,4 @@
+using MreShared;
 using System.Collections.Generic;
 using Rocket.API;
 using Rocket.Unturned.Chat;
@@ -19,7 +20,7 @@ namespace MreInterface
         {
             var player = caller as UnturnedPlayer;
             var plugin = MreInterfacePlugin.Instance;
-            if (plugin == null || player == null) { UnturnedChat.Say(caller, "MRE: админка доступна только в игре."); return; }
+            if (plugin == null || player == null) { MreChat.Say(caller, "MRE: админка доступна только в игре."); return; }
             plugin.HandleAdminCommand(player, args);
         }
     }

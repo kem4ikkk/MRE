@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <TeleportationConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <MessageColor>gray</MessageColor>
-  <MessageIconUrl />
+  <MessageIconUrl>https://raw.githubusercontent.com/kem4ikkk/MRE/feature/start-kit-chat-icon/assets/server-chat.png</MessageIconUrl>
   <TPACooldown>300</TPACooldown>
   <TPADelay>15</TPADelay>
   <TPADuration>90</TPADuration>

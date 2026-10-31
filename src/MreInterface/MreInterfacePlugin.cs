@@ -1,3 +1,4 @@
+using MreShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -157,15 +158,15 @@ namespace MreInterface
                 if (cleanup == "spectate" || cleanup == "fly" || cleanup == "freecam" || cleanup == "god" || cleanup == "vanish" || cleanup == "workzone" || cleanup == "stats")
                 { HandleStaffCommand(actor, cleanup, new[] { cleanup, "off" }); return; }
             }
-            if (!HasAdminPermission(actor, "mre.admin")) { UnturnedChat.Say(actor, "MRE: нет доступа к админке."); return; }
+            if (!HasAdminPermission(actor, "mre.admin")) { MreChat.Say(actor, "MRE: нет доступа к админке."); return; }
             if (args.Length == 0 && TryOpenAdminMenu(actor)) return;
             if (args.Length == 0 || args[0].Equals("help", StringComparison.OrdinalIgnoreCase))
             {
-                UnturnedChat.Say(actor, "MRE /admin: " + string.Join(", ", AdminPolicy.Actions.Where(a => CanExecuteAdmin(actor, a)).ToArray()) + ". tp/bring/kick требуют SteamID64 или точное имя; heal без имени лечит себя.");
-                UnturnedChat.Say(actor, "MRE: профили и наказания — /staff; инвентарь — /inspectinventory; смерти — /previewdeath и /restoredeath. Эти модули требуют отдельных прав."); return;
+                MreChat.Say(actor, "MRE /admin: " + string.Join(", ", AdminPolicy.Actions.Where(a => CanExecuteAdmin(actor, a)).ToArray()) + ". tp/bring/kick требуют SteamID64 или точное имя; heal без имени лечит себя.");
+                MreChat.Say(actor, "MRE: профили и наказания — /staff; инвентарь — /inspectinventory; смерти — /previewdeath и /restoredeath. Эти модули требуют отдельных прав."); return;
             }
             string action = args[0].ToLowerInvariant();
-            if (!AdminPolicy.KnownAction(action)) { UnturnedChat.Say(actor, "MRE: неизвестное действие. /admin help"); return; }
+            if (!AdminPolicy.KnownAction(action)) { MreChat.Say(actor, "MRE: неизвестное действие. /admin help"); return; }
             if (action == "fly" || action == "freecam" || action == "god" || action == "vanish" || action == "workzone" || action == "stats" || action == "remove" || (action == "kill" && args.Length == 3 && args[1].Equals("confirm", StringComparison.OrdinalIgnoreCase)) || (action == "spectate" && args.Length == 2 && args[1].Equals("off", StringComparison.OrdinalIgnoreCase)))
             {
                 HandleStaffCommand(actor, action, args); return;
@@ -177,12 +178,12 @@ namespace MreInterface
                 if (!ulong.TryParse(query, out targetId))
                 {
                     var matches = Provider.clients.Where(p => p != null && (p.playerID.characterName.Equals(query, StringComparison.OrdinalIgnoreCase) || p.playerID.playerName.Equals(query, StringComparison.OrdinalIgnoreCase))).ToArray();
-                    if (matches.Length != 1) { UnturnedChat.Say(actor, "MRE: нужно уникальное точное имя или SteamID64 из /admin players."); return; }
+                    if (matches.Length != 1) { MreChat.Say(actor, "MRE: нужно уникальное точное имя или SteamID64 из /admin players."); return; }
                     targetId = matches[0].playerID.steamID.m_SteamID;
                 }
             }
-            try { UnturnedChat.Say(actor, "MRE: " + ExecuteAdmin(actor, action, targetId)); }
-            catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка действия /admin."); UnturnedChat.Say(actor, "MRE: действие не выполнено, ошибка записана в журнал."); }
+            try { MreChat.Say(actor, "MRE: " + ExecuteAdmin(actor, action, targetId)); }
+            catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка действия /admin."); MreChat.Say(actor, "MRE: действие не выполнено, ошибка записана в журнал."); }
         }
 
         public CombatRecord[] GetRecentKills() { RequireGameThread(); return kills.Snapshot(); }

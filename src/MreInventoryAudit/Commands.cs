@@ -1,3 +1,4 @@
+using MreShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,14 +21,14 @@ namespace MreInventoryAudit
         {
             var player=caller as UnturnedPlayer;
             if(player==null||MreInventoryAuditPlugin.Instance==null)return;
-            try{Run(player,args);}catch(Exception error){UnturnedChat.Say(player,"MRE: "+error.Message);Logger.LogException(error,"[MRE] Команда работы с инвентарем отклонена.");}
+            try{Run(player,args);}catch(Exception error){MreChat.Say(player,"MRE: "+error.Message);Logger.LogException(error,"[MRE] Команда работы с инвентарем отклонена.");}
         }
         protected abstract void Run(UnturnedPlayer actor,string[] args);
         protected static void Print(UnturnedPlayer actor,InventoryView view)
         {
-            UnturnedChat.Say(actor,"MRE: вещей "+view.Items.Length+"; снимок "+(view.SnapshotId??"текущий")+"; "+(view.RestoreStatus??"только чтение"));
-            foreach(var item in view.Items.Take(30))UnturnedChat.Say(actor,"["+item.Id+"] "+item.Name+" x"+item.Amount+" / "+item.Quality+"%; "+(item.WornSlot??("страница "+item.Page)));
-            if(view.Items.Length>30)UnturnedChat.Say(actor,"MRE: первые30 строк; полный список доступен в серверном API для UI.");
+            MreChat.Say(actor,"MRE: вещей "+view.Items.Length+"; снимок "+(view.SnapshotId??"текущий")+"; "+(view.RestoreStatus??"только чтение"));
+            foreach(var item in view.Items.Take(30))MreChat.Say(actor,"["+item.Id+"] "+item.Name+" x"+item.Amount+" / "+item.Quality+"%; "+(item.WornSlot??("страница "+item.Page)));
+            if(view.Items.Length>30)MreChat.Say(actor,"MRE: первые30 строк; полный список доступен в серверном API для UI.");
         }
     }
     public sealed class InspectInventoryCommand : InventoryCommand
@@ -49,7 +50,7 @@ namespace MreInventoryAudit
             ulong id=MreInventoryAuditPlugin.ResolveTarget(string.Join(" ",numbered?args.Take(args.Length-1):args));
             InventoryView[] deaths=MreInventoryAuditPlugin.Instance.GetDeaths(actor,id);
             if(numbered){if(number<1||number>deaths.Length)throw new ArgumentException("Нет смерти с таким номером.");Print(actor,deaths[number-1]);}
-            else {UnturnedChat.Say(actor,"MRE: снимков "+deaths.Length+". Просмотр: /previewdeath <SteamID64> <номер>.");for(int i=0;i<deaths.Length;i++)UnturnedChat.Say(actor,(i+1)+". "+deaths[i].AtUtc.ToUniversalTime().AddHours(3).ToString("dd.MM HH:mm")+" МСК / "+deaths[i].Items.Length+" вещей / "+deaths[i].RestoreStatus);}
+            else {MreChat.Say(actor,"MRE: снимков "+deaths.Length+". Просмотр: /previewdeath <SteamID64> <номер>.");for(int i=0;i<deaths.Length;i++)MreChat.Say(actor,(i+1)+". "+deaths[i].AtUtc.ToUniversalTime().AddHours(3).ToString("dd.MM HH:mm")+" МСК / "+deaths[i].Items.Length+" вещей / "+deaths[i].RestoreStatus);}
         }
     }
     public sealed class RestoreDeathCommand : InventoryCommand
@@ -59,11 +60,11 @@ namespace MreInventoryAudit
         public override List<string> Permissions {get{return new List<string>{"mre.inventory.restore"};}}
         protected override void Run(UnturnedPlayer actor,string[] args)
         {
-            if(args.Length==2&&args[0].Equals("confirm",StringComparison.OrdinalIgnoreCase)){UnturnedChat.Say(actor,"MRE: "+MreInventoryAuditPlugin.Instance.ConfirmRestore(actor,args[1]));return;}
+            if(args.Length==2&&args[0].Equals("confirm",StringComparison.OrdinalIgnoreCase)){MreChat.Say(actor,"MRE: "+MreInventoryAuditPlugin.Instance.ConfirmRestore(actor,args[1]));return;}
             int number;ulong id;
             if(args.Length!=2||!UInt64.TryParse(args[0],out id)||!Int32.TryParse(args[1],out number))throw new ArgumentException("/restoredeath "+Syntax);
             RestorePreview preview=MreInventoryAuditPlugin.Instance.PrepareRestore(actor,id,number);
-            UnturnedChat.Say(actor,"MRE: компенсация "+preview.Inventory.Items.Length+" вещей игроку "+id+". Это новая выдача; лут на месте смерти остается. Подтвердить в30с: /restoredeath confirm "+preview.Token);
+            MreChat.Say(actor,"MRE: компенсация "+preview.Inventory.Items.Length+" вещей игроку "+id+". Это новая выдача; лут на месте смерти остается. Подтвердить в30с: /restoredeath confirm "+preview.Token);
         }
     }
 }

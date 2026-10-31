@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$GameDirectory
 )
@@ -39,6 +39,7 @@ foreach ($referencePath in $referencePaths) {
     }
 }
 $sourcePaths = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src\MreInterface') -File -Filter '*.cs' | ForEach-Object { $_.FullName })
+$sourcePaths += (Join-Path $projectRoot 'src\MreShared\MreChat.cs')
 $outputPath = Join-Path $outputRoot 'MreInterface.dll'
 $compilerArguments = @('/noconfig', '/nostdlib+', '/target:library', '/langversion:7.3', '/optimize+', '/deterministic+', '/utf8output', "/out:$outputPath")
 $compilerArguments += @($referencePaths | ForEach-Object { "/reference:$_" })
