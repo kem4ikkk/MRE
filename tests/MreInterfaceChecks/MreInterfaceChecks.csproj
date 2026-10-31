@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../src/MreInterface/AdminPolicy.cs" Link="AdminPolicy.cs" />
+    <Compile Include="../../src/MreInterface/CombatRecords.cs" Link="CombatRecords.cs" />
+    <Compile Include="../../src/MreInterface/DamageCapture.cs" Link="DamageCapture.cs" />
+    <Compile Include="../../src/MreInterface/ConfirmationStore.cs" Link="ConfirmationStore.cs" />
+    <Compile Include="../../src/MreInterface/StaffModeRestoreState.cs" Link="StaffModeRestoreState.cs" />
+    <Compile Include="../../src/MreInterface/MenuRequestDispatch.cs" Link="MenuRequestDispatch.cs" />
+  </ItemGroup>
+</Project>

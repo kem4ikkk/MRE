@@ -6,6 +6,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Get-MreProcessPath.ps1')
 $projectRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 $runtimeRoot = Join-Path $projectRoot 'runtime'
 $serverRoot = Join-Path $runtimeRoot 'server'
@@ -39,10 +40,11 @@ function Assert-NoReparseAncestors([string]$Path) {
 function Assert-MreStopped {
     $serverPrefix = [IO.Path]::GetFullPath($serverRoot).TrimEnd('\') + '\'
     foreach ($processItem in @(Get-CimInstance Win32_Process -Filter "Name = 'Unturned.exe' OR Name = 'Unturned_Headless.exe'")) {
-        if ([string]::IsNullOrWhiteSpace($processItem.ExecutablePath)) {
+        $imagePath = Get-MreProcessPath $processItem
+        if ([string]::IsNullOrWhiteSpace($imagePath)) {
             throw "Не удалось определить путь Unturned PID $($processItem.ProcessId). Нельзя подтвердить остановку MRE."
         }
-        if ([IO.Path]::GetFullPath($processItem.ExecutablePath).StartsWith($serverPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        if ([IO.Path]::GetFullPath($imagePath).StartsWith($serverPrefix, [StringComparison]::OrdinalIgnoreCase)) {
             throw "MRE запущен (PID $($processItem.ProcessId)). Сначала выполните корректный Shutdown."
         }
     }

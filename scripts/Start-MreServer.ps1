@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Get-MreProcessPath.ps1')
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $runtimeRoot = Join-Path $projectRoot 'runtime'
 $serverRoot = Join-Path $runtimeRoot 'server'
@@ -22,8 +23,9 @@ try {
     }
     $serverProcesses = @(Get-CimInstance Win32_Process -Filter "Name = 'Unturned.exe'")
     foreach ($serverProcess in $serverProcesses) {
-        if (-not $serverProcess.ExecutablePath) { throw 'Не удалось определить путь одного из процессов Unturned.' }
-        if ([IO.Path]::GetFullPath($serverProcess.ExecutablePath) -eq [IO.Path]::GetFullPath($serverExe)) {
+        $imagePath = Get-MreProcessPath $serverProcess
+        if (-not $imagePath) { throw 'Не удалось определить путь одного из процессов Unturned.' }
+        if ([IO.Path]::GetFullPath($imagePath) -eq [IO.Path]::GetFullPath($serverExe)) {
             throw "Сервер из этой установки уже работает, PID $($serverProcess.ProcessId)."
         }
     }

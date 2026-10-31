@@ -7,7 +7,7 @@ $fixture = Join-Path $fixtureRoot ('fixture-' + [Guid]::NewGuid().ToString('N'))
 $fixtureScripts = Join-Path $fixture 'scripts'
 $dataRoot = Join-Path $fixture 'runtime\server\Servers\MRE'
 New-Item -ItemType Directory -Path $fixtureScripts,$dataRoot -Force | Out-Null
-foreach ($name in @('Backup-MreServer.ps1','Restore-MreServer.ps1')) {
+foreach ($name in @('Backup-MreServer.ps1','Restore-MreServer.ps1','Get-MreProcessPath.ps1')) {
     Copy-Item -LiteralPath (Join-Path $repoRoot ('scripts\' + $name)) -Destination (Join-Path $fixtureScripts $name)
 }
 $backupScript = Join-Path $fixtureScripts 'Backup-MreServer.ps1'

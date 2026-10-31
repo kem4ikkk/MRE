@@ -1,0 +1,1 @@
+<Project><PropertyGroup><BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../../../runtime/builds/MreFlight/tests/obj/</BaseIntermediateOutputPath></PropertyGroup></Project>

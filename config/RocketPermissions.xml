@@ -12,6 +12,8 @@
         <Permission Cooldown="0">renamehome</Permission>
         <Permission Cooldown="0">tpa</Permission>
         <Permission Cooldown="0">mre.vote</Permission>
+        <Permission Cooldown="0">mre.kit</Permission>
+        <Permission Cooldown="0">mre.trustscore</Permission>
       </Permissions>
     </Group>
     <Group>
@@ -25,6 +27,49 @@
     <Group>
       <Id>elite</Id><DisplayName>ELITE</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>70</Priority>
       <Permissions><Permission Cooldown="0">morehomes.elite</Permission></Permissions>
+    </Group>
+    <Group>
+      <Id>mre_admin</Id><DisplayName>Администратор MRE</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>10</Priority>
+      <Permissions>
+        <Permission Cooldown="0">mre.admin</Permission>
+        <Permission Cooldown="0">mre.admin.players</Permission>
+        <Permission Cooldown="0">mre.admin.tp</Permission>
+        <Permission Cooldown="0">mre.admin.bring</Permission>
+        <Permission Cooldown="0">mre.admin.heal</Permission>
+        <Permission Cooldown="0">mre.admin.kick</Permission>
+        <Permission Cooldown="0">mre.admin.save</Permission>
+        <Permission Cooldown="0">mre.admin.day</Permission>
+        <Permission Cooldown="0">mre.admin.night</Permission>
+        <Permission Cooldown="0">mre.admin.fly</Permission>
+        <Permission Cooldown="0">mre.admin.spectate</Permission>
+        <Permission Cooldown="0">mre.admin.remove</Permission>
+        <Permission Cooldown="0">mre.admin.owner</Permission>
+        <Permission Cooldown="0">mre.admin.god</Permission>
+        <Permission Cooldown="0">mre.admin.vanish</Permission>
+        <Permission Cooldown="0">mre.admin.workzone</Permission>
+        <Permission Cooldown="0">mre.admin.stats</Permission>
+        <Permission Cooldown="0">mre.admin.door</Permission>
+        <Permission Cooldown="0">mre.admin.storage</Permission>
+        <Permission Cooldown="0">mre.inventory.inspect</Permission>
+        <Permission Cooldown="0">mre.inventory.deaths</Permission>
+        <Permission Cooldown="0">mre.inventory.restore</Permission>
+        <Permission Cooldown="0">mre.staff</Permission>
+        <Permission Cooldown="0">mre.staff.list</Permission>
+        <Permission Cooldown="0">mre.staff.profile</Permission>
+        <Permission Cooldown="0">mre.staff.history</Permission>
+        <Permission Cooldown="0">mre.staff.note</Permission>
+        <Permission Cooldown="0">mre.staff.warn</Permission>
+        <Permission Cooldown="0">mre.staff.commend</Permission>
+        <Permission Cooldown="0">mre.staff.kick</Permission>
+        <Permission Cooldown="0">mre.staff.logs</Permission>
+        <Permission Cooldown="0">mre.staff.ban</Permission>
+        <Permission Cooldown="0">mre.staff.mute</Permission>
+        <Permission Cooldown="0">mre.staff.unban</Permission>
+        <Permission Cooldown="0">mre.staff.unmute</Permission>
+        <Permission Cooldown="0">mre.staff.revoke</Permission>
+        <Permission Cooldown="0">mre.admin.kill</Permission>
+        <Permission Cooldown="0">mre.admin.freeze</Permission>
+      </Permissions>
     </Group>
   </Groups>
 </RocketPermissions>

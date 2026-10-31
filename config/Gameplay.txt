@@ -5,6 +5,39 @@ Gameplay
     Max_Group_Members 4
 }
 
+Items
+{
+    Quality_Full_Chance 1
+    Has_Durability false
+    Clothing_Has_Durability false
+    Weapons_Have_Durability false
+    Food_Spawns_At_Full_Quality true
+    Water_Spawns_At_Full_Quality true
+    Clothing_Spawns_At_Full_Quality true
+    Weapons_Spawn_At_Full_Quality true
+    Default_Spawns_At_Full_Quality true
+    Gun_Bullets_Full_Chance 1
+    Magazine_Bullets_Full_Chance 1
+    Crate_Bullets_Full_Chance 1
+}
+
+Zombies
+{
+    Loot_Chance 1
+    Min_Drops 1
+    Max_Drops 1
+}
+
+Players
+{
+    Spawn_With_Max_Skills true
+    Spawn_With_Stamina_Skills true
+    Lose_Skills_PvP 1
+    Lose_Skills_PvE 1
+    Lose_Skill_Levels_PvP 0
+    Lose_Skill_Levels_PvE 0
+}
+
 Browser
 {
     Monetization None
