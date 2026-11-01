@@ -31,17 +31,17 @@ namespace MreAirdrop
             return new List<DropCategory>
             {
                 new DropCategory { Name = "Оружейный", Weight = 1, Bundles = new List<LootBundle> {
-                    Bundle("Maplestrike", 40, Entry(363, 1), Entry(6, 3), Entry(95, 3)),
-                    Bundle("Zubeknakov", 35, Entry(122, 1), Entry(123, 3), Entry(95, 3)),
-                    Bundle("Timberwolf", 25, Entry(18, 1), Entry(20, 2), Entry(95, 3)) } },
+                    Bundle("Grizzly", 40, Entry(297, 1), Entry(298, 4), Entry(1192, 2)),
+                    Bundle("Dragonfang", 35, Entry(132, 1), Entry(133, 2), Entry(1192, 2)),
+                    Bundle("Timberwolf", 25, Entry(18, 1), Entry(20, 3), Entry(1192, 2)) } },
                 new DropCategory { Name = "Строительный", Weight = 1, Bundles = new List<LootBundle> {
-                    Bundle("Листы и металл", 40, Entry(67, 6), Entry(68, 6), Entry(285, 4)),
-                    Bundle("Прутья и металл", 35, Entry(67, 6), Entry(68, 4), Entry(285, 6)),
-                    Bundle("Турель и материалы", 25, Entry(1372, 1), Entry(67, 5), Entry(68, 5), Entry(285, 5)) } },
+                    Bundle("Защитная база", 40, Entry(1230, 1), Entry(1372, 1), Entry(68, 4), Entry(285, 6)),
+                    Bundle("Энергетическая база", 35, Entry(1230, 2), Entry(68, 4), Entry(285, 6)),
+                    Bundle("Оборона", 25, Entry(1372, 2), Entry(1230, 1), Entry(68, 4), Entry(285, 4)) } },
                 new DropCategory { Name = "Рейдовый", Weight = 1, Bundles = new List<LootBundle> {
-                    Bundle("Взрывной запас", 45, Entry(254, 4), Entry(1100, 2), Entry(1241, 1), Entry(1240, 1)),
-                    Bundle("Два заряда", 35, Entry(254, 3), Entry(1100, 2), Entry(1241, 2), Entry(1240, 1)),
-                    Bundle("Ракетница", 20, Entry(519, 1), Entry(520, 1), Entry(254, 3), Entry(1100, 2)) } }
+                    Bundle("Рейдовый арсенал", 40, Entry(519, 1), Entry(520, 1), Entry(1240, 1), Entry(1241, 4), Entry(1100, 4)),
+                    Bundle("Подрывной комплект", 35, Entry(519, 1), Entry(520, 1), Entry(1240, 1), Entry(1393, 3), Entry(1241, 3)),
+                    Bundle("Ракетный комплект", 25, Entry(519, 1), Entry(520, 2), Entry(1393, 2), Entry(1240, 1), Entry(1100, 3)) } }
             };
         }
         internal static void Validate(IList<DropCategory> categories)

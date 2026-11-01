@@ -134,11 +134,11 @@ namespace MreAirdrop
             switch (selected.Item1.Name)
             {
                 case "Оружейный":
-                    var bandage = Assets.find(EAssetType.ITEM, 95) as ItemAsset;
-                    fillers = bandage != null && bandage.size_x == 1 && bandage.size_y == 1
-                        ? new ushort[] { 394, 95 } : new ushort[] { 394 };
+                    if (selected.Item2.Name == "Grizzly") fillers = new ushort[] { 298, 394 };
+                    else if (selected.Item2.Name == "Timberwolf") fillers = new ushort[] { 20, 394 };
+                    else fillers = new ushort[] { 394 };
                     break;
-                case "Строительный": fillers = new ushort[] { 67, 285, 74, 66 }; break;
+                case "Строительный": fillers = new ushort[] { 285 }; break;
                 case "Рейдовый": fillers = new ushort[] { 254, 1100 }; break;
                 default: throw new InvalidOperationException("Неизвестная категория для добора ящика: " + selected.Item1.Name);
             }

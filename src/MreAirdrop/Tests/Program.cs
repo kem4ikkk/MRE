@@ -17,7 +17,7 @@ internal static class Program
         Check(Reject(() => LootRoll.Percent(50, 1)));
         var defaults = LootPlan.Defaults(); LootPlan.Validate(defaults);
         var common = LootPlan.Select(defaults, 0.0, 0.0);
-        Check(common.Item1.Name == "Оружейный" && common.Item2.Name == "Maplestrike");
+        Check(common.Item1.Name == "Оружейный" && common.Item2.Name == "Grizzly");
         var rare = LootPlan.Select(defaults, 0.99, 0.999999);
         Check(rare.Item1.Name == "Рейдовый" && rare.Item2.Items[0].Id == 519 && rare.Item2.Items[1].Id == 520);
         defaults[0].Bundles[0].Items[0].Count = 0;
