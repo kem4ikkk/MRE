@@ -22,6 +22,10 @@ namespace MreHud
             public bool Spawned;
             public bool Failed;
             public BuildingHitState BuildingHit;
+            public readonly Dictionary<string, MeterAnimation> Meters = new Dictionary<string, MeterAnimation>();
+            public readonly Dictionary<string, int> SegmentCounts = new Dictionary<string, int>();
+            public float LastMeterTime;
+            public bool MeterTimeValid;
             public EPluginWidgetFlags NativeFlagsChanged;
             public readonly Dictionary<string, string> Text = new Dictionary<string, string>();
             public readonly Dictionary<string, bool> Visibility = new Dictionary<string, bool>();
@@ -236,20 +240,23 @@ namespace MreHud
             int health = Math.Max(0, Math.Min(hit.Maximum, hit.ReadHealth()));
             Text(view, "BuildingName", hit.Name);
             Text(view, "BuildingHealth", health.ToString(CultureInfo.InvariantCulture) + " / " + hit.Maximum.ToString(CultureInfo.InvariantCulture));
-            int filled = HudFormatting.FilledSegments(health, hit.Maximum, 20);
-            for (int i = 1; i <= 20; i++) Visible(view, "BuildingFill" + i.ToString("00"), i <= filled);
+            int filled = HudFormatting.FilledSegments(health, hit.Maximum, 100);
+            SetSegments(view, "Building", filled, 100);
         }
 
         private void Render(View view)
         {
             Player p = view.Player;
             bool alive = !p.life.isDead;
-            if (!alive) { view.BuildingHit = null; Visible(view, "HudContent", false); return; }
-            Meter(view, "Health", p.life.health, 20);
-            Meter(view, "Food", p.life.food, 10);
-            Meter(view, "Water", p.life.water, 10);
-            Meter(view, "Stamina", p.life.stamina, 10);
-            Meter(view, "Oxygen", p.life.oxygen, 10);
+            if (!alive) { view.BuildingHit = null; view.Meters.Clear(); view.MeterTimeValid = false; Visible(view, "HudContent", false); return; }
+            float now = Time.realtimeSinceStartup;
+            double elapsed = view.MeterTimeValid ? Math.Max(0, now - view.LastMeterTime) : 0;
+            view.LastMeterTime = now; view.MeterTimeValid = true;
+            Meter(view, "Health", p.life.health, elapsed);
+            Meter(view, "Food", p.life.food, elapsed);
+            Meter(view, "Water", p.life.water, elapsed);
+            Meter(view, "Stamina", p.life.stamina, elapsed);
+            Meter(view, "Oxygen", p.life.oxygen, elapsed);
             Visible(view, "OxygenPanel", p.life.oxygen < 100);
             Visible(view, "LowHealth", p.life.health <= 25);
             Visible(view, "BleedingPanel", p.life.isBleeding);
@@ -316,7 +323,7 @@ namespace MreHud
                 Text(view, "TpaDenyText", "ОТМЕНИТЬ");
                 double duration = Math.Max(0.001, home.DelaySeconds);
                 int progress = (int)Math.Round(Math.Max(0, Math.Min(1, 1 - home.RemainingSeconds / duration)) * 100);
-                Segments(view, "TpaProgress", progress, 20);
+                Segments(view, "TpaProgress", progress, 100);
                 return;
             }
             var request = available ? teleportation.GetUiRequest(id) : null;
@@ -337,7 +344,7 @@ namespace MreHud
                 Text(view, "TpaDenyText", "ОТМЕНИТЬ");
                 double total = Math.Max(0.001, request.DelaySeconds);
                 int percent = (int)Math.Round(Math.Max(0, Math.Min(1, 1 - request.RemainingSeconds / total)) * 100);
-                Segments(view, "TpaProgress", percent, 20);
+                Segments(view, "TpaProgress", percent, 100);
             }
             else
             {
@@ -346,7 +353,7 @@ namespace MreHud
                 Text(view, "TpaTimer", seconds.ToString(CultureInfo.InvariantCulture) + " с");
                 Text(view, "TpaHint", incoming ? "хочет телепортироваться к вам" : "Ожидаем согласия игрока");
                 Text(view, "TpaDenyText", incoming ? "ОТКЛОНИТЬ" : "ОТМЕНИТЬ");
-                Segments(view, "TpaProgress", 0, 20);
+                Segments(view, "TpaProgress", 0, 100);
             }
         }
 
@@ -371,19 +378,32 @@ namespace MreHud
             Visible(view, "VoteSuccessAccent", !active && passed);
             Visible(view, "VoteFailureAccent", !active && !passed);
             int percent = vote.RequiredVotes <= 0 ? 0 : (int)Math.Round(Math.Max(0, Math.Min(1, vote.YesVotes / (double)vote.RequiredVotes)) * 100);
-            Segments(view, "VoteProgress", percent, 20);
+            Segments(view, "VoteProgress", percent, 100);
         }
 
-        private void Meter(View view, string name, int value, int segments)
+        private void Meter(View view, string name, int value, double elapsed)
         {
             Text(view, name + "Value", Math.Max(0, Math.Min(100, value)).ToString(CultureInfo.InvariantCulture));
-            Segments(view, name, value, segments);
+            MeterAnimation meter;
+            if (!view.Meters.TryGetValue(name, out meter)) view.Meters[name] = meter = new MeterAnimation();
+            Segments(view, name, meter.Advance(value, elapsed), 100);
         }
 
         private void Segments(View view, string name, int value, int segments)
         {
-            int filled = HudFormatting.FilledSegments(value, 100, segments);
-            for (int i = 1; i <= segments; i++) Visible(view, name + "Fill" + i.ToString("00"), i <= filled);
+            SetSegments(view, name, HudFormatting.FilledSegments(value, 100, segments), segments);
+        }
+
+        private void SetSegments(View view, string name, int filled, int segments)
+        {
+            int previous;
+            if (view.SegmentCounts.TryGetValue(name, out previous))
+            {
+                if (previous == filled) return;
+                if (previous > 0) Visible(view, name + "Fill" + previous.ToString("00"), false);
+            }
+            if (filled > 0) Visible(view, name + "Fill" + filled.ToString("00"), true);
+            view.SegmentCounts[name] = filled;
         }
 
         private void Text(View view, string child, string value)
@@ -448,6 +468,9 @@ namespace MreHud
             view.Spawned = false;
             view.Text.Clear();
             view.Visibility.Clear();
+            view.SegmentCounts.Clear();
+            view.Meters.Clear();
+            view.MeterTimeValid = false;
         }
     }
 }

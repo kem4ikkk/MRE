@@ -7,6 +7,21 @@ static void Assert(bool condition, string message)
 
 var cases = new List<(string name, Action test)>
 {
+    ("meter starts at actual value and animates in both directions", () => {
+        var meter = new MeterAnimation();
+        Assert(meter.Advance(80, 0) == 80, "First value animated from zero");
+        Assert(meter.Advance(20, 0.1) == 76, "Damage did not interpolate at four points per tick");
+        Assert(meter.Advance(100, 0.1) == 80, "Changed target did not reverse interpolation");
+        Assert(meter.Advance(100, 0.5) == 100, "Meter failed to converge");
+        Assert(meter.Advance(100, 0.1) == 100, "Stable meter changed");
+    }),
+    ("meter reset snaps after respawn and clamps input", () => {
+        var meter = new MeterAnimation(); meter.Advance(10, 0); meter.Advance(100, 0.1);
+        meter.Reset(); Assert(meter.Advance(95, 0.1) == 95, "Respawn inherited old value");
+        meter.Reset(); Assert(meter.Advance(200, 0) == 100, "Value was not clamped");
+        Assert(meter.Advance(-1, 0) == 100, "Zero elapsed advanced meter");
+        Assert(meter.Advance(-1, 1) == 60 && meter.Advance(-1, 1) == 20 && meter.Advance(-1, 1) == 0, "Negative target was not clamped");
+    }),
     ("building hit accepts only live unarmed punch", () => {
         Assert(BuildingHitState.IsEligible(true,true,true),"Unarmed punch rejected");
         Assert(!BuildingHitState.IsEligible(false,true,true) && !BuildingHitState.IsEligible(true,false,true) && !BuildingHitState.IsEligible(true,true,false),"Other damage or dead/armed player accepted");

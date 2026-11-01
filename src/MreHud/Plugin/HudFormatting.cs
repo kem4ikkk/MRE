@@ -3,6 +3,27 @@ using System.Text;
 
 namespace MreHud
 {
+    public sealed class MeterAnimation
+    {
+        private bool initialized;
+        private double shown;
+
+        public void Reset() { initialized = false; }
+
+        public int Advance(int target, double elapsedSeconds)
+        {
+            target = Math.Max(0, Math.Min(100, target));
+            if (!initialized) { shown = target; initialized = true; }
+            else
+            {
+                double step = Math.Max(0, Math.Min(1, elapsedSeconds)) * 40;
+                if (shown < target) shown = Math.Min(target, shown + step);
+                else shown = Math.Max(target, shown - step);
+            }
+            return Math.Max(0, Math.Min(100, (int)Math.Round(shown, MidpointRounding.AwayFromZero)));
+        }
+    }
+
     // Чистая логика представления: не зависит от Unity, Steam и состояния сервера.
     public static class HudFormatting
     {

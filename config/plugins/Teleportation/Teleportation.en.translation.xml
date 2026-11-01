@@ -5,7 +5,7 @@
   <Translation Id="CombatExpire" Value="Боевой режим завершён" />
   <Translation Id="RaidStart" Value="Режим рейда: телепортация временно недоступна" />
   <Translation Id="RaidExpire" Value="Режим рейда завершён" />
-  <Translation Id="TPAHelp" Value="[[color=#B8D66B]][[b]]MRE · ТЕЛЕПОРТАЦИЯ[[/b]][[/color]]&#xA;[[b]]/tpa имя[[/b]] — отправить запрос&#xA;[[b]]/tpa a[[/b]] — принять входящий&#xA;[[b]]/tpa d[[/b]] — отклонить или отменить ТП&#xA;[[b]]/tpa c[[/b]] — отменить свой запрос&#xA;Перенос: 5 сек. · Можно двигаться&#xA;Перерыв между запросами: 100 сек." />
+  <Translation Id="TPAHelp" Value="[[color=#B8D66B]][[b]]MRE · ТЕЛЕПОРТАЦИЯ[[/b]][[/color]]&#xA;[[b]]/tpa имя[[/b]] — отправить запрос&#xA;[[b]]/tpa a[[/b]] — принять входящий&#xA;[[b]]/tpa d[[/b]] — отклонить или отменить ТП&#xA;[[b]]/tpa c[[/b]] — отменить свой запрос" />
   <Translation Id="TPACooldown" Value="До следующего запроса осталось [[b]]{0}[[/b]] сек." />
   <Translation Id="TPADuplicate" Value="Вы уже отправили этому игроку запрос" />
   <Translation Id="TPABusy" Value="Один из игроков уже участвует в перемещении" />
@@ -15,7 +15,7 @@
   <Translation Id="TPAReceive" Value="[[b]]{0}[[/b]] хочет переместиться к вам&#xA;[[b]]/tpa a[[/b]] — принять · [[b]]/tpa d[[/b]] — отклонить&#xA;Клавиши по умолчанию: Б / Ю" />
   <Translation Id="TPANoRequest" Value="Входящих запросов нет" />
   <Translation Id="TPAAccepted" Value="Запрос игрока [[b]]{0}[[/b]] принят" />
-  <Translation Id="TPADelay" Value="Перемещение к [[b]]{0}[[/b]] через [[b]]{1}[[/b]] сек. Можно двигаться; по умолчанию Ю — отменить" />
+  <Translation Id="TPADelay" Value="Перемещение к [[b]]{0}[[/b]] через [[b]]{1}[[/b]] сек." />
   <Translation Id="TPAWhileCombat" Value="Перемещение отменено: [[b]]{0}[[/b]] находится в бою" />
   <Translation Id="TPAWhileCombatYou" Value="Во время боя телепортация недоступна" />
   <Translation Id="TPAWhileRaid" Value="Перемещение отменено: [[b]]{0}[[/b]] находится в режиме рейда" />

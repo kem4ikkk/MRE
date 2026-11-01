@@ -304,7 +304,7 @@ namespace RestoreMonarchy.Teleportation
             { "RaidExpire", "Raid mode ended" },
 
             // TPA Command help
-            { "TPAHelp", "[[color=#B8D66B]][[b]]MRE · ТЕЛЕПОРТАЦИЯ[[/b]][[/color]]\n[[b]]/tpa имя[[/b]] — отправить запрос\n[[b]]/tpa a[[/b]] или [[b]]/tpa accept[[/b]] — принять\n[[b]]/tpa d[[/b]] или [[b]]/tpa deny[[/b]] — отклонить\n[[b]]/tpa cancel[[/b]] — отменить исходящий запрос\nПосле согласия — 5 секунд. Можно двигаться." },
+            { "TPAHelp", "[[color=#B8D66B]][[b]]MRE · ТЕЛЕПОРТАЦИЯ[[/b]][[/color]]\n[[b]]/tpa имя[[/b]] — отправить запрос\n[[b]]/tpa a[[/b]] или [[b]]/tpa accept[[/b]] — принять\n[[b]]/tpa d[[/b]] или [[b]]/tpa deny[[/b]] — отклонить\n[[b]]/tpa cancel[[/b]] — отменить исходящий запрос" },
 
             // TPA Request messages
             { "TPACooldown", "Please wait [[b]]{0}[[/b]] seconds before sending another request" },

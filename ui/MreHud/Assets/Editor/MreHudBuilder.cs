@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -32,7 +32,7 @@ public static class MreHudBuilder
         {
             var canvas = root.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 25;
+            canvas.sortingOrder = 0;
             var scaler = root.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
@@ -54,6 +54,7 @@ public static class MreHudBuilder
             CreateBuilding(content);
             ValidateNames(root);
             ValidateHealthText(root);
+            ValidateTeleportKeys(root);
             content.gameObject.SetActive(false);
             PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             AssetDatabase.SaveAssets();
@@ -107,29 +108,29 @@ public static class MreHudBuilder
     private static void CreateVitals(RectTransform content)
     {
         RectTransform low = Rect("VitalsLowLayout", content, 0, 0, 0, 0);
-        RectTransform card = Box("VitalsPanel", low, 28, 120, 370, 168, Back);
+        RectTransform card = Box("VitalsPanel", low, 28, 80, 370, 168, Back);
         Box("VitalsRule", card, 0, 165, 370, 3, Lime);
         Label("VitalsCaption", card, "MRE  /  СОСТОЯНИЕ", 16, 138, 220, 17, 11, Muted, FontStyle.Bold);
         Label("HealthValue", card, "100", 14, 82, 103, 58, 42, TextColor, FontStyle.Bold);
         Label("HealthCaption", card, "/ 100     ЗДОРОВЬЕ", 118, 98, 225, 20, 12, Muted);
-        Bar("Health", card, 16, 77, 338, 5, 20, Lime);
+        Bar("Health", card, 16, 77, 338, 5, 100, Lime);
         Box("LowHealth", card, 0, 165, 370, 3, Red);
         SmallMeter(card, "Food", "ЕДА", 16, 13, Lime);
         SmallMeter(card, "Water", "ВОДА", 132, 13, Water);
         SmallMeter(card, "Stamina", "ЭНЕРГИЯ", 248, 13, Lime);
 
-        RectTransform bleeding = Box("BleedingPanel", low, 28, 296, 178, 25, Panel);
+        RectTransform bleeding = Box("BleedingPanel", low, 28, 256, 178, 25, Panel);
         Label("BleedingCaption", bleeding, "+  КРОВОТЕЧЕНИЕ", 9, 3, 163, 20, 10, Red, FontStyle.Bold);
-        RectTransform broken = Box("BrokenPanel", low, 218, 296, 180, 25, Panel);
+        RectTransform broken = Box("BrokenPanel", low, 218, 256, 180, 25, Panel);
         Label("BrokenCaption", broken, "!  ПЕРЕЛОМ", 9, 3, 163, 20, 10, Red, FontStyle.Bold);
-        RectTransform oxygen = Box("OxygenPanel", low, 28, 329, 370, 30, Panel);
+        RectTransform oxygen = Box("OxygenPanel", low, 28, 289, 370, 30, Panel);
         Label("OxygenCaption", oxygen, "КИСЛОРОД", 12, 6, 90, 18, 10, Water);
         Label("OxygenValue", oxygen, "100", 317, 5, 41, 20, 14, TextColor);
-        Bar("Oxygen", oxygen, 113, 12, 188, 5, 10, Water);
+        Bar("Oxygen", oxygen, 113, 12, 188, 5, 100, Water);
 
         var high = UnityEngine.Object.Instantiate(low.gameObject, content, false);
         high.name = "VitalsHighLayout";
-        high.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 140);
+        high.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 180);
         foreach (var child in high.GetComponentsInChildren<RectTransform>(true))
             if (child.gameObject != high) child.name += "High";
         high.SetActive(false);
@@ -167,7 +168,7 @@ public static class MreHudBuilder
         Label("BuildingCaption", card, "СОСТОЯНИЕ ПОСТРОЙКИ", 14, 66, 252, 15, 10, Muted, FontStyle.Bold);
         Label("BuildingName", card, "Постройка", 14, 38, 252, 24, 17, TextColor, FontStyle.Bold);
         Label("BuildingHealth", card, "1000 / 1000", 14, 14, 252, 20, 14, Lime, FontStyle.Bold);
-        Bar("Building", card, 14, 8, 252, 4, 20, Lime);
+        Bar("Building", card, 14, 8, 252, 4, 100, Lime);
     }
 
     private static void CreateTeleport(RectTransform content)
@@ -178,13 +179,13 @@ public static class MreHudBuilder
         Label("TpaTimer", card, "5 с", 305, 143, 49, 28, 21, Lime, FontStyle.Bold);
         Label("TpaPlayerName", card, "Игрок", 16, 108, 337, 31, 24, TextColor, FontStyle.Bold);
         Label("TpaHint", card, "хочет телепортироваться к вам", 16, 84, 337, 20, 12, Muted);
-        Bar("TpaProgress", card, 16, 69, 338, 4, 20, Lime);
+        Bar("TpaProgress", card, 16, 69, 338, 4, 100, Lime);
         RectTransform accept = Box("TpaAcceptPanel", card, 16, 16, 162, 37, Panel);
-        Label("TpaAcceptKey", accept, "<plugin_0/>", 9, 7, 39, 23, 17, Lime, FontStyle.Bold);
-        Label("TpaAcceptText", accept, "ПРИНЯТЬ", 52, 10, 103, 18, 11, TextColor);
+        Label("TpaAcceptKey", accept, "\u0411 \u043f\u043e \u0443\u043c\u043e\u043b\u0447. \u00b7 <plugin_0/>", 6, 3, 150, 15, 11, Lime);
+        Label("TpaAcceptText", accept, "\u041f\u0420\u0418\u041d\u042f\u0422\u042c", 6, 19, 150, 15, 11, TextColor);
         RectTransform deny = Box("TpaDenyPanel", card, 190, 16, 164, 37, Panel);
-        Label("TpaDenyKey", deny, "<plugin_1/>", 9, 7, 39, 23, 17, Muted, FontStyle.Bold);
-        Label("TpaDenyText", deny, "ОТКЛОНИТЬ", 52, 10, 105, 18, 11, TextColor);
+        Label("TpaDenyKey", deny, "\u042e \u043f\u043e \u0443\u043c\u043e\u043b\u0447. \u00b7 <plugin_1/>", 6, 3, 152, 15, 11, Muted);
+        Label("TpaDenyText", deny, "\u041e\u0422\u041a\u041b\u041e\u041d\u0418\u0422\u042c", 6, 19, 152, 15, 11, TextColor);
     }
 
     private static void CreateBlockPanels(RectTransform content)
@@ -200,7 +201,7 @@ public static class MreHudBuilder
         RectTransform meter = Rect(name + "Meter", parent, x, y, 106, 52);
         Label(name + "Caption", meter, caption, 0, 34, 106, 15, 9, Muted);
         Label(name + "Value", meter, "100", 0, 12, 106, 22, 17, TextColor, FontStyle.Bold);
-        Bar(name, meter, 0, 3, 106, 4, 10, color);
+        Bar(name, meter, 0, 3, 106, 4, 100, color);
     }
 
     private static void CreateVote(RectTransform content)
@@ -215,17 +216,19 @@ public static class MreHudBuilder
         Label("VoteInitiator", card, "Инициатор: Игрок", 16, 80, 338, 18, 11, Muted);
         Label("VoteCount", card, "1 / 2", 16, 51, 90, 25, 21, Lime, FontStyle.Bold);
         Label("VoteEligible", card, "голосов за · участников 2", 112, 54, 242, 20, 10, Muted);
-        Bar("VoteProgress", card, 16, 40, 338, 4, 20, Lime);
+        Bar("VoteProgress", card, 16, 40, 338, 4, 100, Lime);
         Label("VoteHint", card, "За день: /vote yes  ·  /cv", 16, 12, 338, 20, 12, TextColor);
     }
 
     private static void Bar(string name, RectTransform parent, float x, float y, float width, float height, int count, Color color)
     {
         RectTransform bar = Box(name + "Track", parent, x, y, width, height, Hex("34413a", 0.75f));
-        float gap = 1;
-        float segment = (width - gap * (count - 1)) / count;
+        // Exactly one fill is enabled by the server; zero leaves all fills inactive.
         for (int i = 1; i <= count; i++)
-            Box(name + "Fill" + i.ToString("00"), bar, (i - 1) * (segment + gap), 0, segment, height, color);
+        {
+            RectTransform fill = Box(name + "Fill" + i.ToString("00"), bar, 0, 0, width * i / count, height, color);
+            fill.gameObject.SetActive(false);
+        }
     }
 
     private static RectTransform Rect(string name, Transform parent, float x, float y, float width, float height)
@@ -267,6 +270,13 @@ public static class MreHudBuilder
         text.verticalOverflow = name == "HealthValue" ? VerticalWrapMode.Overflow : VerticalWrapMode.Truncate;
         text.supportRichText = false;
         text.raycastTarget = false;
+        if (name == "TpaAcceptKey" || name == "TpaDenyKey")
+        {
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = 8;
+            text.resizeTextMaxSize = 11;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+        }
         if (name == "TpaPlayerName" || name == "WeaponName" || name == "MagazineName" || name == "VoteTopic" || name == "VoteInitiator" || name == "VoteHint" || name == "BuildingName")
         {
             text.resizeTextForBestFit = true;
@@ -291,6 +301,24 @@ public static class MreHudBuilder
         Debug.Log("MRE: TextGenerator проверил размеры HealthValue для 0, 99 и 100.");
     }
 
+    private static void ValidateTeleportKeys(GameObject root)
+    {
+        foreach (string name in new[] { "TpaAcceptKey", "TpaDenyKey" })
+        {
+            Text label = root.GetComponentsInChildren<Text>(true).Single(x => x.name == name);
+            var rect = label.GetComponent<RectTransform>();
+            var settings = label.GetGenerationSettings(rect.rect.size);
+            settings.resizeTextForBestFit = false;
+            settings.fontSize = 8;
+            string value = (name == "TpaAcceptKey" ? "\u0411" : "\u042e") + " \u043f\u043e \u0443\u043c\u043e\u043b\u0447. \u00b7 RightControl";
+            var generator = new TextGenerator();
+            if (!generator.Populate(value, settings) || generator.characterCountVisible != value.Length ||
+                generator.GetPreferredWidth(value, settings) > rect.rect.width ||
+                generator.GetPreferredHeight(value, settings) > rect.rect.height)
+                throw new InvalidOperationException(name + " does not fit RightControl");
+        }
+    }
+
     private static void ValidateNames(GameObject root)
     {
         var duplicates = root.GetComponentsInChildren<RectTransform>(true).GroupBy(x => x.name).Where(x => x.Count() > 1).Select(x => x.Key).ToArray();
@@ -300,22 +328,38 @@ public static class MreHudBuilder
             "TpaPanel", "TpaTitle", "TpaPlayerName", "TpaHint", "TpaTimer", "TpaAcceptPanel", "TpaAcceptKey", "TpaDenyKey", "TpaDenyText",
             "OxygenPanel", "LowHealth", "BleedingPanel", "BrokenPanel", "CombatPanel", "RaidPanel", "EmptyMagazine", "WeaponPanel",
             "VotePanel", "VoteTopic", "VoteInitiator", "VoteCount", "VoteEligible", "VoteTimer", "VoteStatus", "VoteHint", "VoteSuccessAccent", "VoteFailureAccent", "BuildingPanel", "BuildingName", "BuildingHealth" };
-        var names = root.GetComponentsInChildren<RectTransform>(true).Select(x => x.name).ToArray();
+        var rects = root.GetComponentsInChildren<RectTransform>(true).ToDictionary(x => x.name);
+        var names = rects.Keys.ToArray();
         foreach (string name in required)
             if (!names.Contains(name)) throw new InvalidOperationException("Отсутствует UI-элемент: " + name);
         foreach (string name in new[] { "HealthValue", "FoodValue", "WaterValue", "StaminaValue", "OxygenValue", "OxygenPanel", "LowHealth", "BleedingPanel", "BrokenPanel", "WeaponName", "MagazineName", "AmmoValue", "AmmoCapacity", "FireModeValue", "DurabilityValue", "EmptyMagazine", "WeaponPanel" })
             if (!names.Contains(name + "High")) throw new InvalidOperationException("Отсутствует запасной UI-элемент: " + name);
         foreach (string bar in new[] { "Health", "Food", "Water", "Stamina", "Oxygen", "TpaProgress", "VoteProgress", "Building" })
         {
-            int count = bar == "Health" || bar == "TpaProgress" || bar == "VoteProgress" || bar == "Building" ? 20 : 10;
+            int count = 100;
             for (int i = 1; i <= count; i++)
             {
                 string name = bar + "Fill" + i.ToString("00");
                 if (!names.Contains(name)) throw new InvalidOperationException("Отсутствует сегмент UI: " + name);
-                if ((bar == "Health" || bar == "Food" || bar == "Water" || bar == "Stamina" || bar == "Oxygen") && !names.Contains(name + "High"))
-                    throw new InvalidOperationException("Отсутствует запасной сегмент UI: " + name);
+                ValidateFill(rects, name, i, count);
+                if (bar == "Health" || bar == "Food" || bar == "Water" || bar == "Stamina" || bar == "Oxygen")
+                {
+                    if (!names.Contains(name + "High")) throw new InvalidOperationException("Missing high layout fill: " + name);
+                    ValidateFill(rects, name + "High", i, count);
+                }
             }
         }
+    }
+
+    private static void ValidateFill(System.Collections.Generic.Dictionary<string, RectTransform> rects, string name, int value, int count)
+    {
+        RectTransform fill = rects[name];
+        RectTransform track = fill.parent as RectTransform;
+        if (track == null || fill.gameObject.activeSelf || fill.anchorMin != Vector2.zero ||
+            fill.anchorMax != Vector2.zero || fill.pivot != Vector2.zero || fill.anchoredPosition != Vector2.zero ||
+            Mathf.Abs(fill.sizeDelta.x - track.rect.width * value / count) > 0.001f ||
+            Mathf.Abs(fill.sizeDelta.y - track.rect.height) > 0.001f || fill.GetComponent<Image>() == null)
+            throw new InvalidOperationException("Invalid fill geometry or initial state: " + name);
     }
 
     private static Color Hex(string hex, float alpha = 1)

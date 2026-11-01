@@ -7,6 +7,6 @@
   <EffectKey>14821</EffectKey>
   <EffectGuid>4f11731bb53e4a55b588b97c2c2f61b5</EffectGuid>
   <RefreshIntervalSeconds>0.1</RefreshIntervalSeconds>
-  <AcceptKeyLabel>&lt;plugin_0/&gt;</AcceptKeyLabel>
-  <DenyKeyLabel>&lt;plugin_1/&gt;</DenyKeyLabel>
+  <AcceptKeyLabel>Б по умолч. · &lt;plugin_0/&gt;</AcceptKeyLabel>
+  <DenyKeyLabel>Ю по умолч. · &lt;plugin_1/&gt;</DenyKeyLabel>
 </MreHudConfiguration>
