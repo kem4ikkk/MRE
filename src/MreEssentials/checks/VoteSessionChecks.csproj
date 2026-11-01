@@ -10,6 +10,7 @@
     <Compile Include="../LocalControlBridge.cs" Link="LocalControlBridge.cs" />
     <Compile Include="../RuntimeDiagnostics.cs" Link="RuntimeDiagnostics.cs" />
     <Compile Include="../MreEssentialsConfiguration.cs" Link="MreEssentialsConfiguration.cs" />
+    <Compile Include="../MaxSkillsPolicy.cs" Link="MaxSkillsPolicy.cs" />
     <Compile Include="FakeGameTypes.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>

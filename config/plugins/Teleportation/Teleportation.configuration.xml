@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <TeleportationConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <MessageColor>white</MessageColor>
-  <MessageIconUrl />
+  <MessageIconUrl>https://raw.githubusercontent.com/kem4ikkk/MRE/59d6b05/assets/server-chat.png</MessageIconUrl>
   <TPACooldown>100</TPACooldown>
   <TPADelay>5</TPADelay>
   <TPADuration>90</TPADuration>
@@ -9,7 +9,7 @@
   <AllowRaid>false</AllowRaid>
   <RaidDuration>180</RaidDuration>
   <AllowCombat>false</AllowCombat>
-  <CombatDuration>60</CombatDuration>
+  <CombatDuration>10</CombatDuration>
   <UseUnsafeTeleport>false</UseUnsafeTeleport>
   <CancelOnMove>false</CancelOnMove>
   <MoveMaxDistance>0.5</MoveMaxDistance>

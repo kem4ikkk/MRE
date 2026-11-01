@@ -5,7 +5,7 @@ namespace RestoreMonarchy.Teleportation
     public class TeleportationConfiguration : IRocketPluginConfiguration
     {
         public string MessageColor { get; set; }
-        public string MessageIconUrl { get; set; } = "https://i.imgur.com/wr879ca.png";
+        public string MessageIconUrl { get; set; } = "https://raw.githubusercontent.com/kem4ikkk/MRE/59d6b05/assets/server-chat.png";
         public double TPACooldown { get; set; }
         public double TPADelay { get; set; }
         public double TPADuration { get; set; }
@@ -25,7 +25,7 @@ namespace RestoreMonarchy.Teleportation
         public void LoadDefaults()
         {
             MessageColor = "gray";
-            MessageIconUrl = "https://i.imgur.com/wr879ca.png";
+            MessageIconUrl = "https://raw.githubusercontent.com/kem4ikkk/MRE/59d6b05/assets/server-chat.png";
             TPACooldown = 100;
             TPADelay = 5;
             TPADuration = 90;

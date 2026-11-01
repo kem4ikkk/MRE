@@ -52,9 +52,9 @@ internal static class HomeChecks
     {
         var tests=new List<(string name, Action test)>
         {
-            ("HOME actual XML has a positive home limit and eighty-second cooldown",()=>{
+            ("HOME actual XML keeps two homes and eighty-second cooldown",()=>{
                 var (_,h,_,_)=Setup(); var c=h.Configuration.Instance;
-                Assert(c.DefaultMaxHomes>0 && c.DefaultHomeCooldown==80,"Existing limits or cooldown were reset");
+                Assert(c.DefaultMaxHomes==2 && c.DefaultHomeCooldown==80,"Existing limits or cooldown were reset");
                 Assert(c.DefaultHomeDelay==5 && !c.CancelOnMove,"HOME XML does not match five seconds and movement");
             }),
             ("HOME real command schedules five seconds and permits movement to current bed",()=>{

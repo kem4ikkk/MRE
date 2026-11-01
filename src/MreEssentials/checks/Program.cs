@@ -46,19 +46,58 @@ internal static class Program
         Check(rejected, "Порог ниже 50% отвергается");
         CheckBridge();
         CheckDiagnostics();
-        Console.WriteLine("Проверки VoteSession и LocalControlBridge: " + checks + " успешно.");
+        CheckMaxSkills();
+        Console.WriteLine("Проверки VoteSession, LocalControlBridge и MaxSkillsPolicy: " + checks + " успешно.");
+    }
+
+    private sealed class SkillsTarget : IMaxSkillsTarget
+    {
+        public List<SkillLevelState> Levels = new List<SkillLevelState>();
+        public int Unlocks;
+        public bool Replicate = true;
+        public IEnumerable<SkillLevelState> ReadLevels() { return Levels.ToArray(); }
+        public void UnlockAllAndReplicate()
+        {
+            Unlocks++;
+            if (Replicate)
+                Levels = Levels.ConvertAll(s => new SkillLevelState(s.Speciality, s.Index, s.Maximum, s.Maximum));
+        }
+    }
+
+    private static void CheckMaxSkills()
+    {
+        var empty = new SkillsTarget();
+        var emptyResult = MaxSkillsPolicy.Apply(empty);
+        Check(!emptyResult.AllAtMaximum && !emptyResult.Applied && empty.Unlocks == 0, "Еще не загруженные навыки не объявляются подтвержденными");
+        var current = new SkillsTarget();
+        current.Levels.Add(new SkillLevelState(0, 0, 0, 5));
+        current.Levels.Add(new SkillLevelState(1, 2, 3, 3));
+        var result = MaxSkillsPolicy.Apply(current);
+        Check(current.Unlocks == 1 && result.Applied && result.AllAtMaximum, "Недостающий навык максимизируется штатным вызовом");
+        Check(result.Levels[0].Level == 5 && result.Levels[1].Level == 3, "Результат перечитывает реальные уровни после применения");
+        result = MaxSkillsPolicy.Apply(current);
+        Check(current.Unlocks == 1 && !result.Applied && result.AllAtMaximum, "Повторная проверка не рассылает лишнее изменение");
+        current.Levels[0] = new SkillLevelState(0, 0, 1, 5);
+        Check(MaxSkillsPolicy.Apply(current).AllAtMaximum && current.Unlocks == 2, "После возрождения сброшенный навык снова максимизируется");
+        var failed = new SkillsTarget { Replicate = false };
+        failed.Levels.Add(new SkillLevelState(0, 0, 1, 5));
+        result = MaxSkillsPolicy.Apply(failed);
+        Check(result.Applied && !result.AllAtMaximum && result.Levels[0].Level == 1, "Непримененные реальные уровни не объявляются успешными");
     }
 
     private static void CheckDiagnostics()
     {
         var configuration = new MreEssentialsConfiguration();
         configuration.LoadDefaults();
+        Check(configuration.MinimumPlayers == 1 && configuration.MaxSkillsEnabled, "Конфигурация по умолчанию разрешает solo vote и максимальные навыки");
         var snapshot = RuntimeDiagnostics.Capture(typeof(DiagnosticsFixtures.Provider), typeof(DiagnosticsFixtures.BarricadeManager), configuration, new[] { typeof(Program).Assembly });
         using var parsed = JsonDocument.Parse(RuntimeDiagnostics.ToJson(snapshot));
         var provider = parsed.RootElement.GetProperty("provider");
         Check(provider.GetProperty("mode").GetString() == "EASY", "Diagnostics читает фактический mode");
         Check(provider.GetProperty("map").GetString() == "PEI", "Diagnostics читает map");
         Check(provider.GetProperty("max_players").GetInt32() == 24, "Diagnostics читает maxPlayers");
+        Check(provider.GetProperty("steam_admin_owner_id").GetString() == "123456", "Diagnostics читает фактический SteamAdminlist.ownerID");
+        Check(provider.GetProperty("steam_admin_owner_has_admin").GetBoolean(), "Diagnostics проверяет native admin через checkAdmin(ownerID)");
         Check(provider.GetProperty("group_cap").GetInt32() == 4, "Diagnostics читает вложенный group cap");
         Check(parsed.RootElement.GetProperty("mre_configuration").GetProperty("RequiredPercent").GetInt32() == 60, "Diagnostics читает конфиг MRE");
         Check(parsed.RootElement.GetProperty("barricade_manager").GetProperty("server_set_bed_owner_six_parameters_exists").GetBoolean(), "Diagnostics находит приватный метод с шестью аргументами");
@@ -134,6 +173,11 @@ internal static class Program
         bridge.Poll();
         Check(executed.Count == 2 && executed[1] == "Diagnostics", "Diagnostics входит в локальный allowlist");
         Check(Status(root, diagnosticsId) == "completed", "Diagnostics получает подтверждение после выполнения");
+        string maxSkillsId = Guid.NewGuid().ToString("N");
+        File.WriteAllText(Path.Combine(requests, maxSkillsId + ".cmd"), "ApplyMaxSkills");
+        bridge.Poll();
+        Check(executed.Count == 3 && executed[2] == "ApplyMaxSkills", "ApplyMaxSkills входит в локальный allowlist");
+        Check(Status(root, maxSkillsId) == "completed", "Проверка навыков подтверждается после выполнения");
         shutdownId = Guid.NewGuid().ToString("N");
         File.WriteAllText(Path.Combine(requests, shutdownId + ".cmd"), "Shutdown");
         bridge.Poll();

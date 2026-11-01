@@ -1,3 +1,4 @@
+using MreShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +37,7 @@ namespace MreModeration
             }catch(Exception error){Say(actor,"Действие не выполнено: "+error.Message);Logger.LogException(error,"[MRE] Ошибка/отказ /staff.");}
         }
         private static string Moscow(DateTime utc) {return utc.ToUniversalTime().AddHours(3).ToString("dd.MM.yyyy HH:mm")+" МСК";}
-        private static void Say(UnturnedPlayer actor,string text) {UnturnedChat.Say(actor,"MRE: "+MreModerationPlugin.Plain(text));}
+        private static void Say(UnturnedPlayer actor,string text) {MreChat.Say(actor,"MRE: "+MreModerationPlugin.Plain(text));}
     }
     public sealed class MyTrustscoreCommand : IRocketCommand
     {
@@ -46,6 +47,6 @@ namespace MreModeration
         public string Syntax {get{return "";}}
         public List<string> Aliases {get{return new List<string>{"trustscore"};}}
         public List<string> Permissions {get{return new List<string>{"mre.trustscore"};}}
-        public void Execute(IRocketPlayer caller,string[] args) {var actor=caller as UnturnedPlayer;if(actor==null||MreModerationPlugin.Instance==null)return;try{var p=MreModerationPlugin.Instance.GetMyTrustscore(actor);UnturnedChat.Say(actor,"MRE: trustscore "+p.Trustscore+"/100; "+p.Rank+". Игровое время, благодарности и история предупреждений влияют на оценку.");}catch(Exception error){UnturnedChat.Say(actor,"MRE: "+error.Message);}}
+        public void Execute(IRocketPlayer caller,string[] args) {var actor=caller as UnturnedPlayer;if(actor==null||MreModerationPlugin.Instance==null)return;try{var p=MreModerationPlugin.Instance.GetMyTrustscore(actor);MreChat.Say(actor,"MRE: trustscore "+p.Trustscore+"/100; "+p.Rank+". Игровое время, благодарности и история предупреждений влияют на оценку.");}catch(Exception error){MreChat.Say(actor,"MRE: "+error.Message);}}
     }
 }

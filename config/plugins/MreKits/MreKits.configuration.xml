@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MreKitsConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Kits>
+    <KitDefinition>
+      <Name>start</Name>
+      <Description>Лук, стрелы, одежда, спальник, бинты, топор, еда и вода</Description>
+      <CooldownSeconds>3600</CooldownSeconds>
+      <AutoEquipClothing>true</AutoEquipClothing>
+      <Items>
+        <KitItem><Id>353</Id><Count>1</Count></KitItem>
+        <KitItem><Id>348</Id><Count>5</Count></KitItem>
+        <KitItem><Id>180</Id><Count>1</Count></KitItem>
+        <KitItem><Id>2</Id><Count>1</Count></KitItem>
+        <KitItem><Id>294</Id><Count>1</Count></KitItem>
+        <KitItem><Id>95</Id><Count>2</Count></KitItem>
+        <KitItem><Id>16</Id><Count>1</Count></KitItem>
+        <KitItem><Id>13</Id><Count>2</Count></KitItem>
+        <KitItem><Id>14</Id><Count>2</Count></KitItem>
+      </Items>
+    </KitDefinition>
+  </Kits>
+</MreKitsConfiguration>

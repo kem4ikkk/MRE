@@ -14,6 +14,7 @@ namespace MreEssentials
         public int AutoSaveIntervalSeconds;
         public bool LocalControlEnabled;
         public string LocalControlDirectory;
+        public bool MaxSkillsEnabled = true;
 
         public void LoadDefaults()
         {
@@ -27,6 +28,7 @@ namespace MreEssentials
             AutoSaveIntervalSeconds = 300;
             LocalControlEnabled = true;
             LocalControlDirectory = "../control/MRE";
+            MaxSkillsEnabled = true;
         }
     }
 }

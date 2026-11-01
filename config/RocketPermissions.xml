@@ -13,6 +13,8 @@
         <Permission Cooldown="0">tpa</Permission>
         <Permission Cooldown="0">mre.vote</Permission>
         <Permission Cooldown="0">mre.kit</Permission>
+        <!-- Только локальное тестирование прототипа; перед публичным запуском необходима приемка VAULT. -->
+        <Permission Cooldown="0">mre.vault</Permission>
         <Permission Cooldown="0">mre.trustscore</Permission>
       </Permissions>
     </Group>

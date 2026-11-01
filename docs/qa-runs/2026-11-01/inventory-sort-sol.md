@@ -1,0 +1,41 @@
+# Независимая проверка сортировки — Sol
+
+Дата: 01.11.2026, Europe/Moscow. Проверены `SortCore.cs`, `NativeSortSurface.cs`, `MreInventorySortPlugin.cs`, `CommandSort.cs`, сборщик и тесты. Production читался; сервер, миры, конфигурации и права не менялись. Записи — только `runtime/inventory-review-sol/**` и этот отчёт.
+
+**Вердикт: включать на рабочем сервере нельзя.** Компиляция и model tests подтверждены, но интерфейс storage и безопасность реальных клиентских действий не приняты. Установку отключённой DLL можно рассматривать после резервной копии и проверки загрузки на копии экземпляра; это не разрешение на включение и не выполненная установка. В проверенном `runtime/server/Servers/MRE/Rocket/Plugins` MreInventorySort отсутствует.
+
+## Выполненные проверки
+
+- Независимая сборка по установленным game/Mono/Rocket references: PASS. Копия сборщика меняет только корень проекта и каталог outputs; production не затронут. Артефакт `runtime/inventory-review-sol/build/MreInventorySort.dll`, SHA256 `94445377b338e843eafd5a044879922e6287c713f96e9f281fc49ff36f9dac15`.
+- SHA256 установленной `Assembly-CSharp.dll`: `15666f1e20afc32a01a5510eb71eef2512a6eb4064ee628b806ee333ab4e4660`. Manifest содержит references и hashes; plugin сверяет game hash при загрузке и проверяет наличие трёх private methods. Обновление игры требует аудита и новой сборки. Фактическая загрузка DLL сервером не выполнялась.
+- 28 исходных тестов: PASS. Ещё 6 независимых сценариев: PASS: 200 вещей и сохранение identity; отказ при 201; асимметричный rot=3; null state; ошибки на каждом из четырёх пакетов; воспроизведение опасности старых source coordinates после sort. Всего 34 сценария.
+- Запуск: `dotnet run --project runtime/inventory-review-sol/review.csproj --configuration Release`. Тестируются фактические SortCore/NativeSortSurface с дублёрами границы Unity/игры. Методы доступа plugin и реальные callbacks не охвачены этим harness.
+
+## Выводы и дефекты
+
+1. **Высокий приоритет, продуктовая доступность:** `CommandSort.cs` предоставляет только чат-команду `/sort storage`, тогда как `StorageValid` требует всё ещё открытый storage. В SDK `onInventoryStored` закрывает PlayerLifeUI; `PlayerUI.OnGUI` открывает чат только при активном PlayerLifeUI. Закрытие inventory вызывает `sendGesture(INVENTORY_STOP,false)`, а PlayerAnimator закрывает storage на сервере. Следовательно, штатная последовательность открыть контейнер → выйти в чат → ввести команду не предоставляет доступное действие сортировки. Нужна кнопка/Plugin Key, вызывающая API при открытом контейнере. Проверена цепочка исходников; фактическая игра не запускалась.
+2. **Блокер игровой приёмки:** vanilla requests адресуют вещи по странице и x/y без версии раскладки. Дополнительный model test подтверждает: после успешного sort старые координаты первого jar разрешаются уже в другой jar. Запоздалый drag/drop/equip/drop может примениться к другой вещи. Серверный main thread исключает одновременную мутацию внутри одного вызова, но не отменяет уже отправленные RPC. Утверждать сохранность намерения или отсутствие потерь/дюпа в реальной игре нельзя. Нужен тест двух клиентов с задержкой сети и queued действиями; одна пауза между сортировками проблему протокола не решает.
+3. **Средний приоритет, hotbar:** PlayerEquipment хранит client hotkeys как id/page/x/y; `updateHotkeys` очищает привязку при несовпадении id либо сохраняет координатную привязку к другому предмету с тем же id. Plugin меняет x/y и рассылает remove/add, не переносит hotkey bindings. Восстановление привязок не реализовано. Это предсказуемая регрессия, которую нельзя считать лишь неизвестной синхронизацией. Для одинаковых ID нужны проверки разных state/quality и правильного выбранного объекта после sort. Потеря самих Item этим наблюдением не доказана.
+4. Список `Items.items` после `loadSize` заменяется нативной реализацией новым списком с теми же jar. События add/remove/state при корректных границах не вызываются. Слушатели остаются подписаны, однако плагины с сохранённой ссылкой на прежний список или кэшем координат не уведомлены. Совместимость проверяется отдельно для фактически установленных плагинов; blanket-совместимость не подтверждена.
+
+## Сохранность, доступ и исключения
+
+В проверенном пути вещи не извлекаются из серверного списка, не создаются и не объединяются. План проверяет границы и пересечения до loadSize, rot 0–3, amount/quality byte, state не длиннее 255, identity jar/Item и ограничения 200 items/4096 cells. Native API допускает страницы 2–6; storage=7, area=8 не затрагивается. Недопустимый исходный прямоугольник отклоняется до риска native discard. Все исходные объекты и metadata сверяются до/после перестановки. Rollback возвращает только позиции и не перезаписывает чужие metadata. Ошибки отправки моделировались; при невозможности подтвердить откат новые sort блокируются. Это не crash durability и не доказательство поведения реального транспорта.
+
+Storage допускается только при точном типе обычного storage/Items, совпадении opener/player/page, единственном клиенте, active/interactable, реальном barricade, дальности до 20 м и LOS. checkRot повторяет owner/group/public допуск и не использует admin обход. Виртуальные storage, display, trunk, subclasses и onStateRebuilt hook отклоняются. Actor берётся из серверной Rocket-команды, отсутствуют клиентские ID предметов/страниц в аргументах; API проверяет session/permission/thread повторно. Перекрывающиеся requests защищены active и cooldown; сами guards реальным Rocket/Unity harness не тестировались. nextUse хранится до unload, что потенциально накапливает записи уникальных игроков, но для текущей беты это не критический дефект.
+
+Личный инвентарь сохраняется нативным save по текущим jar; storage rebuildState обновляет barricade state. Это подтверждает выбранный путь сериализации, но не выполненный save→restart→restore. Откат после persist предусмотрен; потеря процесса между сортировкой и штатным сохранением отдельно не моделировалась. Условие Enabled=false защищает от выполнения, но сама загрузка, hash check и unload ещё не проверены в серверном процессе.
+
+## Что осталось
+
+На отдельной копии с двумя клиентами: загрузка и выключенное состояние; permissions/смерть/disconnect; owner/group/public/чужой lock/LOS; кнопка или Plugin Key в реально открытом storage; hotbar с одинаковыми ID и разными state; queued drag/equip/drop и сетевые задержки; совместимость всех установленных плагинов; save→restart→restore; сверка количества/ID/amount/quality/state/rotation до и после, включая полный storage и не помещающийся порядок. Для каждой аварии нужна сверка server inventory/storage и клиента. Ни один из этих пунктов не отмечен выполненным.
+
+## Первичные источники
+
+Проверены 01.11.2026; публичная main изменяема. Загруженные копии доступны только как временные материалы в `runtime/inventory-review-sol`.
+
+- [SDG Items.cs](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Inventory/Items.cs): loadSize, grid, discard, замена списка.
+- [SDG PlayerInventory.cs](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Player/PlayerInventory.cs): pages, private server→owner add/remove, coordinate requests, save.
+- [SDG InteractableStorage.cs](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Interactable/InteractableStorage.cs): checkRot, rebuildState и virtual hook.
+- [SDG PlayerUI.cs](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Player/PlayerUI.cs), [PlayerDashboardInventoryUI.cs](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/UI/Player/PlayerDashboardInventoryUI.cs), [PlayerAnimator.cs](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Player/PlayerAnimator.cs): чат, закрытие inventory и storage.
+- [SDG PlayerEquipment.cs](https://github.com/SmartlyDressedGames/U3-SDK/blob/main/Assets/Runtime/Assembly-CSharp/Unturned/Player/PlayerEquipment.cs): client hotkeys и координатная привязка.

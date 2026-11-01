@@ -7,6 +7,15 @@ namespace Rocket.API
     public interface IRocketPluginConfiguration { void LoadDefaults(); }
 }
 
+namespace SDG.Unturned
+{
+    public static class SteamAdminlist
+    {
+        public static ulong ownerID = 123456;
+        public static bool checkAdmin(ulong playerID) { return playerID == ownerID; }
+    }
+}
+
 namespace DiagnosticsFixtures
 {
     public sealed class GameplayData { public int Max_Group_Members = 4; }

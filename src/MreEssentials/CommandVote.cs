@@ -1,3 +1,4 @@
+using MreShared;
 using System.Collections.Generic;
 using Rocket.API;
 using Rocket.Unturned.Chat;
@@ -16,7 +17,7 @@ namespace MreEssentials
         public void Execute(IRocketPlayer caller, string[] command)
         {
             var plugin = MreEssentialsPlugin.Instance;
-            if (plugin == null) { UnturnedChat.Say(caller, "MRE: плагин голосования пока недоступен."); return; }
+            if (plugin == null) { MreChat.Say(caller, "MRE: плагин голосования пока недоступен."); return; }
             plugin.HandleVoteCommand(caller, command);
         }
     }

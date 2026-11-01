@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <MoreHomesConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <MessageColor>yellow</MessageColor>
-  <MessageIconUrl />
+  <MessageIconUrl>https://raw.githubusercontent.com/kem4ikkk/MRE/59d6b05/assets/server-chat.png</MessageIconUrl>
   <DefaultHomeCooldown>80</DefaultHomeCooldown>
   <DefaultHomeDelay>5</DefaultHomeDelay>
-  <DefaultMaxHomes>1</DefaultMaxHomes>
+  <DefaultMaxHomes>2</DefaultMaxHomes>
   <TeleportHeight>0.5</TeleportHeight>
   <CancelOnMove>false</CancelOnMove>
   <MoveMaxDistance>0.5</MoveMaxDistance>

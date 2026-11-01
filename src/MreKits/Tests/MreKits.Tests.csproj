@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <BaseOutputPath>../../../runtime/builds/MreKits/tests/bin/</BaseOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../KitLedger.cs" Link="Actual/KitLedger.cs" />
+    <Compile Include="../ClaimTransaction.cs" Link="Actual/ClaimTransaction.cs" />
+    <Compile Include="../KitNames.cs" Link="Actual/KitNames.cs" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>../../../runtime/server/Unturned_Data/Managed/Newtonsoft.Json.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

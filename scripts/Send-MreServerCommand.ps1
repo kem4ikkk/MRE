@@ -1,7 +1,7 @@
 ﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Save', 'Shutdown', 'Players', 'Day', 'Night', 'Diagnostics')]
+    [ValidateSet('Save', 'Shutdown', 'Players', 'Day', 'Night', 'Diagnostics', 'ApplyMaxSkills')]
     [string]$Command,
     [ValidateRange(1, 120)][int]$TimeoutSeconds = 30
 )

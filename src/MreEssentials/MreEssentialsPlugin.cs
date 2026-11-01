@@ -1,3 +1,4 @@
+using MreShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,6 +44,9 @@ namespace MreEssentials
         private DateTime nextControlTickUtc;
         private LocalControlBridge control;
         private string localControlDirectory;
+        private readonly HashSet<ulong> pendingSkills = new HashSet<ulong>();
+        private bool initialSkillsApplied;
+        private DateTime nextSkillsRefreshUtc;
 
         protected override void Load()
         {
@@ -64,11 +68,21 @@ namespace MreEssentials
                 Logger.Log("[MRE] Local control ready: " + controlRoot);
             }
             Instance = this;
-            Logger.Log("[MRE] MreEssentials загружен: /vote day и автоматическое сохранение.");
+            initialSkillsApplied = false;
+            nextSkillsRefreshUtc = DateTime.UtcNow;
+            pendingSkills.Clear();
+            Provider.onServerConnected += OnServerConnected;
+            Provider.onServerDisconnected += OnServerDisconnected;
+            PlayerLife.OnRevived_Global += OnPlayerRevived;
+            Logger.Log("[MRE] MreEssentials загружен: /vote day, автоматическое сохранение и полные навыки.");
         }
 
         protected override void Unload()
         {
+            Provider.onServerConnected -= OnServerConnected;
+            Provider.onServerDisconnected -= OnServerDisconnected;
+            PlayerLife.OnRevived_Global -= OnPlayerRevived;
+            pendingSkills.Clear();
             session = null;
             lastVoteUi = null;
             voteUiVisibleUntilUtc = DateTime.MinValue;
@@ -103,6 +117,31 @@ namespace MreEssentials
             if (!Ready()) return;
 
             var c = Configuration.Instance;
+            if (c.MaxSkillsEnabled)
+            {
+                if (!initialSkillsApplied || now >= nextSkillsRefreshUtc)
+                {
+                    foreach (SteamPlayer client in Provider.clients)
+                        if (client != null && client.player != null) pendingSkills.Add(client.playerID.steamID.m_SteamID);
+                    initialSkillsApplied = true;
+                    nextSkillsRefreshUtc = now.AddSeconds(30);
+                }
+                foreach (ulong playerId in pendingSkills.ToArray())
+                {
+                    SteamPlayer client = Provider.clients.FirstOrDefault(p => p != null && p.playerID.steamID.m_SteamID == playerId);
+                    if (client == null || client.player == null) { pendingSkills.Remove(playerId); continue; }
+                    try
+                    {
+                        MaxSkillsResult result = MaxSkillsPolicy.Apply(new PlayerMaxSkillsTarget(client.player.skills));
+                        if (result.AllAtMaximum) pendingSkills.Remove(playerId);
+                    }
+                    catch (Exception error)
+                    {
+                        pendingSkills.Remove(playerId);
+                        Logger.LogException(error, "[MRE] Не удалось применить максимальные навыки; выполните ApplyMaxSkills после проверки.");
+                    }
+                }
+            }
             if (c.AutoSaveEnabled && now >= nextSaveUtc)
             {
                 nextSaveUtc = now.AddSeconds(c.AutoSaveIntervalSeconds);
@@ -115,6 +154,7 @@ namespace MreEssentials
         private bool ExecuteLocalCommand(string command)
         {
             if (command == "Save") { SaveManager.save(); return true; }
+            if (command == "ApplyMaxSkills") return ApplyMaxSkillsAndReport();
             if (command == "Diagnostics")
             {
                 object snapshot = RuntimeDiagnostics.Capture(typeof(Provider), typeof(BarricadeManager), Configuration.Instance, AppDomain.CurrentDomain.GetAssemblies());
@@ -128,48 +168,112 @@ namespace MreEssentials
             return Commander.execute(CSteamID.Nil, command.ToLowerInvariant());
         }
 
+        private void OnServerConnected(CSteamID steamId)
+        {
+            if (Configuration.Instance.MaxSkillsEnabled) pendingSkills.Add(steamId.m_SteamID);
+        }
+
+        private void OnServerDisconnected(CSteamID steamId)
+        {
+            pendingSkills.Remove(steamId.m_SteamID);
+        }
+
+        private void OnPlayerRevived(PlayerLife life)
+        {
+            if (!Configuration.Instance.MaxSkillsEnabled || life == null || life.player == null) return;
+            SteamPlayer client = Provider.clients.FirstOrDefault(p => p != null && p.player == life.player);
+            if (client != null) pendingSkills.Add(client.playerID.steamID.m_SteamID);
+        }
+
+        private bool ApplyMaxSkillsAndReport()
+        {
+            var players = new List<object>();
+            int verified = 0;
+            int errors = 0;
+            foreach (SteamPlayer client in Provider.clients.ToArray())
+            {
+                if (client == null || client.player == null) continue;
+                var player = new Dictionary<string, object>();
+                player["steam_id"] = client.playerID.steamID.m_SteamID.ToString();
+                try
+                {
+                    MaxSkillsResult result = MaxSkillsPolicy.Apply(new PlayerMaxSkillsTarget(client.player.skills));
+                    player["applied"] = result.Applied;
+                    player["all_at_maximum"] = result.AllAtMaximum;
+                    player["skill_count"] = result.Levels.Count;
+                    player["skills"] = result.Levels.Select(s => (object)new Dictionary<string, object>
+                    {
+                        { "speciality", s.Speciality }, { "index", s.Index }, { "level", s.Level }, { "maximum", s.Maximum }
+                    }).ToArray();
+                    if (result.AllAtMaximum) verified++;
+                    else errors++;
+                }
+                catch (Exception error)
+                {
+                    player["error"] = error.GetType().Name + ": " + error.Message;
+                    errors++;
+                }
+                players.Add(player);
+            }
+            var report = new Dictionary<string, object>
+            {
+                { "captured_at_utc", DateTime.UtcNow.ToString("o") },
+                { "automatic_enforcement_enabled", Configuration.Instance.MaxSkillsEnabled },
+                { "player_count", players.Count }, { "verified_player_count", verified },
+                { "all_players_at_maximum", players.Count > 0 && errors == 0 },
+                { "errors", errors }, { "players", players }
+            };
+            string target = Path.Combine(localControlDirectory, "max-skills.json");
+            string temporary = target + ".tmp";
+            File.WriteAllText(temporary, RuntimeDiagnostics.ToJson(report), new System.Text.UTF8Encoding(false));
+            if (File.Exists(target)) File.Delete(target);
+            File.Move(temporary, target);
+            Logger.Log(String.Format("[MRE] Максимальные навыки проверены: игроков {0}, подтверждено {1}, ошибок {2}.", players.Count, verified, errors));
+            return errors == 0;
+        }
+
         public void HandleVoteCommand(IRocketPlayer caller, string[] args)
         {
-            if (!Ready()) { UnturnedChat.Say(caller, "MRE: уровень еще не готов."); return; }
-            if (args.Length > 1) { UnturnedChat.Say(caller, "Использование: /vote day, /vote yes, /vote status или /cv."); return; }
+            if (!Ready()) { MreChat.Say(caller, "MRE: уровень еще не готов."); return; }
+            if (args.Length > 1) { MreChat.Say(caller, "Использование: /vote day, /vote yes, /vote status или /cv."); return; }
             string action = args.Length == 0 ? "yes" : args[0].ToLowerInvariant();
             DateTime now = DateTime.UtcNow;
             ResolveVote(now);
 
             if (action == "status")
             {
-                if (session == null) UnturnedChat.Say(caller, "MRE: активного голосования нет.");
-                else UnturnedChat.Say(caller, String.Format("MRE: за день {0}/{1}; осталось {2} с.",
+                if (session == null) MreChat.Say(caller, "MRE: активного голосования нет.");
+                else MreChat.Say(caller, String.Format("MRE: за день {0}/{1}; осталось {2} с.",
                     session.CountOnlineVotes(OnlinePlayers()), session.RequiredVotes,
                     Math.Max(0, (int)Math.Ceiling((session.DeadlineUtc - now).TotalSeconds))));
                 return;
             }
             if (action != "day" && action != "yes")
-            { UnturnedChat.Say(caller, "Использование: /vote day, /vote yes, /vote status или /cv."); return; }
+            { MreChat.Say(caller, "Использование: /vote day, /vote yes, /vote status или /cv."); return; }
             var player = caller as UnturnedPlayer;
-            if (player == null) { UnturnedChat.Say(caller, "Голосовать могут только подключенные игроки."); return; }
+            if (player == null) { MreChat.Say(caller, "Голосовать могут только подключенные игроки."); return; }
             var c = Configuration.Instance;
-            if (!c.VoteDayEnabled) { UnturnedChat.Say(caller, "Голосование за день отключено."); return; }
+            if (!c.VoteDayEnabled) { MreChat.Say(caller, "Голосование за день отключено."); return; }
             if (session == null)
             {
-                if (action != "day") { UnturnedChat.Say(caller, "Сейчас нет голосования. Ночью начать: /vote day."); return; }
-                if (c.NightOnly && !LightingManager.isNighttime) { UnturnedChat.Say(caller, "Уже день. Голосование доступно ночью."); return; }
-                if (now < nextVoteUtc) { UnturnedChat.Say(caller, "До следующего голосования: " + Math.Ceiling((nextVoteUtc - now).TotalSeconds) + " с."); return; }
+                if (action != "day") { MreChat.Say(caller, "Сейчас нет голосования. Ночью начать: /vote day."); return; }
+                if (c.NightOnly && !LightingManager.isNighttime) { MreChat.Say(caller, "Уже день. Голосование доступно ночью."); return; }
+                if (now < nextVoteUtc) { MreChat.Say(caller, "До следующего голосования: " + Math.Ceiling((nextVoteUtc - now).TotalSeconds) + " с."); return; }
                 var online = OnlinePlayers();
-                if (online.Count < c.MinimumPlayers) { UnturnedChat.Say(caller, "Для голосования нужно игроков: " + c.MinimumPlayers + "."); return; }
+                if (online.Count < c.MinimumPlayers) { MreChat.Say(caller, "Для голосования нужно игроков: " + c.MinimumPlayers + "."); return; }
                 session = new VoteSession(online, c.RequiredPercent, now.AddSeconds(c.VoteDurationSeconds));
                 voteInitiatorName = player.DisplayName;
                 lastVoteUi = null;
                 voteUiVisibleUntilUtc = DateTime.MinValue;
                 nextVoteUtc = now.AddSeconds(c.VoteCooldownSeconds);
-                UnturnedChat.Say(String.Format("MRE: начато голосование за день! Нужно {0} из {1}. Голос: /vote yes или /cv. Время: {2} с.",
+                MreChat.Say(String.Format("MRE: начато голосование за день! Нужно {0} из {1}. Голос: /vote yes или /cv. Время: {2} с.",
                     session.RequiredVotes, session.EligibleCount, c.VoteDurationSeconds));
             }
             VoteResult result = session.TryVote(player.CSteamID.m_SteamID, OnlinePlayers(), now);
-            if (result == VoteResult.Added) UnturnedChat.Say(caller, "Ваш голос за день принят.");
-            else if (result == VoteResult.Duplicate) UnturnedChat.Say(caller, "Вы уже голосовали.");
-            else if (result == VoteResult.NotEligible) UnturnedChat.Say(caller, "Вы подключились после начала. Участвовать можно в следующем голосовании.");
-            else UnturnedChat.Say(caller, "Голос уже не может быть принят.");
+            if (result == VoteResult.Added) MreChat.Say(caller, "Ваш голос за день принят.");
+            else if (result == VoteResult.Duplicate) MreChat.Say(caller, "Вы уже голосовали.");
+            else if (result == VoteResult.NotEligible) MreChat.Say(caller, "Вы подключились после начала. Участвовать можно в следующем голосовании.");
+            else MreChat.Say(caller, "Голос уже не может быть принят.");
             ResolveVote(now);
         }
 
@@ -177,14 +281,14 @@ namespace MreEssentials
         {
             if (session == null || !Ready()) return;
             if (Configuration.Instance.NightOnly && !LightingManager.isNighttime)
-            { FinishVoteUi("canceled", now); UnturnedChat.Say("MRE: наступил день; голосование отменено."); return; }
+            { FinishVoteUi("canceled", now); MreChat.Say("MRE: наступил день; голосование отменено."); return; }
             VoteOutcome outcome = session.Evaluate(OnlinePlayers(), now);
             if (outcome == VoteOutcome.Expired)
-            { FinishVoteUi("expired", now); UnturnedChat.Say("MRE: голосование завершено без кворума."); return; }
+            { FinishVoteUi("expired", now); MreChat.Say("MRE: голосование завершено без кворума."); return; }
             if (outcome != VoteOutcome.Passed) return;
             FinishVoteUi("passed", now);
             LightingManager.time = (uint)(LightingManager.cycle * LevelLighting.transition);
-            UnturnedChat.Say("MRE: голосование принято — наступил день!");
+            MreChat.Say("MRE: голосование принято — наступил день!");
         }
     }
 }

@@ -1,3 +1,4 @@
+using MreShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -127,7 +128,7 @@ namespace MreModeration
                 // Сначала durable pending; при неясном результате повтор автоматически не выполняется.
                 string nativeReason="[MRE:"+operationId+"] "+StaffPolicy.Clean(reason,300);
                 SteamBlacklist.ban(new CSteamID(target),actor.CSteamID,nativeReason,durationSeconds==0?SteamBlacklist.PERMANENT:(uint)durationSeconds);SteamBlacklist.save();ledger.SetBanApplied(target,operationId);
-            }else if((kind=="warn"||kind=="mute")&&online!=null)UnturnedChat.Say(UnturnedPlayer.FromPlayer(online.player),"MRE: "+(kind=="warn"?"Предупреждение: ":"Чат ограничен: ")+Plain(reason));
+            }else if((kind=="warn"||kind=="mute")&&online!=null)MreChat.Say(UnturnedPlayer.FromPlayer(online.player),"MRE: "+(kind=="warn"?"Предупреждение: ":"Чат ограничен: ")+Plain(reason));
             var profile=ledger.Get(target);var entry=profile.Records.First(r=>r.Id==operationId);Publish(target,entry);Changed(target);if(online!=null)ApplyTrustGroup(UnturnedPlayer.FromPlayer(online.player));
             return "Записано: "+kind+"; id "+operationId+".";
         }

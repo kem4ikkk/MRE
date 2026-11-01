@@ -1,3 +1,4 @@
+using MreShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -120,7 +121,7 @@ namespace MreInterface
                     if (state.Actor.GodMode != state.Original.God) state.Actor.GodMode = state.Original.God;
                     if (state.Actor.VanishMode != state.Original.Vanish) state.Actor.VanishMode = state.Original.Vanish;
                     if (returnPosition && IsOnline(state.Actor) && !state.Actor.Player.life.isDead && !state.Actor.Player.teleportToLocation(state.ReturnPosition, state.ReturnYaw))
-                        UnturnedChat.Say(state.Actor, "MRE: наблюдение выключено; возврат заблокирован препятствием. Используй /home или /admin tp.");
+                        MreChat.Say(state.Actor, "MRE: наблюдение выключено; возврат заблокирован препятствием. Используй /home или /admin tp.");
                 }
             }
             catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка восстановления состояния наблюдателя."); }
@@ -140,7 +141,7 @@ namespace MreInterface
                 {
                     if (!state.Actor.GodMode) state.Actor.GodMode = true;
                     if (!state.Actor.VanishMode) state.Actor.VanishMode = true;
-                    if (!TryFollow(state.Actor, target.player)) { StopObservationInternal(pair.Key, true); UnturnedChat.Say(state.Actor, "MRE: наблюдение остановлено, безопасная точка недоступна."); }
+                    if (!TryFollow(state.Actor, target.player)) { StopObservationInternal(pair.Key, true); MreChat.Say(state.Actor, "MRE: наблюдение остановлено, безопасная точка недоступна."); }
                 }
                 catch (Exception error) { StopObservationInternal(pair.Key, true); Logger.LogException(error, "[MRE] Наблюдение остановлено из-за ошибки."); }
             }
