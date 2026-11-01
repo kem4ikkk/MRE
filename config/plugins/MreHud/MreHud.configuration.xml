@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MreHudConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Enabled>true</Enabled>
+  <AssetsVerified>false</AssetsVerified>
+  <HideNativeHud>false</HideNativeHud>
+  <EffectId>48621</EffectId>
+  <EffectKey>14821</EffectKey>
+  <EffectGuid>4f11731bb53e4a55b588b97c2c2f61b5</EffectGuid>
+  <RefreshIntervalSeconds>0.1</RefreshIntervalSeconds>
+  <AcceptKeyLabel>&lt;plugin_0/&gt;</AcceptKeyLabel>
+  <DenyKeyLabel>&lt;plugin_1/&gt;</DenyKeyLabel>
+</MreHudConfiguration>

@@ -1,0 +1,11 @@
+Library/
+Temp/
+Logs/
+Obj/
+UserSettings/
+Builds/
+.vs/
+*.csproj
+*.sln
+*.slnx
+Assets/MreHud/

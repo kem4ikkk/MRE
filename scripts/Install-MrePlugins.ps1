@@ -68,7 +68,7 @@ foreach ($plugin in $lockData.plugins) {
 if (-not $Apply) {
     $downloaded
     Write-Host 'Архивы, лицензии и конфигурации проверены. Игровой сервер не изменен.'
-    Write-Host 'После сборки src/Teleportation.MRE/Build.ps1 запустите этот скрипт с -Apply на остановленном сервере.'
+    Write-Host 'После сборки scripts/Build-MreUi.ps1 запустите этот скрипт с -Apply на остановленном сервере.'
     return
 }
 
@@ -81,6 +81,18 @@ if (-not (Test-Path -LiteralPath $buildManifestPath)) {
 $buildManifest = Get-Content -LiteralPath $buildManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($buildManifest.patch_id -ne 'mre-recipient-guard-v1') { throw 'Неизвестный вариант исправления Teleportation.' }
 Assert-Hash $patchedBinary $buildManifest.sha256
+$patchedHomesRoot = Join-Path $cacheRoot 'MoreHomes.MRE'
+$patchedHomesBinary = Join-Path $patchedHomesRoot 'MoreHomes.dll'
+$homesBuildPath = Join-Path $patchedHomesRoot 'build.json'
+if (-not (Test-Path -LiteralPath $homesBuildPath)) {
+    throw 'Сначала соберите HOME UI: src/MoreHomes.MRE/Build.ps1.'
+}
+$homesBuild = Get-Content -LiteralPath $homesBuildPath -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($homesBuild.patch_id -ne 'mre-home-ui-v1') { throw 'Неизвестный вариант исправления MoreHomes.' }
+Assert-Hash $patchedHomesBinary $homesBuild.sha256
+if ($homesBuild.teleportation_reference_sha256 -ne $buildManifest.sha256) {
+    throw 'MoreHomes собран по другой Teleportation.dll. Пересоберите оба плагина.'
+}
 if (-not (Test-Path -LiteralPath (Join-Path $instanceRoot 'Server\Commands.dat'))) {
     throw 'Сначала создайте экземпляр MRE первым запуском U3DS.'
 }
@@ -118,6 +130,7 @@ try {
         foreach ($file in $plugin.files) {
             $sourcePath = Get-ContainedPath (Join-Path $pluginCache 'release') $file.path
             if ($file.path -eq 'Plugins/Teleportation.dll') { $sourcePath = $patchedBinary }
+            if ($file.path -eq 'Plugins/MoreHomes.dll') { $sourcePath = $patchedHomesBinary }
             $targetPath = Get-ContainedPath $rocketRoot $file.path
             if (Test-Path -LiteralPath $targetPath) {
                 $oldPath = Get-ContainedPath $backupRoot $file.path
@@ -146,7 +159,7 @@ try {
         New-Item -ItemType Directory -Path (Split-Path -Parent $copy.Target) -Force | Out-Null
         Copy-Item -LiteralPath $copy.Source -Destination $copy.Target -Force
     }
-    $receipt = [ordered]@{installed_at=(Get-Date).ToUniversalTime().ToString('o'); files=$installedFiles; patch_id=$buildManifest.patch_id; game_smoke_test='pending'; permissions='merge config/plugins/permissions.json separately'}
+    $receipt = [ordered]@{installed_at=(Get-Date).ToUniversalTime().ToString('o'); files=$installedFiles; patch_id=$buildManifest.patch_id; home_patch_id=$homesBuild.patch_id; game_smoke_test='pending'; permissions='merge config/plugins/permissions.json separately'}
     [IO.File]::WriteAllText((Join-Path $cacheRoot 'installed-receipt.json'), ($receipt | ConvertTo-Json -Depth 8), $utf8)
     Write-Host 'Плагины и конфигурации установлены. Права и игровые проверки выполняются отдельно.'
 } finally {

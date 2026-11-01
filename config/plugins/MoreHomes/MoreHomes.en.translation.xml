@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Translations xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Translation Id="HomeCooldown" Value="До следующего HOME осталось [[b]]{0}[[/b]] сек." />
-  <Translation Id="HomeDelayWarn" Value="Перемещение домой через [[b]]{0}[[/b]] сек. Не двигайтесь" />
+  <Translation Id="HomeDelayWarn" Value="Перемещение домой через [[b]]{0}[[/b]] сек. Можно двигаться; по умолчанию Ю — отменить" />
   <Translation Id="MaxHomesWarn" Value="Достигнут ваш лимит кроватей" />
   <Translation Id="BedDestroyed" Value="Кровать уничтожена или отвязана. Перемещение отменено" />
   <Translation Id="WhileDriving" Value="Сначала выйдите из транспорта" />
   <Translation Id="NoHome" Value="Подходящий дом не найден" />
+  <Translation Id="HomeUnavailable" Value="HOME временно недоступен: модуль телепортации не готов" />
+  <Translation Id="HomeCanceled" Value="Перемещение домой отменено" />
   <Translation Id="HomeSuccess" Value="Вы переместились в дом [[b]]{0}[[/b]]" />
   <Translation Id="HomeList" Value="Ваши дома [[b]][{0}/{1}][[/b]]: " />
   <Translation Id="NoHomes" Value="Сначала привяжите кровать" />

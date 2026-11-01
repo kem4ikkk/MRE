@@ -4,6 +4,7 @@ using Rocket.Unturned.Player;
 using SDG.Unturned;
 using Steamworks;
 using System;
+using System.Diagnostics;
 
 namespace RestoreMonarchy.Teleportation.Models
 {
@@ -39,6 +40,13 @@ namespace RestoreMonarchy.Teleportation.Models
 
         public bool IsExecuting { get; private set; }
         public bool IsExpired => !IsExecuting && ExpireDate < DateTime.Now;
+        private long executionStartedAt;
+        public DateTime? ExecuteAtUtc { get; private set; }
+        public double DelaySeconds { get; private set; }
+        // HUD uses the same accepted request and a monotonic clock, without a second teleport timer.
+        public double RemainingSeconds => IsExecuting && !IsCanceled
+            ? Math.Max(0, DelaySeconds - (Stopwatch.GetTimestamp() - executionStartedAt) / (double)Stopwatch.Frequency)
+            : 0;
 
         public void Execute(double delay)
         {
@@ -52,7 +60,12 @@ namespace RestoreMonarchy.Teleportation.Models
                 Cancel();
                 return;
             }
+            delay = double.IsNaN(delay) || double.IsInfinity(delay) ? 5 : Math.Max(0, delay);
+            DelaySeconds = delay;
+            executionStartedAt = Stopwatch.GetTimestamp();
+            ExecuteAtUtc = DateTime.UtcNow.AddSeconds(delay);
             IsExecuting = true;
+            pluginInstance.NotifyRequestChanged(this);
 
             if (delay > 0)
             {
@@ -83,16 +96,23 @@ namespace RestoreMonarchy.Teleportation.Models
                     return;
                 }
 
-                if (pluginInstance.Configuration.Instance.UseUnsafeTeleport)
+                try
                 {
-                    SenderPlayer.Player.teleportToLocationUnsafe(TargetPlayer.Position, TargetPlayer.Rotation);
-                } else
-                {
-                    SenderPlayer.Teleport(TargetPlayer);
-                }
+                    if (pluginInstance.Configuration.Instance.UseUnsafeTeleport)
+                    {
+                        SenderPlayer.Player.teleportToLocationUnsafe(TargetPlayer.Position, TargetPlayer.Rotation);
+                    } else
+                    {
+                        SenderPlayer.Teleport(TargetPlayer);
+                    }
 
-                pluginInstance.SendMessageToPlayer(SenderPlayer, "TPASuccess", TargetPlayer.DisplayName);
-                Cancel();
+                    pluginInstance.SendMessageToPlayer(SenderPlayer, "TPASuccess", TargetPlayer.DisplayName);
+                }
+                finally
+                {
+                    // Даже исключение игрового API не оставляет HUD и запрос в вечном отсчёте.
+                    Cancel();
+                }
 
             }, (float)delay);
         }
@@ -178,6 +198,7 @@ namespace RestoreMonarchy.Teleportation.Models
 
         public void Cancel()
         {
+            if (IsCanceled) return;
             IsCanceled = true;
             var plugin = TeleportationPlugin.Instance;
             if (plugin == null)
@@ -189,6 +210,7 @@ namespace RestoreMonarchy.Teleportation.Models
                 plugin.MovementDetector.RemovePlayer(SenderPlayer.Player);
             }
             plugin.TPRequests?.Remove(this);
+            plugin.NotifyRequestChanged(this);
         }
     }
 }

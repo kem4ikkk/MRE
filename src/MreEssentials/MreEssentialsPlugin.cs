@@ -16,6 +16,27 @@ namespace MreEssentials
     {
         public static MreEssentialsPlugin Instance { get; private set; }
         private VoteSession session;
+        private string voteInitiatorName;
+        private VoteUiSnapshot lastVoteUi;
+        private DateTime voteUiVisibleUntilUtc;
+
+        public VoteUiSnapshot GetVoteUiSnapshot(ulong viewerSteamId)
+        {
+            DateTime now = DateTime.UtcNow;
+            if (session != null)
+                return VoteUiSnapshot.Capture(session, OnlinePlayers(), viewerSteamId,
+                    voteInitiatorName, Configuration.Instance.VoteDurationSeconds, now);
+            return now < voteUiVisibleUntilUtc ? lastVoteUi : null;
+        }
+
+        private void FinishVoteUi(string phase, DateTime now)
+        {
+            var snapshot = VoteUiSnapshot.Capture(session, OnlinePlayers(), 0,
+                voteInitiatorName, Configuration.Instance.VoteDurationSeconds, now);
+            lastVoteUi = snapshot == null ? null : snapshot.WithPhase(phase);
+            voteUiVisibleUntilUtc = now.AddSeconds(8);
+            session = null;
+        }
         private DateTime nextVoteUtc;
         private DateTime nextSaveUtc;
         private DateTime nextTickUtc;
@@ -26,7 +47,7 @@ namespace MreEssentials
         protected override void Load()
         {
             var c = Configuration.Instance;
-            if (c.MinimumPlayers < 2 || c.RequiredPercent < 50 || c.RequiredPercent > 100 ||
+            if (c.MinimumPlayers < 1 || c.RequiredPercent < 50 || c.RequiredPercent > 100 ||
                 c.VoteDurationSeconds < 10 || c.VoteDurationSeconds > 600 ||
                 c.VoteCooldownSeconds < c.VoteDurationSeconds || c.AutoSaveIntervalSeconds < 30)
                 throw new InvalidOperationException("Некорректная конфигурация MreEssentials. Проверьте minimum/percent/duration/cooldown/autosave.");
@@ -49,6 +70,8 @@ namespace MreEssentials
         protected override void Unload()
         {
             session = null;
+            lastVoteUi = null;
+            voteUiVisibleUntilUtc = DateTime.MinValue;
             control = null;
             Instance = null;
             Logger.Log("[MRE] MreEssentials выгружен. Активное голосование отменено.");
@@ -135,6 +158,9 @@ namespace MreEssentials
                 var online = OnlinePlayers();
                 if (online.Count < c.MinimumPlayers) { UnturnedChat.Say(caller, "Для голосования нужно игроков: " + c.MinimumPlayers + "."); return; }
                 session = new VoteSession(online, c.RequiredPercent, now.AddSeconds(c.VoteDurationSeconds));
+                voteInitiatorName = player.DisplayName;
+                lastVoteUi = null;
+                voteUiVisibleUntilUtc = DateTime.MinValue;
                 nextVoteUtc = now.AddSeconds(c.VoteCooldownSeconds);
                 UnturnedChat.Say(String.Format("MRE: начато голосование за день! Нужно {0} из {1}. Голос: /vote yes или /cv. Время: {2} с.",
                     session.RequiredVotes, session.EligibleCount, c.VoteDurationSeconds));
@@ -151,12 +177,12 @@ namespace MreEssentials
         {
             if (session == null || !Ready()) return;
             if (Configuration.Instance.NightOnly && !LightingManager.isNighttime)
-            { session = null; UnturnedChat.Say("MRE: наступил день; голосование отменено."); return; }
+            { FinishVoteUi("canceled", now); UnturnedChat.Say("MRE: наступил день; голосование отменено."); return; }
             VoteOutcome outcome = session.Evaluate(OnlinePlayers(), now);
             if (outcome == VoteOutcome.Expired)
-            { session = null; UnturnedChat.Say("MRE: голосование завершено без кворума."); return; }
+            { FinishVoteUi("expired", now); UnturnedChat.Say("MRE: голосование завершено без кворума."); return; }
             if (outcome != VoteOutcome.Passed) return;
-            session = null;
+            FinishVoteUi("passed", now);
             LightingManager.time = (uint)(LightingManager.cycle * LevelLighting.transition);
             UnturnedChat.Say("MRE: голосование принято — наступил день!");
         }

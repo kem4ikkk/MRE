@@ -1,14 +1,22 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-10-29",
+  "checked_at": "2026-10-30",
   "framework": "LDM/Rocket from the installed U3DS distribution",
   "mre_patch": {
     "id": "mre-recipient-guard-v1",
-    "assembly_version": "1.8.3.2",
+    "assembly_version": "1.8.3.3",
     "source_path": "src/Teleportation.MRE/Plugin",
     "build_script": "src/Teleportation.MRE/Build.ps1",
     "binary_path": "runtime/plugin-builds/Teleportation.MRE/Teleportation.dll",
     "note": "Installed Teleportation is built from this MIT fork; upstream ZIP hashes below describe the original release, not the installed patched DLL. The actual binary hash is recorded in the ignored build.json and installed-receipt.json."
+  },
+  "mre_home_patch": {
+    "id": "mre-home-ui-v1",
+    "assembly_version": "1.10.3.1",
+    "source_path": "src/MoreHomes.MRE/Plugin",
+    "build_script": "src/MoreHomes.MRE/Build.ps1",
+    "binary_path": "runtime/plugin-builds/MoreHomes.MRE/MoreHomes.dll",
+    "note": "MRE-owned MIT fork keeps upstream bed/storage/Harmony and starts the tracked HOME UI lifecycle in Teleportation. Original release hashes below remain unchanged."
   },
   "plugins": [
     {

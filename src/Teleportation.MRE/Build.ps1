@@ -54,7 +54,7 @@ if ($LASTEXITCODE -ne 0) { throw "Сборка Teleportation MRE заверши�
 $sourceHashes = @($sources | ForEach-Object { [ordered]@{path=$_.FullName.Substring($PSScriptRoot.Length).TrimStart('\','/'); sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} })
 $manifest = [ordered]@{
     patch_id='mre-recipient-guard-v1'
-    assembly_version='1.8.3.2'
+    assembly_version='1.8.3.3'
     upstream_commit='9c046b50ab7fc0a456263134d7d6f07b2461fbb9'
     built_at=(Get-Date).ToUniversalTime().ToString('o')
     sha256=(Get-FileHash -LiteralPath $outputDll -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -63,4 +63,4 @@ $manifest = [ordered]@{
     game_smoke_test='pending'
 }
 [IO.File]::WriteAllText((Join-Path $outputRoot 'build.json'), ($manifest | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding($false)))
-Write-Host "Собрана Teleportation MRE 1.8.3.2: $outputDll"
+Write-Host "Собрана Teleportation MRE 1.8.3.3: $outputDll"

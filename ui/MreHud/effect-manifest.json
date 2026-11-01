@@ -1,0 +1,16 @@
+{
+  "effect_id": 48621,
+  "hud_schema_version": 2,
+  "effect_key": 14821,
+  "effect_guid": "4f11731bb53e4a55b588b97c2c2f61b5",
+  "bundle": "MreHud.unity3d",
+  "prefab_address": "Effect",
+  "unity_version": "2022.3.62f3",
+  "asset_bundle_version": 6,
+  "canvas_reference_resolution": [1920, 1080],
+  "panels": ["vitals", "weapon", "teleport", "home", "vote_day", "building_health"],
+  "native_hud_hidden_by_default": false,
+  "workshop_file_id": null,
+  "client_bundle_status": "built_locally_delivery_and_ingame_verification_pending",
+  "in_game_verification": "pending"
+}

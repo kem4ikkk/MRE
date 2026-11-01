@@ -17,6 +17,14 @@
       "source": "https://steamcommunity.com/sharedfiles/filedetails/?id=3485061773",
       "use_basis": "Автор WW_TC ответил Yes на вопрос о серверном использовании. Использовать оригинальный Workshop без перезаливки.",
       "compatibility": "Опционально; отдельно проверить текущую версию, спавн PEI и сохранения."
+    },
+    {
+      "id": 2922152196,
+      "name": "Hypnotic Lockers",
+      "default_enabled": true,
+      "source": "https://steamcommunity.com/sharedfiles/filedetails/?id=2922152196",
+      "use_basis": "Автор разрешает использовать оригинальный Workshop-мод на любом сервере, но запрещает его повторную публикацию.",
+      "compatibility": "Подлежат проверке загрузка и сохранение предметов; пакет содержит четыре варианта, включая огромный."
     }
   ],
   "excluded_without_permission": [

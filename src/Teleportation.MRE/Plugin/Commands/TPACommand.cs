@@ -29,7 +29,14 @@ namespace RestoreMonarchy.Teleportation.Commands
             {
                 pluginInstance.CancelTPARequest(player);
             }
-            else if (cmd == "deny" || cmd == "d")
+            else if (cmd == "d")
+            {
+                if (pluginInstance.GetUiRequest(player.CSteamID) == null)
+                    pluginInstance.SendMessageToPlayer(player, "TPANoRequest");
+                else
+                    pluginInstance.HandleTPAUiAction(player, false);
+            }
+            else if (cmd == "deny")
             {
                 pluginInstance.DenyTPARequest(player);
             }
@@ -51,9 +58,9 @@ namespace RestoreMonarchy.Teleportation.Commands
 
         public string Name => "tpa";
 
-        public string Help => "Teleportation request command";
+        public string Help => "Запрос телепортации к игроку";
 
-        public string Syntax => "(player/accept/deny/cancel)";
+        public string Syntax => "[игрок/a/accept/d/deny/cancel]";
 
         public List<string> Aliases => new List<string>();
 

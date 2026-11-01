@@ -18,13 +18,16 @@ namespace RestoreMonarchy.Teleportation
         public bool UseUnsafeTeleport { get; set; }
         public bool CancelOnMove { get; set; }
         public float MoveMaxDistance { get; set; }
+        public bool EnablePluginHotkeys { get; set; } = true;
+        public byte AcceptPluginKey { get; set; } = 0;
+        public byte DenyPluginKey { get; set; } = 1;
 
         public void LoadDefaults()
         {
             MessageColor = "gray";
             MessageIconUrl = "https://i.imgur.com/wr879ca.png";
-            TPACooldown = 90;
-            TPADelay = 3;
+            TPACooldown = 100;
+            TPADelay = 5;
             TPADuration = 90;
             AllowCave = true;
             AllowRaid = false;
@@ -32,8 +35,11 @@ namespace RestoreMonarchy.Teleportation
             AllowCombat = false;
             CombatDuration = 20;
             UseUnsafeTeleport = false;
-            CancelOnMove = true;
+            CancelOnMove = false;
             MoveMaxDistance = 0.5f;
+            EnablePluginHotkeys = true;
+            AcceptPluginKey = 0;
+            DenyPluginKey = 1;
         }
     }
 }

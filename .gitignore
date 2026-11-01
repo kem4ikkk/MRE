@@ -22,3 +22,9 @@ Thumbs.db
 **/obj/
 *.user
 *.suo
+
+# Локальный кэш Unity Editor для проекта HUD
+ui/MreHud/Library/
+ui/MreHud/Temp/
+ui/MreHud/Logs/
+ui/MreHud/UserSettings/

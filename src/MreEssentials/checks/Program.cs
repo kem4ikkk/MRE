@@ -33,9 +33,14 @@ internal static class Program
         Check(new VoteSession(new ulong[] { 11, 22, 33, 44 }, 60, now).RequiredVotes == 3, "60% от четырех округляется вверх");
         Check(new VoteSession(new ulong[] { 11, 22, 33, 44, 55 }, 60, now).RequiredVotes == 3, "60% от пяти равно трем");
         Check(new VoteSession(new ulong[] { 11, 11, 22 }, 60, now).EligibleCount == 2, "Снимок не содержит повторных SteamID");
+        var solo = new VoteSession(new ulong[] { 11 }, 60, now.AddSeconds(60));
+        Check(solo.RequiredVotes == 1, "Один игрок требует ровно один голос");
+        Check(solo.Evaluate(new ulong[] { 11 }, now) == VoteOutcome.Active, "Одиночное голосование ожидает голос");
+        Check(solo.TryVote(11, new ulong[] { 11 }, now) == VoteResult.Added, "Единственный игрок может проголосовать");
+        Check(solo.Evaluate(new ulong[] { 11 }, now) == VoteOutcome.Passed, "Одиночный голос завершает голосование");
         bool rejected = false;
-        try { new VoteSession(new ulong[] { 11 }, 60, now); } catch (ArgumentException) { rejected = true; }
-        Check(rejected, "Один игрок не образует голосование");
+        try { new VoteSession(Array.Empty<ulong>(), 60, now); } catch (ArgumentException) { rejected = true; }
+        Check(rejected, "Без игроков голосование не создается");
         rejected = false;
         try { new VoteSession(players, 49, now); } catch (ArgumentOutOfRangeException) { rejected = true; }
         Check(rejected, "Порог ниже 50% отвергается");

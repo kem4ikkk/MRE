@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MRE — предпросмотр игрового интерфейса</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game" id="game">
+    <svg class="landscape" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#788c97"/><stop offset="1" stop-color="#c4c5b0"/></linearGradient>
+        <linearGradient id="ground" x2="0" y2="1"><stop stop-color="#71806a"/><stop offset="1" stop-color="#3e4e42"/></linearGradient>
+        <symbol id="pine" viewBox="0 0 140 300"><path d="M63 179h15v121H63z" fill="#424b40"/><path d="M70 0 15 113h28L0 202h140l-43-89h28z" fill="#354f46"/><path d="M70 0v202h70l-43-89h28z" fill="#2c443c"/><path d="m70 60-47 91h94z" fill="#3b574b"/></symbol>
+      </defs>
+      <path fill="url(#sky)" d="M0 0h1920v1080H0z"/>
+      <path fill="#899788" d="M0 485 260 365 475 452 760 332 1010 438 1290 360 1540 454 1800 343 1920 385v400H0z"/>
+      <path fill="#657b6b" d="m0 554 230-75 360 40 300-89 295 113 360-41 375-95v380H0z"/>
+      <path fill="url(#ground)" d="M0 590q550-82 1000-10t920-35v535H0z"/>
+      <path fill="#999583" d="m1100 550 110-7 157 153 553 250v134h-300l-410-328z"/>
+      <path fill="#b1a994" d="m1106 551 28-1 139 174 540 356h-94l-475-331z" opacity=".5"/>
+      <g id="forest"></g>
+      <g transform="translate(845 488)"><path fill="#746956" d="M0 25h124v94H0z"/><path fill="#414a40" d="m-15 26 75-49 79 49z"/><path fill="#37443d" d="M76 58h27v61H76zM14 48h31v26H14z"/><path fill="#bbad85" d="M17 51h25v20H17z" opacity=".65"/></g>
+      <g fill="#778271"><path d="m462 782 47-31 61 16 18 42-111 9z"/><path d="m1415 747 45-39 72 26 21 41-131 7z"/></g>
+      <g stroke="#819271" stroke-width="4" opacity=".6"><path d="m310 991 8-39m-8 22-16-15m24 3 14-17M880 921l4-38m0 12 12-17M1525 1015l9-41m-6 24-19-13"/></g>
+    </svg>
+    <div class="vignette"></div>
+
+    <nav class="compass" aria-label="Компас"><span>З</span><span>285</span><span>300</span><strong>СЗ</strong><span>330</span><span>345</span><span>С</span><b></b></nav>
+    <div class="preview-tools"><span class="preview-label">ПРЕДПРОСМОТР</span><button id="tools-toggle" aria-expanded="false" aria-controls="tools">Сценарии <span>↗</span></button></div>
+    <aside id="tools" class="tools" hidden>
+      <div class="tools-heading">Проверить интерфейс<button id="tools-close" aria-label="Закрыть сценарии">×</button></div>
+      <label>Здоровье <output id="health-output">96%</output><input id="health-range" type="range" min="1" max="100" value="96"></label>
+      <div class="tool-buttons"><button id="incoming-button">Входящий ТП</button><button id="outgoing-button">Исходящий ТП</button><button id="home-button">Домой /home</button><button id="shoot-button">Выстрел</button><button id="reload-button">Перезарядка</button><button id="damage-button">Урон от игрока</button><button id="reset-button">Сбросить</button></div>
+      <div class="tool-buttons vote-tools"><button id="vote-start-button">Голосование за день</button><button id="vote-yes-button">Голос за · /cv</button><button id="building-button">Ударить постройку рукой</button></div>
+      <p>Б / , — принять · Ю / . — отклонить.<br>/tpa a — принять · /tpa d — отменить.<br>WASD — проверить движение во время отсчёта.<br>HOME: кд 80 с · TPA: кд 100 с.</p>
+    </aside>
+
+    <div class="crosshair" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    <div class="location"><span class="location-icon">⌖</span> ОКРЕСТНОСТИ ШАРЛОТТАУНА</div>
+
+    <section id="building-panel" class="building-panel panel" aria-label="Состояние постройки" hidden><span>СОСТОЯНИЕ ПОСТРОЙКИ</span><strong>Деревянная стена</strong><b>996 / 1000</b><div class="building-track"><i></i></div></section>
+    <section id="vote-panel" class="vote-panel panel" aria-label="Голосование за день" aria-live="polite">
+      <div class="card-eyebrow"><span><i class="live-dot"></i> ГОЛОСОВАНИЕ</span><span id="vote-timer">60 с</span></div>
+      <div class="vote-content"><h2 id="vote-topic">Наступление дня</h2><p id="vote-initiator">Начал Сталкер</p><div class="vote-score"><strong id="vote-count">2 <span>/ 3</span></strong><span id="vote-status">Нужен ещё 1 голос</span></div><div class="vote-progress-track"><div id="vote-fill"></div></div><p class="vote-hint" id="vote-hint">Голос за: <kbd>/vote yes</kbd> или <kbd>/cv</kbd></p></div>
+    </section>
+
+    <section id="teleport" class="teleport panel" aria-live="polite" aria-label="Телепортация">
+      <div class="card-eyebrow"><span><i class="live-dot"></i> ТЕЛЕПОРТАЦИЯ</span><span id="request-expiry">00:30</span></div>
+      <div class="teleport-body"><div class="teleport-icon" id="teleport-icon">↗</div><div class="teleport-copy"><h1 id="teleport-title">К вам хотят переместиться</h1><p id="teleport-description"><strong>Сталкер</strong> отправил запрос на телепортацию</p></div></div>
+      <div class="countdown" id="countdown" hidden><span id="countdown-number">5</span><div><strong>секунд до перемещения</strong><p>Можно продолжать двигаться</p></div></div>
+      <div class="progress-track" id="progress-track" hidden><div id="progress-fill"></div></div>
+      <div class="teleport-actions" id="teleport-actions"><button id="accept-button" class="accept"><kbd>Б</kbd><span>Принять</span><b>↵</b></button><button id="deny-button" class="deny"><kbd>Ю</kbd><span>Отклонить</span></button></div>
+      <button class="cancel-transfer" id="cancel-transfer" hidden><kbd>Ю</kbd> Отменить перемещение</button>
+      <div class="card-footer" id="teleport-hint">Игрок появится рядом с вами через 5 секунд после согласия</div>
+    </section>
+
+    <section class="vitals" aria-label="Показатели персонажа">
+      <div class="player-status"><span class="live-dot"></span><span id="condition">СОСТОЯНИЕ СТАБИЛЬНО</span><span class="status-detail" id="movement-status">В ДВИЖЕНИИ</span></div>
+      <div class="health panel" id="health-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg><div class="health-copy"><span>ЗДОРОВЬЕ</span><div><strong id="health-value">96</strong><span>/ 100</span></div></div><div class="health-signal"><i></i><i></i><i></i><i></i><i></i></div><div class="health-track"><div id="health-fill"></div></div></div>
+      <div class="survival panel">
+        <div class="stat food" title="Сытость"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v6m3-6v6m3-6v6M6 7h6v4l-3 3v7M18 3c-3 3-3 9 0 10v8M18 3v10"/></svg><span>СЫТОСТЬ</span><strong>84<small>%</small></strong><i><b style="width:84%"></b></i></div>
+        <div class="stat water" title="Вода"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13zM8 15c0 3 2 4 4 4"/></svg><span>ВОДА</span><strong>72<small>%</small></strong><i><b style="width:72%"></b></i></div>
+        <div class="stat stamina" title="Выносливость"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 2-9 12h6l-1 8 9-12h-6z"/></svg><span>ЭНЕРГИЯ</span><strong id="stamina-value">100<small>%</small></strong><i><b id="stamina-fill" style="width:100%"></b></i></div>
+      </div>
+      <div class="oxygen" id="oxygen" hidden>КИСЛОРОД <strong>100%</strong></div>
+    </section>
+
+    <section class="weapon panel" aria-label="Оружие и патроны"><div class="weapon-heading"><span>ОРУЖИЕ</span></div><div class="weapon-main"><div><h2>MAPLESTRIKE</h2><div class="fire-mode"><i></i> АВТО</div></div></div><div class="ammo-line"><div class="ammo"><strong id="ammo-value">24</strong><span>/</span><b id="capacity-value">30</b></div><div class="ammo-caption"><span>Cobra Magazine</span></div></div><div class="ammo-segments" id="ammo-segments"></div><div class="weapon-footer"><span id="reload-hint">R · Перезарядить</span><span id="weapon-condition">ПРОЧНОСТЬ 98%</span></div></section>
+    <div class="toast panel" id="toast" role="status" hidden></div>
+    <footer class="build-mark">MRE <span>СВОЯ ТЕРРИТОРИЯ.</span></footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -7,9 +7,21 @@
     <BaseOutputPath>../../../runtime/plugin-builds/Teleportation.MRE/tests/bin/</BaseOutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Plugin/TeleportationConfiguration.cs" Link="Actual/TeleportationConfiguration.cs" />
+    <Compile Include="../Plugin/Commands/TPACommand.cs" Link="Actual/TPACommand.cs" />
     <Compile Include="../Plugin/Models/TPARequest.cs" Link="Actual/TPARequest.cs" />
+    <Compile Include="../Plugin/Models/HomeTeleportRequest.cs" Link="Actual/HomeTeleportRequest.cs" />
+    <Compile Include="../../MoreHomes.MRE/Plugin/Commands/HomeCommand.cs" Link="Actual/HomeCommand.cs" />
+    <Compile Include="../../MoreHomes.MRE/Plugin/Helpers/HomesHelper.cs" Link="Actual/HomesHelper.cs" />
+    <Compile Include="../../MoreHomes.MRE/Plugin/Helpers/VipHelper.cs" Link="Actual/VipHelper.cs" />
+    <Compile Include="../../MoreHomes.MRE/Plugin/Models/PlayerHome.cs" Link="Actual/PlayerHome.cs" />
+    <Compile Include="../../MoreHomes.MRE/Plugin/Models/PlayerData.cs" Link="Actual/PlayerData.cs" />
+    <Compile Include="../../MoreHomes.MRE/Plugin/Models/ConvertablePosition.cs" Link="Actual/ConvertablePosition.cs" />
+    <Compile Include="../../MoreHomes.MRE/Plugin/Models/VIPPermission.cs" Link="Actual/VIPPermission.cs" />
+    <Compile Include="../../MoreHomes.MRE/Plugin/MoreHomesConfiguration.cs" Link="Actual/MoreHomesConfiguration.cs" />
     <Compile Include="../Plugin/Utils/TeleportationRequestHelper.cs" Link="Actual/TeleportationRequestHelper.cs" />
     <Compile Include="../Plugin/Utils/RaidOwnershipRules.cs" Link="Actual/RaidOwnershipRules.cs" />
+    <Compile Include="../Plugin/Utils/PluginKeyEdges.cs" Link="Actual/PluginKeyEdges.cs" />
     <Compile Include="../Plugin/Components/MovementDetectorComponent.cs" Link="Actual/MovementDetectorComponent.cs" />
   </ItemGroup>
 </Project>

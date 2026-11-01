@@ -2,11 +2,11 @@
 <MoreHomesConfiguration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <MessageColor>yellow</MessageColor>
   <MessageIconUrl />
-  <DefaultHomeCooldown>300</DefaultHomeCooldown>
-  <DefaultHomeDelay>15</DefaultHomeDelay>
+  <DefaultHomeCooldown>80</DefaultHomeCooldown>
+  <DefaultHomeDelay>5</DefaultHomeDelay>
   <DefaultMaxHomes>1</DefaultMaxHomes>
   <TeleportHeight>0.5</TeleportHeight>
-  <CancelOnMove>true</CancelOnMove>
+  <CancelOnMove>false</CancelOnMove>
   <MoveMaxDistance>0.5</MoveMaxDistance>
   <BlockUnderground>true</BlockUnderground>
   <VIPCooldowns />

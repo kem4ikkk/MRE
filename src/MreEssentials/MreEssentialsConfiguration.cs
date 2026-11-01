@@ -19,7 +19,7 @@ namespace MreEssentials
         {
             VoteDayEnabled = true;
             NightOnly = true;
-            MinimumPlayers = 2;
+            MinimumPlayers = 1;
             RequiredPercent = 60;
             VoteDurationSeconds = 60;
             VoteCooldownSeconds = 300;

@@ -14,13 +14,15 @@ namespace MreEssentials
         public int RequiredVotes { get; private set; }
         public int EligibleCount { get { return eligible.Count; } }
         public DateTime DeadlineUtc { get; private set; }
+        public bool IsEligible(ulong player) { return eligible.Contains(player); }
+        public bool HasVoted(ulong player) { return votes.Contains(player); }
 
         public VoteSession(IEnumerable<ulong> eligiblePlayers, int requiredPercent, DateTime deadlineUtc)
         {
             if (requiredPercent < 50 || requiredPercent > 100)
                 throw new ArgumentOutOfRangeException("requiredPercent");
             eligible = new HashSet<ulong>(eligiblePlayers);
-            if (eligible.Count < 2) throw new ArgumentException("Необходимо минимум два участника.");
+            if (eligible.Count < 1) throw new ArgumentException("Необходим минимум один участник.");
             RequiredVotes = (int)Math.Ceiling(eligible.Count * (requiredPercent / 100.0));
             DeadlineUtc = deadlineUtc;
         }
