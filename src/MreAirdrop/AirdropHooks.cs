@@ -17,9 +17,23 @@ namespace MreAirdrop
         {
             __state = null;
             var p = MreAirdropPlugin.Instance;
-            if (p == null || p.ActivePlane == null || !p.ActivePlane.ServerHasDeployedCarepackage ||
-                p.ActiveCargo != cargoSpawnTable || (position - p.ActivePlane.ServerDropPosition).sqrMagnitude > 0.01f) return;
-            __state = new SpawnScope { Plugin = p, Loot = p.ActiveLoot, Before = new HashSet<Carepackage>(UnityEngine.Object.FindObjectsOfType<Carepackage>()) };
+            if (p == null) return;
+            var candidates = p.Planes.Where(x => x.Key.ServerHasDeployedCarepackage &&
+                x.Value.Cargo == cargoSpawnTable && (position - x.Key.ServerDropPosition).sqrMagnitude <= 0.01f).ToArray();
+            if (candidates.Length == 0) return;
+            if (candidates.Length != 1)
+            {
+                // Не назначать случайный комплект при неоднозначности, например
+                // после исключения внутри стороннего патча.
+                foreach (var candidate in candidates) p.Planes.Remove(candidate.Key);
+                Logger.LogWarning("[MRE] Несколько самолётов соответствуют сбросу; чужие грузы не изменены.");
+                return;
+            }
+            var chosen = candidates[0];
+            // Забираем сопоставление ДО вложенных вызовов: один самолёт не может
+            // назначить тот же комплект двум экземплярам груза.
+            p.Planes.Remove(chosen.Key);
+            __state = new SpawnScope { Plugin = p, Loot = chosen.Value.Loot, Before = new HashSet<Carepackage>(UnityEngine.Object.FindObjectsOfType<Carepackage>()) };
         }
 
         private static void AfterSpawn(object __state)
@@ -29,7 +43,6 @@ namespace MreAirdrop
             var added = UnityEngine.Object.FindObjectsOfType<Carepackage>().Where(x => !scope.Before.Contains(x)).ToArray();
             if (added.Length == 1) scope.Plugin.Packages.Add(added[0], scope.Loot);
             else Logger.LogWarning("[MRE] Новый груз не определён однозначно; чужие грузы не изменены.");
-            scope.Plugin.ActivePlane = null; scope.Plugin.ActiveCargo = null; scope.Plugin.ActiveLoot = null;
         }
 
         private static void BeforeCollision(Carepackage __instance, Collision collision, bool ___isExploded, out object __state)

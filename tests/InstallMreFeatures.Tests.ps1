@@ -31,7 +31,7 @@ $essentialsHash=(Get-FileHash -LiteralPath (Join-Path $fixture 'runtime\builds\M
 $hudManifest=@{plugin='MreHud';sha256=$hudHash;essentials_sha256=$essentialsHash;teleportation_sha256=$tpaHash}
 Write-File 'runtime\plugin-builds\MreHud\build.json' ($hudManifest|ConvertTo-Json)
 Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\Teleportation\Teleportation.configuration.xml' '<custom>keep</custom>'
-Write-File 'runtime\server\Servers\MRE\Rocket\Commands.config.xml' '<RocketCommands><Commands><Command Name="admin" Enabled="true" Priority="Normal">Rocket.Unturned.Commands.CommandAdmin/admin</Command><Command Name="admin" Enabled="true" Priority="Low">Rocket.Unturned.Commands.UnturnedCommands/admin</Command><Command Name="custom" Enabled="false" Priority="Low">Custom.Command/custom</Command></Commands></RocketCommands>'
+Write-File 'runtime\server\Servers\MRE\Rocket\Commands.config.xml' '<RocketCommands><Commands><Command Name="admin" Enabled="true" Priority="Normal">Rocket.Unturned.Commands.CommandAdmin/admin</Command><Command Name="admin" Enabled="true" Priority="Low">Rocket.Unturned.Commands.UnturnedCommands/admin</Command><Command Name="airdrop" Enabled="true" Priority="Low">Rocket.Unturned.Commands.UnturnedCommands/airdrop</Command><Command Name="custom" Enabled="false" Priority="Low">Custom.Command/custom</Command></Commands></RocketCommands>'
 New-Item -ItemType Directory -Path (Join-Path $fixture 'scripts') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\Install-MreFeatures.ps1') -Destination (Join-Path $fixture 'scripts')
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\Get-MreProcessPath.ps1') -Destination (Join-Path $fixture 'scripts')
@@ -100,11 +100,26 @@ Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreAirdrop\MreAirdrop.conf
 & $install -Apply -AirdropOnly -Confirm:$false | Out-Null
 Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreAirdrop.dll')) -eq 'new-MreAirdrop') 'airdrop-only installs validated DLL'
 Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreAirdrop\MreAirdrop.configuration.xml')) -eq '<custom>preserve</custom>') 'airdrop-only preserves configuration'
-Check ([IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml')) -eq $oldCommandMap) 'airdrop-only preserves command mappings exactly'
+[xml]$airdropMapping=Get-Content -LiteralPath (Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml') -Raw -Encoding UTF8
+Check ($airdropMapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.UnturnedCommands/airdrop"]').GetAttribute('Enabled') -eq 'false') 'native airdrop wrapper disabled'
+$ourAirdrop=$airdropMapping.SelectSingleNode('/RocketCommands/Commands/Command[.="MreAirdrop.CommandAirdrop/airdrop"]')
+Check ($ourAirdrop.GetAttribute('Enabled') -eq 'true' -and $ourAirdrop.GetAttribute('Priority') -eq 'High') 'MRE airdrop mapping enabled with high priority'
+Check ($airdropMapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Custom.Command/custom"]').GetAttribute('Enabled') -eq 'false') 'airdrop-only preserves unrelated mapping'
 Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash -eq $oldEssentials) 'airdrop-only preserves other plugins'
 $airdropReceipt=Get-Content -LiteralPath (Join-Path $fixture 'runtime\features-installed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 Check ($airdropReceipt.settings.AirdropOnly -eq $true) 'airdrop-only mode recorded'
 Check ([IO.File]::ReadAllText((Join-Path $airdropReceipt.backup_path 'MreAirdrop.dll')) -eq 'old-airdrop') 'airdrop-only backs up previous DLL'
+Check ([IO.File]::ReadAllText((Join-Path $airdropReceipt.backup_path 'Commands.config.xml')) -eq $oldCommandMap) 'airdrop-only backs up exact previous mappings'
+$mapPath=Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml'
+$mapBeforeConflict=[IO.File]::ReadAllText($mapPath)
+[xml]$conflicting=$mapBeforeConflict
+$foreign=$conflicting.CreateElement('Command'); $foreign.SetAttribute('Name','airdrop'); $foreign.SetAttribute('Enabled','true'); $foreign.InnerText='Other.Plugin/airdrop'
+[void]$conflicting.DocumentElement.SelectSingleNode('Commands').AppendChild($foreign)
+$conflicting.Save($mapPath)
+$conflictMap=[IO.File]::ReadAllText($mapPath)
+Must-Fail { & $install -Apply -AirdropOnly -Confirm:$false } 'unknown enabled airdrop conflict rejected'
+Check ([IO.File]::ReadAllText($mapPath) -eq $conflictMap) 'conflict leaves mappings unchanged'
+[IO.File]::WriteAllText($mapPath,$mapBeforeConflict,$utf8)
 [xml]$mapping=Get-Content -LiteralPath (Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml') -Raw -Encoding UTF8
 Check ($mapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.CommandAdmin/admin"]').GetAttribute('Enabled') -eq 'false') 'conflicting Rocket admin disabled'
 Check ($mapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.UnturnedCommands/admin"]').GetAttribute('Enabled') -eq 'false') 'conflicting native wrapper disabled'

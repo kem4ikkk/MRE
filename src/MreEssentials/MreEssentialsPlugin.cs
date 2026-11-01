@@ -22,6 +22,7 @@ namespace MreEssentials
         private DateTime nextTickUtc;
         private DateTime nextControlTickUtc;
         private LocalControlBridge control;
+        private PresenceAnnouncements presence;
         private string localControlDirectory;
 
         protected override void Load()
@@ -43,6 +44,8 @@ namespace MreEssentials
                 control = new LocalControlBridge(controlRoot, ExecuteLocalCommand);
                 Logger.Log("[MRE] Local control ready: " + controlRoot);
             }
+            presence = new PresenceAnnouncements();
+            presence.Start();
             Instance = this;
             Logger.Log("[MRE] MreEssentials загружен: /vote day и автоматическое сохранение.");
         }
@@ -50,6 +53,7 @@ namespace MreEssentials
         protected override void Unload()
         {
             session = null;
+            if (presence != null) { presence.Stop(); presence = null; }
             control = null;
             Instance = null;
             Logger.Log("[MRE] MreEssentials выгружен. Активное голосование отменено.");

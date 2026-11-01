@@ -5,9 +5,13 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using HarmonyLib;
 using MreShared;
+using Rocket.API;
+using Rocket.Core;
 using Rocket.Core.Plugins;
+using Rocket.Unturned.Player;
 using SDG.Unturned;
 using UnityEngine;
 using Logger = Rocket.Core.Logging.Logger;
@@ -24,14 +28,20 @@ namespace MreAirdrop
         private FieldInfo planeList;
         private bool oldNativeEnabled, nativeWasChanged;
         private DateTime nextCheck;
-        internal AirdropInfo ActivePlane;
-        internal SpawnAsset ActiveCargo;
-        internal ushort[] ActiveLoot;
-        internal DateTime ActiveUntil;
+        private int gameThread;
+        private bool dispatchVerified;
+        internal sealed class TrackedPlane
+        {
+            internal SpawnAsset Cargo;
+            internal ushort[] Loot;
+            internal DateTime Until;
+        }
+        internal readonly Dictionary<AirdropInfo, TrackedPlane> Planes = new Dictionary<AirdropInfo, TrackedPlane>();
         internal readonly Dictionary<Carepackage, ushort[]> Packages = new Dictionary<Carepackage, ushort[]>();
 
         protected override void Load()
         {
+            gameThread = Thread.CurrentThread.ManagedThreadId;
             if (!Configuration.Instance.Enabled) { Logger.Log("[MRE] Аирдроп отключён в конфигурации."); return; }
             if (Configuration.Instance.IntervalSeconds < 60 || Configuration.Instance.IntervalSeconds > 604800) throw new InvalidOperationException("Некорректный интервал аирдропа.");
             LootPlan.Validate(Configuration.Instance.Categories);
@@ -61,7 +71,7 @@ namespace MreAirdrop
             Running = false;
             if (harmony != null) harmony.UnpatchAll("mre.airdrop.v1");
             if (nativeWasChanged && Provider.modeConfigData != null) Provider.modeConfigData.Events.Use_Airdrops = oldNativeEnabled;
-            Packages.Clear(); ActivePlane = null; ActiveLoot = null; Instance = null;
+            Packages.Clear(); Planes.Clear(); Instance = null;
         }
         private string SchedulePath { get { return Path.Combine(Directory, "next-airdrop.utc"); } }
         private void LoadNext()
@@ -85,14 +95,24 @@ namespace MreAirdrop
         {
             if (!Running || DateTime.UtcNow < nextCheck) return;
             nextCheck = DateTime.UtcNow.AddSeconds(1);
-            if (ActivePlane != null && DateTime.UtcNow > ActiveUntil) { Logger.LogWarning("[MRE] Аирдроп не был идентифицирован; штатное содержимое не меняется."); ActivePlane = null; ActiveCargo = null; ActiveLoot = null; }
+            if (!dispatchVerified && Level.isLoaded)
+            {
+                var selected = R.Commands.GetCommand("airdrop") as Rocket.Core.Commands.RocketCommandManager.RegisteredRocketCommand;
+                Logger.Log("[MRE] /airdrop dispatch=" + (selected != null && selected.Command is CommandAirdrop ? "MreAirdrop OK" : "CONFLICT; use /mreairdrop and review Commands.config.xml"));
+                dispatchVerified = true;
+            }
+            foreach (var expired in Planes.Where(x => DateTime.UtcNow > x.Value.Until).Select(x => x.Key).ToArray())
+            {
+                Planes.Remove(expired);
+                Logger.LogWarning("[MRE] Самолёт не сбросил идентифицированный груз за 20 минут; штатное содержимое не меняется.");
+            }
+            foreach (var expired in Packages.Keys.Where(x => x == null).ToArray()) Packages.Remove(expired);
             if (!Provider.isServer || !Level.isLoaded || DateTime.UtcNow < NextUtc) return;
             try
             {
                 // Сохраняем следующее время до запуска: после сбоя не будет серии повторов.
                 DateTime next = DateTime.UtcNow.AddSeconds(Configuration.Instance.IntervalSeconds);
                 SaveNext(next); NextUtc = next;
-                if (ActivePlane != null) { Logger.LogWarning("[MRE] Прошлый аирдроп ещё активен; событие пропущено."); return; }
                 Launch();
             }
             catch (Exception error)
@@ -101,6 +121,29 @@ namespace MreAirdrop
                 if (nativeWasChanged && Provider.modeConfigData != null)
                 { Provider.modeConfigData.Events.Use_Airdrops = oldNativeEnabled; nativeWasChanged = false; }
                 Logger.LogException(error, "[MRE] Планировщик остановлен; штатная настройка аирдропов восстановлена. Нужна проверка конфигурации и диска.");
+            }
+        }
+        public void LaunchManual(IRocketPlayer caller)
+        {
+            if (Thread.CurrentThread.ManagedThreadId != gameThread) throw new InvalidOperationException("Аирдроп вызывается только на игровом потоке.");
+            var player = caller as UnturnedPlayer;
+            if (!(caller is ConsolePlayer) && (player == null || player.Player == null ||
+                !Provider.clients.Any(x => x != null && x.player == player.Player && x.playerID.steamID == player.CSteamID) ||
+                (!player.IsAdmin && !R.Permissions.HasPermission(player, new List<string> { "mre.airdrop.admin" }))))
+            { if (caller != null) MreChat.Say(caller, "MRE: нет права на запуск аирдропа."); return; }
+            if (!Running || !Provider.isServer || !Level.isLoaded)
+            { MreChat.Say(caller, "MRE: запуск аирдропа временно недоступен."); return; }
+            try
+            {
+                // Ручные запуски не меняют NextUtc и файл часового расписания.
+                Launch();
+                Logger.Log("[MRE] Ручной аирдроп: actor=" + caller.Id + "; часовой таймер не изменён.");
+                MreChat.Say(caller, "MRE: аирдроп запущен. Часовое расписание не изменено.");
+            }
+            catch (Exception error)
+            {
+                Logger.LogException(error, "[MRE] Ошибка ручного запуска аирдропа; повтор автоматически не выполняется.");
+                MreChat.Say(caller, "MRE: аирдроп не подтверждён; проверьте серверный журнал.");
             }
         }
         private void Launch()
@@ -172,7 +215,7 @@ namespace MreAirdrop
             LevelManager.SpawnAirdrop(node.transform.position, cargo);
             var added = planes.Cast<object>().Where(x => !before.Contains(x)).ToArray();
             if (added.Length != 1 || !(added[0] is AirdropInfo)) throw new InvalidOperationException("Не удалось однозначно определить новый самолёт.");
-            ActivePlane = (AirdropInfo)added[0]; ActiveCargo = cargo; ActiveLoot = ids.ToArray(); ActiveUntil = DateTime.UtcNow.AddMinutes(20);
+            Planes.Add((AirdropInfo)added[0], new TrackedPlane { Cargo = cargo, Loot = ids.ToArray(), Until = DateTime.UtcNow.AddMinutes(20) });
             MreChat.Say("MRE: в пути " + selected.Item1.Name.ToLowerInvariant() + " аирдроп!");
         }
     }

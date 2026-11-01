@@ -69,7 +69,7 @@ try {
         [xml]$essentials = Get-Content -LiteralPath $essentialsPath -Raw -Encoding UTF8
         [xml]$homes = Get-Content -LiteralPath $homePath -Raw -Encoding UTF8
     }
-    if (-not ($VaultOnly -or $AirdropOnly)) {
+    if (-not $VaultOnly) {
     if (Test-Path -LiteralPath $commandMapPath) { [xml]$commandMap = Get-Content -LiteralPath $commandMapPath -Raw -Encoding UTF8 }
     else { [xml]$commandMap = '<RocketCommands><Commands /></RocketCommands>' }
     }
@@ -103,10 +103,29 @@ try {
     }
     }
 
+    if ($AirdropOnly) {
+        $airdropType='MreAirdrop.CommandAirdrop/airdrop'
+        $nativeType='Rocket.Unturned.Commands.UnturnedCommands/airdrop'
+        foreach ($mapping in @($commandMap.SelectNodes('/RocketCommands/Commands/Command'))) {
+            if ($mapping.GetAttribute('Name') -ne 'airdrop') { continue }
+            if ($mapping.InnerText -eq $nativeType) { $mapping.SetAttribute('Enabled','false') }
+            elseif ($mapping.InnerText -ne $airdropType -and $mapping.GetAttribute('Enabled') -ne 'false') {
+                throw "Конфликт команды airdrop: $($mapping.InnerText). Проверьте Commands.config.xml перед установкой."
+            }
+        }
+        $mapping=@($commandMap.SelectNodes('/RocketCommands/Commands/Command') | Where-Object InnerText -eq $airdropType)
+        if (-not $mapping.Count) {
+            $node=$commandMap.CreateElement('Command'); $node.InnerText=$airdropType
+            $node.SetAttribute('Name','airdrop'); [void]$commandMap.DocumentElement.SelectSingleNode('Commands').AppendChild($node)
+            $mapping=@($node)
+        }
+        foreach ($node in $mapping) { $node.SetAttribute('Name','airdrop'); $node.SetAttribute('Enabled','true'); $node.SetAttribute('Priority','High') }
+    }
+
     $backupRoot=Join-Path $projectRoot ('backups\features-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fffffff'))
     New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
     $targets=@($copies | ForEach-Object Target)
-    if (-not ($VaultOnly -or $AirdropOnly)) { $targets += @($commandMapPath) }
+    if (-not $VaultOnly) { $targets += @($commandMapPath) }
     if (-not $targetedInstall) { $targets += @($essentialsPath,$homePath) }
     foreach ($target in $targets) {
         if (-not (Test-Path -LiteralPath $target)) { continue }
@@ -127,7 +146,7 @@ try {
         else { [IO.File]::Move($temporary,$copy.Target) }
     }
     if (-not $targetedInstall) { $essentials.Save($essentialsPath); $homes.Save($homePath) }
-    if (-not ($VaultOnly -or $AirdropOnly)) { $commandMap.Save($commandMapPath) }
+    if (-not $VaultOnly) { $commandMap.Save($commandMapPath) }
     $receipt=[ordered]@{
         installed_at_utc=[DateTime]::UtcNow.ToString('o')
         backup_path=$backupRoot

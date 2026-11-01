@@ -34,6 +34,7 @@
       <Id>mre_admin</Id><DisplayName>Администратор MRE</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>10</Priority>
       <Permissions>
         <Permission Cooldown="0">mre.admin</Permission>
+        <Permission Cooldown="0">mre.airdrop.admin</Permission>
         <Permission Cooldown="0">mre.admin.players</Permission>
         <Permission Cooldown="0">mre.admin.tp</Permission>
         <Permission Cooldown="0">mre.admin.bring</Permission>
