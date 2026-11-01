@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
+  <ItemGroup><Compile Include="../LootRoll.cs" Link="LootRoll.cs"/><Compile Include="../LootPlan.cs" Link="LootPlan.cs"/><Compile Include="Program.cs"/></ItemGroup>
+</Project>

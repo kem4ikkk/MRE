@@ -12,7 +12,7 @@ function Write-File([string]$Relative,[string]$Content) {
 $checks=0
 function Check([bool]$Condition,[string]$Name) { if(-not $Condition){throw "FAIL: $Name"}; $script:checks++ }
 function Must-Fail([scriptblock]$Action,[string]$Name) { $failed=$false;try{& $Action | Out-Null}catch{$failed=$true};Check $failed $Name }
-foreach($name in @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight','MreVault')) {
+foreach($name in @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight','MreVault','MreAirdrop')) {
     Write-File ("runtime\builds\$name\$name.dll") ("new-$name")
     Write-File ("src\$name\LICENSE") ("test-license-$name")
     $hash=(Get-FileHash -LiteralPath (Join-Path $fixture "runtime\builds\$name\$name.dll")).Hash
@@ -81,6 +81,9 @@ Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash
 Must-Fail { & $install -InterfaceOnly -AdminOnly } 'conflicting targeted installation modes rejected'
 Must-Fail { & $install -VaultOnly -AdminOnly } 'vault and admin modes cannot be combined'
 Must-Fail { & $install -VaultOnly -InterfaceOnly } 'vault and interface modes cannot be combined'
+Must-Fail { & $install -AirdropOnly -InterfaceOnly } 'airdrop and interface modes cannot be combined'
+Must-Fail { & $install -AirdropOnly -AdminOnly } 'airdrop and admin modes cannot be combined'
+Must-Fail { & $install -AirdropOnly -VaultOnly } 'airdrop and vault modes cannot be combined'
 $oldCommandMap=[IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml'))
 $oldEssentials=(Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash
 Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreVault.dll' 'old-vault'
@@ -92,6 +95,16 @@ Check ([IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Ro
 Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash -eq $oldEssentials) 'vault-only preserves other plugins'
 $vaultReceipt=Get-Content -LiteralPath (Join-Path $fixture 'runtime\features-installed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 Check ([IO.File]::ReadAllText((Join-Path $vaultReceipt.backup_path 'MreVault.dll')) -eq 'old-vault') 'vault-only backs up previous DLL'
+Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreAirdrop.dll' 'old-airdrop'
+Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreAirdrop\MreAirdrop.configuration.xml' '<custom>preserve</custom>'
+& $install -Apply -AirdropOnly -Confirm:$false | Out-Null
+Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreAirdrop.dll')) -eq 'new-MreAirdrop') 'airdrop-only installs validated DLL'
+Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreAirdrop\MreAirdrop.configuration.xml')) -eq '<custom>preserve</custom>') 'airdrop-only preserves configuration'
+Check ([IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml')) -eq $oldCommandMap) 'airdrop-only preserves command mappings exactly'
+Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash -eq $oldEssentials) 'airdrop-only preserves other plugins'
+$airdropReceipt=Get-Content -LiteralPath (Join-Path $fixture 'runtime\features-installed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+Check ($airdropReceipt.settings.AirdropOnly -eq $true) 'airdrop-only mode recorded'
+Check ([IO.File]::ReadAllText((Join-Path $airdropReceipt.backup_path 'MreAirdrop.dll')) -eq 'old-airdrop') 'airdrop-only backs up previous DLL'
 [xml]$mapping=Get-Content -LiteralPath (Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml') -Raw -Encoding UTF8
 Check ($mapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.CommandAdmin/admin"]').GetAttribute('Enabled') -eq 'false') 'conflicting Rocket admin disabled'
 Check ($mapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.UnturnedCommands/admin"]').GetAttribute('Enabled') -eq 'false') 'conflicting native wrapper disabled'

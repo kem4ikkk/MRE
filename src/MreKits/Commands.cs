@@ -15,7 +15,7 @@ namespace MreKits
         public List<string> Permissions { get { return new List<string> { "mre.kit" }; } }
         public void Execute(IRocketPlayer caller, string[] args)
         {
-            MreChat.Say(caller, "MRE: /kit start — лук, 5 стрел, одежда, спальник, 2 бинта, топор, 2 консервы и 2 воды. Раз в час.");
+            MreChat.Say(caller, "MRE: /kit start — лук, 5 стрел, полицейская рубашка и штаны, спальник, 2 бинта, топор, 2 консервы и 2 воды. Раз в час.");
         }
     }
     public sealed class CommandKit : IRocketCommand

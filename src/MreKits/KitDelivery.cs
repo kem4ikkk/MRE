@@ -17,7 +17,7 @@ namespace MreKits
         internal bool Preflight(ushort[] ids)
         {
             plan.Clear(); var pages = new Dictionary<byte, Items>();
-            shirt = new Item(180, EItemOrigin.ADMIN); pants = new Item(2, EItemOrigin.ADMIN);
+            shirt = new Item(223, EItemOrigin.ADMIN); pants = new Item(224, EItemOrigin.ADMIN);
             var shirtAsset = shirt.GetAsset() as ItemShirtAsset;
             var pantsAsset = pants.GetAsset() as ItemPantsAsset;
             if (shirtAsset == null || pantsAsset == null) throw new InvalidOperationException("Одежда набора недоступна.");
