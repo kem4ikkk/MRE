@@ -35,9 +35,9 @@ namespace MreAirdrop
                     Bundle("Dragonfang", 35, Entry(132, 1), Entry(133, 2), Entry(1192, 2)),
                     Bundle("Timberwolf", 25, Entry(18, 1), Entry(20, 3), Entry(1192, 2)) } },
                 new DropCategory { Name = "Строительный", Weight = 1, Bundles = new List<LootBundle> {
-                    Bundle("Защитная база", 40, Entry(1230, 1), Entry(1372, 1), Entry(68, 4), Entry(285, 6)),
-                    Bundle("Энергетическая база", 35, Entry(1230, 2), Entry(68, 4), Entry(285, 6)),
-                    Bundle("Оборона", 25, Entry(1372, 2), Entry(1230, 1), Entry(68, 4), Entry(285, 4)) } },
+                    Bundle("Металлическая база", 40, Entry(1230, 1), Entry(1372, 1), Entry(371, 4), Entry(369, 2), Entry(370, 1), Entry(373, 1), Entry(285, 4)),
+                    Bundle("Кирпичная база", 35, Entry(1230, 1), Entry(1215, 4), Entry(1979, 2), Entry(1210, 1), Entry(1984, 1), Entry(1212, 1), Entry(285, 3)),
+                    Bundle("Укреплённая база", 25, Entry(1372, 2), Entry(1230, 1), Entry(1215, 4), Entry(1979, 2), Entry(1211, 1), Entry(1216, 1)) } },
                 new DropCategory { Name = "Рейдовый", Weight = 1, Bundles = new List<LootBundle> {
                     Bundle("Рейдовый арсенал", 40, Entry(519, 1), Entry(520, 1), Entry(1240, 1), Entry(1241, 4), Entry(1100, 4)),
                     Bundle("Подрывной комплект", 35, Entry(519, 1), Entry(520, 1), Entry(1240, 1), Entry(1393, 3), Entry(1241, 3)),
