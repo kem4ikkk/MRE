@@ -43,6 +43,18 @@ internal static class Program
             store.Write(owner, new [] { new VaultStoredItem { Id = 42, X = 3, Y = 2, Rotation = 1, Amount = 3, Quality = 94, State = new byte[] { 2, 3, 4 } } });
             Check(new VaultSessionStore(Path.Combine(dir, "store")).Locked(owner));
             var result = store.Read(owner); Check(result.Count == 1 && result[0].Id == 42 && result[0].Amount == 3 && result[0].State[2] == 4);
+            // После перезапуска должны сохраниться блокировка и записанные предметы.
+            var restarted = new VaultSessionStore(Path.Combine(dir, "store"));
+            Check(restarted.Locked(owner) && Reject(() => restarted.Begin(owner)));
+            Check(restarted.Read(owner).Count == 1);
+            // Даже пустой pending блокирует повторное открытие.
+            string sessionPending = Path.Combine(dir, "store", "123.pending");
+            File.WriteAllBytes(sessionPending, new byte[0]);
+            Check(new VaultSessionStore(Path.Combine(dir, "store")).Locked(owner));
+            Check(Reject(() => restarted.Begin(owner)));
+            // Ошибка проверки предмета не должна снимать блокировку или менять файл.
+            Check(Reject(() => restarted.Write(owner, new [] { new VaultStoredItem { Id = 0, Amount = 1, Quality = 100, State = new byte[0] } })));
+            Check(restarted.Locked(owner) && restarted.Read(owner)[0].Id == 42);
             store.End(owner); Check(!store.Locked(owner));
             string vaultPath = Path.Combine(dir, "store", "123.vault"); byte[] vaultBytes = File.ReadAllBytes(vaultPath);
             File.Delete(vaultPath); Check(Reject(() => store.Read(owner))); File.WriteAllBytes(vaultPath, vaultBytes);
