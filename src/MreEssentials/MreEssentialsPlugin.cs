@@ -43,6 +43,7 @@ namespace MreEssentials
         private DateTime nextTickUtc;
         private DateTime nextControlTickUtc;
         private LocalControlBridge control;
+        private PresenceAnnouncements presence;
         private string localControlDirectory;
         private readonly HashSet<ulong> pendingSkills = new HashSet<ulong>();
         private bool initialSkillsApplied;
@@ -67,6 +68,8 @@ namespace MreEssentials
                 control = new LocalControlBridge(controlRoot, ExecuteLocalCommand);
                 Logger.Log("[MRE] Local control ready: " + controlRoot);
             }
+            presence = new PresenceAnnouncements();
+            presence.Start();
             Instance = this;
             initialSkillsApplied = false;
             nextSkillsRefreshUtc = DateTime.UtcNow;
@@ -79,6 +82,7 @@ namespace MreEssentials
 
         protected override void Unload()
         {
+            if (presence != null) { presence.Stop(); presence = null; }
             Provider.onServerConnected -= OnServerConnected;
             Provider.onServerDisconnected -= OnServerDisconnected;
             PlayerLife.OnRevived_Global -= OnPlayerRevived;

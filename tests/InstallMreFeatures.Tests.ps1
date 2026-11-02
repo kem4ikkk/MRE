@@ -12,7 +12,7 @@ function Write-File([string]$Relative,[string]$Content) {
 $checks=0
 function Check([bool]$Condition,[string]$Name) { if(-not $Condition){throw "FAIL: $Name"}; $script:checks++ }
 function Must-Fail([scriptblock]$Action,[string]$Name) { $failed=$false;try{& $Action | Out-Null}catch{$failed=$true};Check $failed $Name }
-foreach($name in @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight','MreVault','MreChatStyle')) {
+foreach($name in @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight','MreVault','MreChatStyle','MreAirdrop')) {
     Write-File ("runtime\builds\$name\$name.dll") ("new-$name")
     Write-File ("src\$name\LICENSE") ("test-license-$name")
     $hash=(Get-FileHash -LiteralPath (Join-Path $fixture "runtime\builds\$name\$name.dll")).Hash
@@ -81,6 +81,11 @@ Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash
 Must-Fail { & $install -InterfaceOnly -AdminOnly } 'conflicting targeted installation modes rejected'
 Must-Fail { & $install -VaultOnly -KitsOnly } 'vault and kits modes cannot be combined'
 Must-Fail { & $install -ChatOnly -KitsOnly } 'chat and kits modes cannot be combined'
+Must-Fail { & $install -AirdropOnly -InterfaceOnly } 'airdrop and interface modes cannot be combined'
+Must-Fail { & $install -AirdropOnly -AdminOnly } 'airdrop and admin modes cannot be combined'
+Must-Fail { & $install -AirdropOnly -VaultOnly } 'airdrop and vault modes cannot be combined'
+Must-Fail { & $install -AirdropOnly -KitsOnly } 'airdrop and kits modes cannot be combined'
+Must-Fail { & $install -AirdropOnly -ChatOnly } 'airdrop and chat modes cannot be combined'
 $oldCommandMap=[IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml'))
 Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreVault.dll' 'old-vault'
 Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreVault\vault-state.json' 'keep-vault-data'
@@ -100,6 +105,34 @@ Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash
 Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreChatStyle.dll')) -eq 'new-MreChatStyle') 'chat-only installs validated plugin'
 Check ([IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml')) -eq $oldCommandMap) 'chat-only preserves command mappings'
 Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash -eq $oldEssentials) 'chat-only preserves essentials'
+$mapPath=Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml'
+[xml]$withNative=Get-Content -LiteralPath $mapPath -Raw -Encoding UTF8
+$native=$withNative.CreateElement('Command'); $native.SetAttribute('Name','airdrop'); $native.SetAttribute('Enabled','true'); $native.InnerText='Rocket.Unturned.Commands.UnturnedCommands/airdrop'
+[void]$withNative.DocumentElement.SelectSingleNode('Commands').AppendChild($native); $withNative.Save($mapPath)
+$oldAirdropMap=[IO.File]::ReadAllText($mapPath)
+Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreAirdrop.dll' 'old-airdrop'
+Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreAirdrop\MreAirdrop.configuration.xml' '<custom>preserve</custom>'
+& $install -Apply -AirdropOnly -Confirm:$false | Out-Null
+Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreAirdrop.dll')) -eq 'new-MreAirdrop') 'airdrop-only installs validated DLL'
+Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreAirdrop\MreAirdrop.configuration.xml')) -eq '<custom>preserve</custom>') 'airdrop-only preserves configuration'
+[xml]$airdropMapping=Get-Content -LiteralPath $mapPath -Raw -Encoding UTF8
+Check ($airdropMapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.UnturnedCommands/airdrop"]').GetAttribute('Enabled') -eq 'false') 'native airdrop wrapper disabled'
+$ourAirdrop=$airdropMapping.SelectSingleNode('/RocketCommands/Commands/Command[.="MreAirdrop.CommandAirdrop/airdrop"]')
+Check ($ourAirdrop.GetAttribute('Enabled') -eq 'true' -and $ourAirdrop.GetAttribute('Priority') -eq 'High') 'MRE airdrop mapping enabled with high priority'
+Check ($airdropMapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Custom.Command/custom"]').GetAttribute('Enabled') -eq 'false') 'airdrop-only preserves unrelated mapping'
+Check ((Get-FileHash -LiteralPath (Join-Path $plugins 'MreEssentials.dll')).Hash -eq $oldEssentials) 'airdrop-only preserves other plugins'
+$airdropReceipt=Get-Content -LiteralPath (Join-Path $fixture 'runtime\features-installed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+Check ($airdropReceipt.settings.AirdropOnly -eq $true) 'airdrop-only mode recorded'
+Check ([IO.File]::ReadAllText((Join-Path $airdropReceipt.backup_path 'MreAirdrop.dll')) -eq 'old-airdrop') 'airdrop-only backs up previous DLL'
+Check ([IO.File]::ReadAllText((Join-Path $airdropReceipt.backup_path 'Commands.config.xml')) -eq $oldAirdropMap) 'airdrop-only backs up exact previous mappings'
+$mapBeforeConflict=[IO.File]::ReadAllText($mapPath)
+[xml]$conflicting=$mapBeforeConflict
+$foreign=$conflicting.CreateElement('Command'); $foreign.SetAttribute('Name','airdrop'); $foreign.SetAttribute('Enabled','true'); $foreign.InnerText='Other.Plugin/airdrop'
+[void]$conflicting.DocumentElement.SelectSingleNode('Commands').AppendChild($foreign); $conflicting.Save($mapPath)
+$conflictMap=[IO.File]::ReadAllText($mapPath)
+Must-Fail { & $install -Apply -AirdropOnly -Confirm:$false } 'unknown enabled airdrop conflict rejected'
+Check ([IO.File]::ReadAllText($mapPath) -eq $conflictMap) 'conflict leaves mappings unchanged'
+[IO.File]::WriteAllText($mapPath,$mapBeforeConflict,$utf8)
 [xml]$mapping=Get-Content -LiteralPath (Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml') -Raw -Encoding UTF8
 Check ($mapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.CommandAdmin/admin"]').GetAttribute('Enabled') -eq 'false') 'conflicting Rocket admin disabled'
 Check ($mapping.SelectSingleNode('/RocketCommands/Commands/Command[.="Rocket.Unturned.Commands.UnturnedCommands/admin"]').GetAttribute('Enabled') -eq 'false') 'conflicting native wrapper disabled'

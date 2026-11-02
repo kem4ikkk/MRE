@@ -13,6 +13,7 @@
         <Permission Cooldown="0">tpa</Permission>
         <Permission Cooldown="0">mre.vote</Permission>
         <Permission Cooldown="0">mre.kit</Permission>
+        <Permission Cooldown="0">mre.whenairdrop</Permission>
         <!-- Только локальное тестирование прототипа; перед публичным запуском необходима приемка VAULT. -->
         <Permission Cooldown="0">mre.vault</Permission>
         <Permission Cooldown="0">mre.trustscore</Permission>
@@ -34,6 +35,7 @@
       <Id>mre_admin</Id><DisplayName>Администратор MRE</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>10</Priority>
       <Permissions>
         <Permission Cooldown="0">mre.admin</Permission>
+        <Permission Cooldown="0">mre.airdrop.admin</Permission>
         <Permission Cooldown="0">mre.admin.players</Permission>
         <Permission Cooldown="0">mre.admin.tp</Permission>
         <Permission Cooldown="0">mre.admin.bring</Permission>
