@@ -42,7 +42,7 @@ namespace MreEssentials
             if (id == 0 || online.ContainsKey(id)) return;
             string name = CleanName(player.DisplayName);
             online[id] = name;
-            Announce(name + " зашёл на сервер.");
+            Announce("Игрок " + name + " зашёл на сервер.");
         }
 
         private void Disconnected(CSteamID steamId)
@@ -50,7 +50,7 @@ namespace MreEssentials
             string name;
             if (!online.TryGetValue(steamId.m_SteamID, out name)) return;
             online.Remove(steamId.m_SteamID);
-            Announce(name + " вышел с сервера.");
+            Announce("Игрок " + name + " вышел с сервера.");
         }
 
         private static void Announce(string message)

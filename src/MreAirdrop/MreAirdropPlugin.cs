@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading;
 using HarmonyLib;
 using MreShared;
+using SDG.Framework.Landscapes;
+using SDG.Framework.Water;
 using Rocket.API;
 using Rocket.Core;
 using Rocket.Core.Plugins;
@@ -23,6 +25,7 @@ namespace MreAirdrop
         public static MreAirdropPlugin Instance { get; private set; }
         public bool Running { get; private set; }
         public DateTime NextUtc { get; private set; }
+        public bool DrySiteRetryPending { get; private set; }
         private readonly System.Random random = new System.Random();
         private Harmony harmony;
         private FieldInfo planeList;
@@ -110,10 +113,19 @@ namespace MreAirdrop
             if (!Provider.isServer || !Level.isLoaded || DateTime.UtcNow < NextUtc) return;
             try
             {
+                var node = FindDryNode();
+                if (node == null)
+                {
+                    DrySiteRetryPending = true;
+                    NextUtc = DateTime.UtcNow.AddSeconds(60);
+                    Logger.LogWarning("[MRE] Не найдена проверенная сухая точка; повтор через 60 секунд без расхода интервала.");
+                    return;
+                }
                 // Сохраняем следующее время до запуска: после сбоя не будет серии повторов.
                 DateTime next = DateTime.UtcNow.AddSeconds(Configuration.Instance.IntervalSeconds);
                 SaveNext(next); NextUtc = next;
-                Launch();
+                DrySiteRetryPending = false;
+                Launch(node);
             }
             catch (Exception error)
             {
@@ -136,7 +148,9 @@ namespace MreAirdrop
             try
             {
                 // Ручные запуски не меняют NextUtc и файл часового расписания.
-                Launch();
+                var node = FindDryNode();
+                if (node == null) { MreChat.Say(caller, "MRE: сухая точка не найдена, аирдроп не запущен."); return; }
+                Launch(node);
                 Logger.Log("[MRE] Ручной аирдроп: actor=" + caller.Id + "; часовой таймер не изменён.");
                 MreChat.Say(caller, "MRE: аирдроп запущен. Часовое расписание не изменено.");
             }
@@ -146,7 +160,42 @@ namespace MreAirdrop
                 MreChat.Say(caller, "MRE: аирдроп не подтверждён; проверьте серверный журнал.");
             }
         }
-        private void Launch()
+        private AirdropDevkitNode FindDryNode()
+        {
+            try
+            {
+            // WaterUtility проверяет объёмы новой системы; legacy-вода требует отдельной реализации.
+            if (Level.info == null || Level.info.configData == null || Level.info.configData.Use_Legacy_Water) return null;
+            for (int i = 0; i < DryDropSearch.Attempts; i++)
+            {
+                var node = LevelManager.GetRandomAirdropNode();
+                if (node == null) return null;
+                var center = node.transform.position;
+                float edge = Level.size / 2f - Level.border - DryDropSearch.Radius;
+                if (Single.IsNaN(center.x) || Single.IsInfinity(center.x) || Single.IsNaN(center.y) || Single.IsInfinity(center.y) || Single.IsNaN(center.z) || Single.IsInfinity(center.z) ||
+                    edge <= 0f || Math.Abs(center.x) > edge || Math.Abs(center.z) > edge) continue;
+                if (DryDropSearch.IsDry((x, z) =>
+                {
+                    var point = new Vector3(center.x + x, center.y, center.z + z);
+                    float ground;
+                    if (!Landscape.getWorldHeight(point, out ground) || Single.IsNaN(ground) || Single.IsInfinity(ground)) return false;
+                    point.y = ground + 1f;
+                    if (!Level.checkSafeIncludingClipVolumes(point)) return false;
+                    if (WaterUtility.isPointUnderwater(point)) return false;
+                    point.y = ground + 512f;
+                    float water = WaterUtility.getWaterSurfaceElevation(point);
+                    return !Single.IsNaN(water) && !Single.IsInfinity(water) && water < ground - 1f;
+                })) return node;
+            }
+            return null;
+            }
+            catch (Exception error)
+            {
+                Logger.LogException(error, "[MRE] Не удалось проверить местность; запуск отложен.");
+                return null;
+            }
+        }
+        private void Launch(AirdropDevkitNode node)
         {
             var selected = LootPlan.Select(Configuration.Instance.Categories, random.NextDouble(), random.NextDouble());
             var ids = new List<ushort>();
@@ -173,23 +222,13 @@ namespace MreAirdrop
             foreach (ushort id in ids)
                 if (!preview.tryAddItem(new Item(id, EItemOrigin.ADMIN), false))
                     throw new InvalidOperationException("Комплект не помещается в ящик: " + selected.Item2.Name);
-            ushort[] fillers;
-            switch (selected.Item1.Name)
+            var filler = new LootFiller(selected.Item1.Name, ids, random.Next());
+            ushort[] fillers = filler.CandidateIds().Distinct().ToArray();
+            foreach (ushort fillerId in fillers)
             {
-                case "Оружейный":
-                    if (selected.Item2.Name == "Grizzly") fillers = new ushort[] { 298, 394 };
-                    else if (selected.Item2.Name == "Timberwolf") fillers = new ushort[] { 20, 394 };
-                    else fillers = new ushort[] { 394 };
-                    break;
-                case "Строительный": fillers = new ushort[] { 285 }; break;
-                case "Рейдовый": fillers = new ushort[] { 254, 1100 }; break;
-                default: throw new InvalidOperationException("Неизвестная категория для добора ящика: " + selected.Item1.Name);
-            }
-            foreach (ushort filler in fillers)
-            {
-                var fillerAsset = Assets.find(EAssetType.ITEM, filler) as ItemAsset;
+                var fillerAsset = Assets.find(EAssetType.ITEM, fillerId) as ItemAsset;
                 if (fillerAsset == null || fillerAsset.size_x != 1 || fillerAsset.size_y != 1)
-                    throw new InvalidOperationException("Предмет добора должен иметь размер 1×1: " + filler);
+                    throw new InvalidOperationException("Предмет добора должен иметь размер 1×1: " + fillerId);
             }
             int topUp = 0;
             byte freeX, freeY, rotation;
@@ -197,16 +236,14 @@ namespace MreAirdrop
             {
                 if (ids.Count >= cells || topUp >= cells)
                     throw new InvalidOperationException("Нарушен предел заполнения ящика.");
-                ushort filler = fillers[topUp % fillers.Length];
-                if (!preview.tryAddItem(new Item(filler, EItemOrigin.ADMIN), false))
+                ushort fillerId = filler.At(topUp);
+                if (!preview.tryAddItem(new Item(fillerId, EItemOrigin.ADMIN), false))
                     throw new InvalidOperationException("Не удалось заполнить найденную свободную клетку.");
-                ids.Add(filler); topUp++;
+                ids.Add(fillerId); topUp++;
             }
             Logger.Log("[MRE] Комплект " + selected.Item1.Name + "/" + selected.Item2.Name +
                 ": ящик " + box.storage_x + "×" + box.storage_y + ", добор [" + String.Join(",", fillers.Select(x => x.ToString()).ToArray()) + "] ×" + topUp +
                 ", всего экземпляров " + ids.Count + "; свободных клеток нет.");
-            var node = LevelManager.GetRandomAirdropNode();
-            if (node == null) throw new InvalidOperationException("На карте нет точки аирдропа.");
             var cargo = node.GetCargoSpawnTableOrLogWarning();
             if (cargo == null) throw new InvalidOperationException("У точки аирдропа нет таблицы груза.");
             var planes = planeList.GetValue(null) as IList;

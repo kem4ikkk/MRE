@@ -7,6 +7,19 @@ namespace MreChatStyle
     public static class ChatFormatting
     {
         private static readonly Regex Tags = new Regex(@"<[^<>]{1,200}>", RegexOptions.CultureInvariant);
+        private static string CapitalizeBody(string body)
+        {
+            if (body.Length == 0 || !char.IsLower(body, 0)) return body;
+            int end = 0;
+            while (end < body.Length && !char.IsWhiteSpace(body[end])) end++;
+            string first = body.Substring(0, end).TrimEnd('.', ',', ':', ';', '!', '?');
+            // Keep technical names and URLs intact, including IDs with digits or separators.
+            if (first.IndexOfAny(new[] { '/', ':', '_', '@', '#', '=', '\\' }) >= 0 ||
+                (first.IndexOf('.') >= 0 && !first.EndsWith(".", StringComparison.Ordinal))) return body;
+            for (int i = 0; i < first.Length; i++)
+                if (char.IsDigit(first[i]) || char.IsUpper(first[i])) return body;
+            return char.ToUpperInvariant(body[0]) + body.Substring(1);
+        }
         public static string Format(string message, bool wasRich)
         {
             if (message == null) message = String.Empty;
@@ -26,6 +39,7 @@ namespace MreChatStyle
             } else if (message.StartsWith("MRE · HOME", StringComparison.OrdinalIgnoreCase)) {
                 label = "HOME:"; body = message.Substring("MRE · HOME".Length).TrimStart();
             }
+            if (label == "MRE:") body = CapitalizeBody(body);
             return "<color=#B8D66B>" + label + "</color>" + (body.Length == 0 ? "" : " " + body);
         }
     }
