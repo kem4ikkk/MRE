@@ -1,0 +1,22 @@
+{
+  "effect_id": 48622,
+  "effect_key": 14822,
+  "effect_guid": "a986933995df4d29816efcc37f87b220",
+  "schema_version": 1,
+  "bundle": "MreTrade.unity3d",
+  "prefab_address": "Effect",
+  "unity_version": "2022.3.62f3",
+  "target": "StandaloneWindows64",
+  "reference_resolution": [1920, 1080],
+  "canvas_sorting_order": 20,
+  "window_size": [1100, 750],
+  "text_fields": ["TradePartner", "TradeOwnOffer", "TradePartnerOffer", "TradeStatus"],
+  "own_text_pattern": "TradeOwn{0..9}",
+  "partner_text_pattern": "TradeOther{0..9}",
+  "button_names": ["TradeConfirm", "TradeCancel"],
+  "own_button_pattern": "TradeOwnSlot{0..9}",
+  "visibility_root": "TradeContent",
+  "workshop_file_id": null,
+  "bundle_built": false,
+  "in_game_verified": false
+}

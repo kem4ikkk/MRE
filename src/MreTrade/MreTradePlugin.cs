@@ -16,7 +16,7 @@ using Logger = Rocket.Core.Logging.Logger;
 
 namespace MreTrade
 {
-    public sealed class MreTradePlugin : RocketPlugin
+    public sealed partial class MreTradePlugin : RocketPlugin<MreTradeConfiguration>
     {
         internal static MreTradePlugin Instance;
         private readonly Dictionary<ulong, TradeSession> sessions = new Dictionary<ulong, TradeSession>();
@@ -33,9 +33,11 @@ namespace MreTrade
             Provider.onServerConnected += Connected; Provider.onServerDisconnected += Disconnected;
             foreach (var p in Provider.clients) if (p != null) joined[p.playerID.steamID.m_SteamID] = loaded;
             Instance = this;
+            if (Configuration.Instance.UiEnabled && Configuration.Instance.AssetsVerified) StartTradeUi();
         }
         protected override void Unload()
         {
+            StopTradeUi();
             Provider.onServerConnected -= Connected; Provider.onServerDisconnected -= Disconnected;
             foreach (var session in sessions.Values.Distinct().ToArray()) Cancel(session, "Обмен отменён: плагин выгружен.");
             if (harmony != null) harmony.UnpatchAll("mre.trade.guard");
@@ -51,7 +53,7 @@ namespace MreTrade
         private bool Allowed(UnturnedPlayer p)
         {
             var tpa = TeleportationPlugin.Instance; DateTime at;
-            if (p == null || p.Player == null || p.Player.life.isDead || p.Player.inventory.isStoring || !p.HasPermission("mre.trade") || Online(p.CSteamID.m_SteamID) == null || journal.Blocked(p.CSteamID.m_SteamID)) return false;
+            if (p == null || p.Player == null || p.Player.life.isDead || (p.Player.inventory.isStoring && !IsOwnEditor(p)) || !p.HasPermission("mre.trade") || Online(p.CSteamID.m_SteamID) == null || journal.Blocked(p.CSteamID.m_SteamID)) return false;
             if (tpa == null || tpa.CombatPlayers == null || tpa.RaidPlayers == null || tpa.Configuration == null || tpa.Configuration.Instance == null || tpa.Configuration.Instance.AllowCombat || tpa.Configuration.Instance.AllowRaid) return false;
             double combat = tpa.Configuration.Instance.CombatDuration, raid = tpa.Configuration.Instance.RaidDuration;
             if (Double.IsNaN(combat) || Double.IsInfinity(combat) || Double.IsNaN(raid) || Double.IsInfinity(raid) || combat < 0 || raid < 0) return false;
@@ -61,12 +63,13 @@ namespace MreTrade
         }
         private void Update()
         {
+            UpdateTradeUi();
             foreach (var s in sessions.Values.Distinct().ToArray())
                 if (!s.Committing && (DateTime.UtcNow >= s.ExpiresUtc || !Allowed(Online(s.A)) || !Allowed(Online(s.B)))) Cancel(s, "Обмен отменён: время истекло или проверка игрока не пройдена.");
         }
         private void Tell(ulong id, string text) { var p = Online(id); if (p != null) MreChat.Say(p, "MRE: " + text); }
-        private void Both(TradeSession s, string text) { Tell(s.A, text); Tell(s.B, text); }
-        private void Cancel(TradeSession s, string text) { sessions.Remove(s.A); sessions.Remove(s.B); Both(s, text); }
+        private void Both(TradeSession s, string text) { Tell(s.A, text); Tell(s.B, text); RefreshTradeUi(s); }
+        private void Cancel(TradeSession s, string text) { ClearTradeUi(s.A); ClearTradeUi(s.B); sessions.Remove(s.A); sessions.Remove(s.B); Both(s, text); }
         internal void Handle(UnturnedPlayer actor, string[] args)
         {
             if (Thread.CurrentThread.ManagedThreadId != gameThread) throw new InvalidOperationException("Обмен доступен только на игровом потоке.");
@@ -78,7 +81,7 @@ namespace MreTrade
             if (s.Committing) { MreChat.Say(actor, "MRE: обмен обрабатывается."); return; }
             if (!Allowed(Online(s.Other(id))) || DateTime.UtcNow >= s.ExpiresUtc) { Cancel(s, "Обмен отменён: игрок недоступен, в бою или истекло время."); return; }
             if (action == "cancel" && args.Length == 1) { Cancel(s, "Обмен отменён."); return; }
-            if (action == "accept" && args.Length == 1) { try { s.Accept(id); Both(s, "Обмен принят. Выберите предметы: /trade list; /trade offer <страница> <x> <y>. Содержимое, патроны и модификации в чате не показаны — проверяйте отдельно."); } catch (InvalidOperationException) { Tell(id, "Запрос может принять только получатель один раз."); } return; }
+            if (action == "accept" && args.Length == 1) { try { s.Accept(id); Both(s, "Обмен принят. Выберите предметы: /trade list; /trade offer <страница> <x> <y>. Содержимое, патроны и модификации в чате не показаны — проверяйте отдельно."); ShowTradeUi(s.A); ShowTradeUi(s.B); } catch (InvalidOperationException) { Tell(id, "Запрос может принять только получатель один раз."); } return; }
             if (!s.Accepted) { Tell(id, "Ожидание согласия второго игрока: /trade accept."); return; }
             if (action == "list" && args.Length <= 2) { int pageNumber = 1; if (args.Length == 2 && (!Int32.TryParse(args[1], out pageNumber) || pageNumber < 1)) { Tell(id, "Укажите номер страницы: /trade list 1."); return; } List(actor, s, pageNumber); return; }
             if ((action == "offer" || action == "remove") && args.Length == 4) { Modify(actor, s, action, args); return; }
@@ -130,6 +133,7 @@ namespace MreTrade
         private void Confirm(UnturnedPlayer actor, TradeSession s)
         {
             ulong id = actor.CSteamID.m_SteamID; var a = Online(s.A); var b = Online(s.B);
+            if (IsEditorOpen(s.A) || IsEditorOpen(s.B)) { Tell(id, "Оба игрока должны закрыть инвентарь перед подтверждением."); return; }
             if (s.OffersA.Count == 0 && s.OffersB.Count == 0) { Tell(id, "Пустой обмен не подтверждается."); return; }
             if (!Allowed(a) || !Allowed(b) || !NotEquipped(a, s.OffersA) || !NotEquipped(b, s.OffersB) || !TradeDelivery.Valid(a.Player.inventory, s.OffersA) || !TradeDelivery.Valid(b.Player.inventory, s.OffersB)) { s.Changed(); Both(s, "Предметы или состояние игроков изменились; проверьте предложение."); return; }
             if (!s.Confirm(id)) { Both(s, "Одна сторона подтвердила обмен; ожидается вторая."); return; }

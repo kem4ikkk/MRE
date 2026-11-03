@@ -29,6 +29,7 @@ $referencePaths = @(
     (Join-Path $managedRoot 'UnityEngine.dll'),
     (Join-Path $managedRoot 'UnityEngine.CoreModule.dll'),
     (Join-Path $managedRoot 'com.rlabrecque.steamworks.net.dll'),
+    (Join-Path $managedRoot 'SDG.NetTransport.dll'),
     (Join-Path $GameDirectory 'Servers\MRE\Rocket\Libraries\0Harmony.dll'),
     (Join-Path $rocketRoot 'Rocket.API.dll'),
     (Join-Path $rocketRoot 'Rocket.Core.dll'),
