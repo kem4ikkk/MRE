@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../TradeSession.cs" Link="TradeSession.cs"/>
+    <Compile Include="../TradeDelivery.cs" Link="TradeDelivery.cs"/>
+    <Compile Include="../TradeInventoryState.cs" Link="TradeInventoryState.cs"/>
+    <Compile Include="../TradeTransaction.cs" Link="TradeTransaction.cs"/>
+    <Compile Include="Program.cs"/>
+  </ItemGroup>
+</Project>

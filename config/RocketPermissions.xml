@@ -13,6 +13,7 @@
         <Permission Cooldown="0">tpa</Permission>
         <Permission Cooldown="0">mre.vote</Permission>
         <Permission Cooldown="0">mre.kit</Permission>
+        <Permission Cooldown="0">mre.trade</Permission>
         <Permission Cooldown="0">mre.whenairdrop</Permission>
         <!-- Только локальное тестирование прототипа; перед публичным запуском необходима приемка VAULT. -->
         <Permission Cooldown="0">mre.vault</Permission>

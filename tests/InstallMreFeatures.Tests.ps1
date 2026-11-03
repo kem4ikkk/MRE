@@ -12,7 +12,7 @@ function Write-File([string]$Relative,[string]$Content) {
 $checks=0
 function Check([bool]$Condition,[string]$Name) { if(-not $Condition){throw "FAIL: $Name"}; $script:checks++ }
 function Must-Fail([scriptblock]$Action,[string]$Name) { $failed=$false;try{& $Action | Out-Null}catch{$failed=$true};Check $failed $Name }
-foreach($name in @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight','MreVault','MreChatStyle','MreAirdrop')) {
+foreach($name in @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight','MreVault','MreChatStyle','MreAirdrop','MreTrade')) {
     Write-File ("runtime\builds\$name\$name.dll") ("new-$name")
     Write-File ("src\$name\LICENSE") ("test-license-$name")
     $hash=(Get-FileHash -LiteralPath (Join-Path $fixture "runtime\builds\$name\$name.dll")).Hash
@@ -86,7 +86,25 @@ Must-Fail { & $install -AirdropOnly -AdminOnly } 'airdrop and admin modes cannot
 Must-Fail { & $install -AirdropOnly -VaultOnly } 'airdrop and vault modes cannot be combined'
 Must-Fail { & $install -AirdropOnly -KitsOnly } 'airdrop and kits modes cannot be combined'
 Must-Fail { & $install -AirdropOnly -ChatOnly } 'airdrop and chat modes cannot be combined'
+Must-Fail { & $install -TradeOnly -InterfaceOnly } 'trade and interface modes cannot be combined'
+Must-Fail { & $install -TradeOnly -AdminOnly } 'trade and admin modes cannot be combined'
+Must-Fail { & $install -TradeOnly -VaultOnly } 'trade and vault modes cannot be combined'
+Must-Fail { & $install -TradeOnly -KitsOnly } 'trade and kits modes cannot be combined'
+Must-Fail { & $install -TradeOnly -ChatOnly } 'trade and chat modes cannot be combined'
+Must-Fail { & $install -TradeOnly -AirdropOnly } 'trade and airdrop modes cannot be combined'
 $oldCommandMap=[IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml'))
+$permissionsPath='runtime\server\Servers\MRE\Rocket\Permissions.config.xml'
+Write-File $permissionsPath '<RocketPermissions><custom>keep</custom></RocketPermissions>'
+Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreTrade.dll' 'old-trade'
+Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreTrade\trade-data.json' 'keep-trade-data'
+& $install -Apply -TradeOnly -Confirm:$false | Out-Null
+Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreTrade.dll')) -eq 'new-MreTrade') 'trade-only installs validated DLL'
+Check ([IO.File]::ReadAllText((Join-Path $plugins 'MreTrade\trade-data.json')) -eq 'keep-trade-data') 'trade-only preserves plugin data'
+Check ([IO.File]::ReadAllText((Join-Path $fixture $permissionsPath)) -eq '<RocketPermissions><custom>keep</custom></RocketPermissions>') 'trade-only preserves permissions'
+Check ([IO.File]::ReadAllText((Join-Path $fixture 'runtime\server\Servers\MRE\Rocket\Commands.config.xml')) -eq $oldCommandMap) 'trade-only preserves command mappings'
+$tradeReceipt=Get-Content -LiteralPath (Join-Path $fixture 'runtime\features-installed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+Check ($tradeReceipt.settings.TradeOnly -eq $true) 'trade-only mode recorded'
+Check ([IO.File]::ReadAllText((Join-Path $tradeReceipt.backup_path 'MreTrade.dll')) -eq 'old-trade') 'trade-only backs up prior DLL'
 Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreVault.dll' 'old-vault'
 Write-File 'runtime\server\Servers\MRE\Rocket\Plugins\MreVault\vault-state.json' 'keep-vault-data'
 & $install -Apply -VaultOnly -Confirm:$false | Out-Null
