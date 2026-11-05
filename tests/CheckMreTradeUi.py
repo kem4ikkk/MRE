@@ -25,6 +25,10 @@ assert 'LastWriteTimeUtc' in script and 'UnityFS' in script and 'SHA256' in scri
 assert 'Master_Bundle_Override' in script and 'Exclude_From_Master_Bundle' in builder
 assert 'MreHud' not in script and 'MreHud' not in builder
 assert manifest['bundle_built'] is False and manifest['in_game_verified'] is False
+trade_ui = (root / 'src/MreTrade/TradeUi.cs').read_text(encoding='utf-8')
+confirm_handler = re.search(r'if \(name == "TradeConfirm"\)\s*\{([^}]*)\}', trade_ui)
+assert confirm_handler and 'Confirm(actor, s)' not in confirm_handler.group(1)
+assert '/trade list' in confirm_handler.group(1) and '/trade confirm' in confirm_handler.group(1)
 for name in ['index.html', 'style.css', 'app.js']:
     assert (root / 'ui/trade-preview' / name).is_file()
 for i in range(10):

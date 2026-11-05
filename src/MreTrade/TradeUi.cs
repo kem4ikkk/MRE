@@ -121,7 +121,7 @@ namespace MreTrade
             EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradePartner", "Обмен с " + SafeLabel(Online(s.Other(id)) == null ? "игроком" : Online(s.Other(id)).DisplayName));
             EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeOwnOffer", "Ваше предложение");
             EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradePartnerOffer", "Предложение партнёра");
-            EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeStatus", "Вы: " + ((id == s.A ? s.ConfirmedA : s.ConfirmedB) ? "подтверждено" : "ожидание") + " / партнёр: " + ((id == s.A ? s.ConfirmedB : s.ConfirmedA) ? "подтверждено" : "ожидание"));
+            EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeStatus", "Вы: " + ((id == s.A ? s.ConfirmedA : s.ConfirmedB) ? "подтверждено" : "ожидание") + " / партнёр: " + ((id == s.A ? s.ConfirmedB : s.ConfirmedA) ? "подтверждено" : "ожидание") + " | /trade list, затем /trade confirm");
             for (int i = 0; i < 10; i++)
             {
                 var own = s.Own(id); var other = s.Own(s.Other(id));
@@ -146,7 +146,9 @@ namespace MreTrade
             ulong id = player.channel.owner.playerID.steamID.m_SteamID; TradeSession s;
             var actor = Online(id);
             if (actor == null || actor.Player != player || !sessions.TryGetValue(id, out s) || !s.Accepted || s.Committing || IsEditorOpen(id) || !Allowed(actor) || !Allowed(Online(s.Other(id)))) return;
-            if (name == "TradeConfirm") { Confirm(actor, s); return; }
+            // Событие содержит только статическое имя кнопки, без сессии и ревизии.
+            // Запоздавший клик нельзя отличить от нового, поэтому не подтверждаем им обмен.
+            if (name == "TradeConfirm") { Tell(id, "Кнопка подтверждения отключена. Проверьте /trade list и используйте /trade confirm."); return; }
             if (name == "TradeCancel") { Cancel(s, "Обмен отменён."); return; }
             if (name != null && name.StartsWith("TradeOwnSlot", StringComparison.Ordinal))
             {

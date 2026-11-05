@@ -50,7 +50,7 @@ public static class MreTradeBuilder
             Text("TradeHint", content, "Нажмите свою ячейку, затем перетащите предмет между инвентарём и областью обмена. Предложение партнёра — только для просмотра.", -510, -205, 1020, 42, 17, "AEBBB4");
             Text("TradeStatus", content, "Сервер готовит обмен…", -510, -260, 1020, 45, 19, "EDF1E8");
             var confirm = Button("TradeConfirm", content, -510, -315, 490, 58, "B8D66B");
-            var confirmText = Text("TradeConfirmLabel", confirm, "ПОДТВЕРДИТЬ", -225, -17, 450, 34, 20, "172018"); confirmText.alignment = TextAnchor.MiddleCenter;
+            var confirmText = Text("TradeConfirmLabel", confirm, "КАК ПОДТВЕРДИТЬ", -225, -17, 450, 34, 20, "172018"); confirmText.alignment = TextAnchor.MiddleCenter;
             var cancel = Button("TradeCancel", content, 20, -315, 490, 58, "49322F");
             var cancelText = Text("TradeCancelLabel", cancel, "ОТМЕНИТЬ ОБМЕН", -225, -17, 450, 34, 20, "FFE8E4"); cancelText.alignment = TextAnchor.MiddleCenter;
             Validate(root);
