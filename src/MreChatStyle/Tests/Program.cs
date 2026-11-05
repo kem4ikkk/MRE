@@ -16,7 +16,7 @@ internal static class Program
 
         string trade = ChatFormatting.Format("\u001eMRECHAT:TRADE\u001eTrade is unavailable during combat.", false, out category);
         Check(category == "TRADE" && trade == normal + " <b><color=#D6C78E>\u041E\u0411\u041C\u0415\u041D</color></b> Trade is unavailable during combat.", "trade category");
-        Check(ChatFormatting.Format("\u001eMRECHAT:ADMIN\u001e[MRE-ADMIN] /admin help", false, out category) == admin + " <b><color=#D6C78E>\u0410\u0414\u041C\u0418\u041D</color></b> /admin help", "admin category");
+        Check(ChatFormatting.Format("\u001eMRECHAT:ADMIN\u001e[MRE-ADMIN] /admin help", false, out category) == admin + " /admin help", "admin category is not duplicated after the prefix");
         Check(ChatFormatting.Format("\u001eMRECHAT:STAFF\u001e[MRE-ADMIN] staff profile opened", false, out category).StartsWith(admin + " <b><color=#D6C78E>\u041F\u0415\u0420\u0421\u041E\u041D\u0410\u041B</color></b>", StringComparison.Ordinal), "staff category");
         Check(category == "STAFF", "staff metadata");
         Check(ChatFormatting.Format("<color=green><b>MRE \u00B7 HOME</b></color> Teleport completed.", true, out category) == normal + " <b><color=#D6C78E>\u0414\u041E\u041C</color></b> Teleport completed.", "rich HOME header");

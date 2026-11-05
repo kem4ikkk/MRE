@@ -187,12 +187,11 @@ public static class MreHelpBuilder
 
     private static void Tab(RectTransform parent, string suffix, string label, int x, int y, bool selected)
     {
-        RectTransform button = Box("HelpTab" + suffix, parent, x, y, 202, 46, selected ? Hex("2A352B") : Panel, button: true);
-        button.gameObject.GetComponent<Image>().color = selected ? Hex("2A352B") : Panel;
+        RectTransform button = Box("HelpTab" + suffix, parent, x, y, 202, 46, Panel, button: true);
         var selectable = button.gameObject.AddComponent<Button>();
         selectable.targetGraphic = button.GetComponent<Image>();
-        Label("HelpTabText" + suffix, button, label, 14, 0, 174, 46, 13, selected ? Lime : Text, FontStyle.Bold, regular);
-        Box("HelpSelected" + suffix, button, 0, 0, 3, 46, selected ? Lime : Panel);
+        Label("HelpTabText" + suffix, button, label, 14, 0, 174, 46, 13, Text, FontStyle.Bold, regular);
+        Box("HelpSelected" + suffix, button, 0, 0, 3, 46, Lime);
         if (!selected) button.Find("HelpSelected" + suffix).gameObject.SetActive(false);
     }
 
@@ -205,7 +204,7 @@ public static class MreHelpBuilder
         rect.sizeDelta = new Vector2(w, h);
         var button = rect.gameObject.AddComponent<Button>();
         button.targetGraphic = rect.GetComponent<Image>();
-        Label(name + "Text", rect, value, 0, 0, w, h, size, fg, FontStyle.Bold, bold);
+        Label(name + "Text", rect, value, 0, 0, w, h, size, fg, FontStyle.Bold, bold, TextAnchor.MiddleCenter);
     }
 
     private static RectTransform Box(string name, Transform parent, int x, int y, int w, int h, Color color, Vector2? min = null, Vector2? max = null, bool button = false)
@@ -242,7 +241,7 @@ public static class MreHelpBuilder
         var all = root.GetComponentsInChildren<RectTransform>(true);
         var duplicate = all.GroupBy(x => x.name).FirstOrDefault(x => x.Count() > 1);
         if (duplicate != null) throw new InvalidOperationException("Повторяется имя элемента: " + duplicate.Key);
-        foreach (string name in new[] { "HelpContent", "HelpClose", "HelpTitle", "HelpSubtitle", "HelpTabBasics", "HelpTabTravel", "HelpTabGroups", "HelpTabCombat", "HelpSelectedBasics", "HelpSelectedTravel", "HelpSelectedGroups", "HelpSelectedCombat", "HelpContent01", "HelpRow01", "HelpCommand01", "HelpDescription01", "HelpContent10", "HelpRow10", "HelpCommand10", "HelpDescription10", "HelpFooter", "HelpFooterText" })
+        foreach (string name in new[] { "HelpContent", "HelpClose", "HelpCloseText", "HelpTitle", "HelpSubtitle", "HelpTabBasics", "HelpTabTravel", "HelpTabGroups", "HelpTabCombat", "HelpSelectedBasics", "HelpSelectedTravel", "HelpSelectedGroups", "HelpSelectedCombat", "HelpContent01", "HelpRow01", "HelpCommand01", "HelpDescription01", "HelpContent10", "HelpRow10", "HelpCommand10", "HelpDescription10", "HelpFooter", "HelpFooterText" })
             if (!all.Any(x => x.name == name)) throw new InvalidOperationException("Отсутствует элемент " + name);
         if (root.GetComponent<Canvas>() == null || root.GetComponent<GraphicRaycaster>() == null) throw new InvalidOperationException("Effect должен иметь Canvas и GraphicRaycaster.");
     }

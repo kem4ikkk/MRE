@@ -37,7 +37,7 @@ namespace MreHelp
                     rows.Add(new HelpRow("Безопасное перемещение", "Перед /home и /tpa проверьте место назначения и обстановку вокруг."));
                     break;
                 default:
-                    rows.Add(new HelpRow("help", "Открыть эту справку. Если UI недоступен, команды покажутся в чате."));
+                    rows.Add(new HelpRow("/help", "Открыть эту справку. Если UI недоступен, команды покажутся в чате."));
                     Add(rows, player, "kits", "Посмотреть доступные наборы.", "mre.kit");
                     Add(rows, player, "kit", "Получить набор: /kit start.", "mre.kit");
                     Add(rows, player, "vote", "Голосование за день: /vote day, /vote yes, /vote no.", "mre.vote");
@@ -56,7 +56,8 @@ namespace MreHelp
         private static void Add(List<HelpRow> rows, UnturnedPlayer player, string lookup, string display, string description, string permission)
         {
             if (player == null || R.Commands.GetCommand(lookup) == null || !Allowed(player, permission)) return;
-            rows.Add(new HelpRow(display, description));
+            string visibleCommand = display.StartsWith("/", StringComparison.Ordinal) ? display : "/" + display;
+            rows.Add(new HelpRow(visibleCommand, description));
         }
 
         internal static bool Allowed(UnturnedPlayer player, string permission)

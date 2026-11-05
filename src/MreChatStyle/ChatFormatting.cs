@@ -93,7 +93,7 @@ namespace MreChatStyle
                 case "VOTE": return "\u0413\u041E\u041B\u041E\u0421\u041E\u0412\u0410\u041D\u0418\u0415";
                 case "AIRDROP": return "\u0410\u0418\u0420\u0414\u0420\u041E\u041F";
                 case "STAFF": return "\u041F\u0415\u0420\u0421\u041E\u041D\u0410\u041B";
-                case "ADMIN": return "\u0410\u0414\u041C\u0418\u041D";
+                case "ADMIN": return String.Empty;
                 default: return String.Empty;
             }
         }

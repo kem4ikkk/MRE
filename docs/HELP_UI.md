@@ -11,15 +11,15 @@
 Сборка проекта Unity 2022.3.62f3:
 
 ```powershell
-.scriptsBuild-MreHelpAssets.ps1
-.scriptsBuild-MreHelp.ps1
-.scriptsInstall-MreHelp.ps1 -Apply
+.\scripts\Build-MreHelpAssets.ps1
+.\scripts\Build-MreHelp.ps1
+.\scripts\Install-MreHelp.ps1 -Apply
 ```
 
 Чтобы подготовить локальный пакет существующего Workshop-ресурса MRE HUD с новым эффектом:
 
 ```powershell
-.scriptsBuild-MreHelpWorkshopPackage.ps1
+.\scripts\Build-MreHelpWorkshopPackage.ps1
 ```
 
 Команда создаёт отдельный каталог в `runtime/workshop-packages`; она не изменяет загрузки Workshop, сервер или файлы клиента. Новый эффект имеет ID `48625`, GUID `6e4a31b4-9c87-4f42-8a62-2e1a68e4d203`, key `14825` и Windows bundle `MreHelp.unity3d`.
