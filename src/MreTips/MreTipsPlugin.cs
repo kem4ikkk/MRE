@@ -33,7 +33,7 @@ namespace MreTips
             if (owner != this || schedule == null) return;
             string message = schedule.Poll(Now, Provider.isServer && Level.isLoaded && Provider.clients != null && Provider.clients.Count > 0);
             if (message == null) return;
-            try { MreChat.Say(message); }
+            try { MreChat.Say(MreChatSection.Server, message); }
             catch (Exception error) { Logger.LogException(error, "[MRE] Не удалось отправить подсказку."); }
         }
     }

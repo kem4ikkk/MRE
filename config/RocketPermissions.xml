@@ -73,6 +73,7 @@
         <Permission Cooldown="0">mre.staff.unmute</Permission>
         <Permission Cooldown="0">mre.staff.revoke</Permission>
         <Permission Cooldown="0">mre.admin.kill</Permission>
+        <Permission Cooldown="0">mre.admin.announce</Permission>
         <Permission Cooldown="0">mre.admin.freeze</Permission>
       </Permissions>
     </Group>

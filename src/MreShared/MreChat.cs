@@ -11,7 +11,7 @@ namespace MreShared
 {
     internal enum MreChatSection
     {
-        System, Home, Tpa, Kits, Trade, Vault, Vote, Airdrop, Staff, Admin
+        System, Server, Home, Tpa, Kits, Trade, Vault, Vote, Airdrop, Staff, Admin
     }
 
     internal static class MreChat
@@ -32,6 +32,13 @@ namespace MreShared
         }
 
         public static void Say(string message) { Say(MreChatSection.System, message); }
+
+        public static void SayServer(string message) { Say(MreChatSection.Server, message); }
+
+        public static void SayServer(IRocketPlayer recipient, string message)
+        {
+            Send(recipient, MreChatSection.Server, message);
+        }
 
         public static void Say(MreChatSection section, string message)
         {

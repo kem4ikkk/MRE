@@ -42,7 +42,14 @@ namespace MreEssentials
             if (id == 0 || online.ContainsKey(id)) return;
             string name = CleanName(player.DisplayName);
             online[id] = name;
+            Welcome(player);
             Announce("Игрок " + name + " зашёл на сервер.");
+        }
+
+        private static void Welcome(UnturnedPlayer player)
+        {
+            try { MreChat.SayServer(player, "Добро пожаловать на MRE! Введите /help, чтобы посмотреть команды сервера."); }
+            catch (Exception error) { Logger.LogException(error, "[MRE] Не удалось отправить приветствие игроку."); }
         }
 
         private void Disconnected(CSteamID steamId)

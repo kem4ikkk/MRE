@@ -24,6 +24,7 @@ $entries = @(
     [pscustomobject]@{ Name='MreKits'; Source='runtime\builds\MreKits\MreKits.dll'; Target='MreKits.dll'; Required=$true },
     [pscustomobject]@{ Name='MreVault'; Source='runtime\builds\MreVault\MreVault.dll'; Target='MreVault.dll'; Required=$true },
     [pscustomobject]@{ Name='MreEssentials'; Source='runtime\builds\MreEssentials\MreEssentials.dll'; Target='MreEssentials.dll'; Required=$true },
+    [pscustomobject]@{ Name='MreTips'; Source='runtime\builds\MreTips\MreTips.dll'; Target='MreTips.dll'; Required=$true },
     [pscustomobject]@{ Name='MreTrade'; Source='runtime\builds\MreTrade\MreTrade.dll'; Target='MreTrade.dll'; Required=$false },
     [pscustomobject]@{ Name='Teleportation'; Source='runtime\plugin-builds\Teleportation.MRE\Teleportation.dll'; Target='Teleportation.dll'; Required=$true },
     [pscustomobject]@{ Name='MoreHomes'; Source='runtime\plugin-builds\MoreHomes.MRE\MoreHomes.dll'; Target='MoreHomes.dll'; Required=$true }
