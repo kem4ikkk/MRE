@@ -7,6 +7,8 @@ class Program
 {
     static void Main()
     {
+        CheckSuccessfulTransfer();
+        CheckInterruptionAfterRemoval();
         var a = new PlayerInventory(); var b = new PlayerInventory();
         var item = new Item(); var jar = new ItemJar { item = item };
         a.items[2].items.Add(jar);
@@ -22,6 +24,33 @@ class Program
         bool inB = b.items[2].items.Any(x => ReferenceEquals(x.item, item));
         if (!aborted || inB) throw new Exception("Callback повторной вставки не остановил передачу.");
         Console.WriteLine("Повторная вставка в callback остановила выдачу второй стороне.");
+    }
+    static TradeOffer AddOffer(PlayerInventory owner)
+    {
+        var item = new Item { state = new byte[] { 7, 8 } };
+        var jar = new ItemJar { item = item };
+        owner.items[2].items.Add(jar);
+        return new TradeOffer { Page = 2, X = 0, Y = 0, Jar = jar, Item = item, Id = item.id, Amount = item.amount, Quality = item.quality, State = (byte[])item.state.Clone() };
+    }
+    static void CheckSuccessfulTransfer()
+    {
+        var a = new PlayerInventory(); var b = new PlayerInventory(); var offer = AddOffer(a);
+        var place = new TradePlacement { Offer = offer, Page = 2, X = 0, Y = 0 };
+        var verify = TradeTransaction.Apply(a, b, new[] { offer }, Array.Empty<TradeOffer>(), Array.Empty<TradePlacement>(), new[] { place }, () => { });
+        verify();
+        if (a.items[2].items.Count != 0 || b.items[2].items.Count != 1 || !ReferenceEquals(b.items[2].items[0].item, offer.Item) || !b.items[2].items[0].item.state.SequenceEqual(new byte[] { 7, 8 }))
+            throw new Exception("Успешная передача не сохранила предмет и его состояние.");
+    }
+    static void CheckInterruptionAfterRemoval()
+    {
+        var a = new PlayerInventory(); var b = new PlayerInventory(); var offer = AddOffer(a);
+        a.AfterRemove = () => { throw new InvalidOperationException("Контролируемый сбой после удаления."); };
+        bool interrupted = false;
+        try { TradeTransaction.Apply(a, b, new[] { offer }, Array.Empty<TradeOffer>(), Array.Empty<TradePlacement>(), new[] { new TradePlacement { Offer = offer, Page = 2 } }, () => { }); }
+        catch (InvalidOperationException) { interrupted = true; }
+        if (!interrupted || a.items[2].items.Count != 0 || b.items[2].items.Count != 0)
+            throw new Exception("Сценарий сбоя после удаления не воспроизведён.");
+        Console.WriteLine("Воспроизведён риск потери при сбое после удаления; автоматического восстановления нет.");
     }
 }
 namespace SDG.Unturned
