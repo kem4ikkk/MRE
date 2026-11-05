@@ -12,11 +12,15 @@ public static class MreTradeBuilder
 {
     private const string PrefabPath = "Assets/MreTrade/Effect.prefab";
     private const string EffectGuid = "a986933995df4d29816efcc37f87b220";
+    private const string ExperimentalAsset = "Assets/MreTradeLocalExperiment/maplestrike-icon.png";
+    private const string ExperimentalPrefab = "Assets/MreTradeLocalExperiment/Effect.prefab";
     private static Font font;
     private static Color ColorOf(string value) { Color color; if (!ColorUtility.TryParseHtmlString("#" + value, out color)) throw new ArgumentException(value); return color; }
 
     [MenuItem("MRE/Trade/Создать окно обмена")]
-    public static void Generate()
+    public static void Generate() { GeneratePrefab(PrefabPath, null); }
+
+    private static void GeneratePrefab(string prefabPath, Sprite icon)
     {
         if (Application.unityVersion != "2022.3.62f3") throw new InvalidOperationException("Нужен Unity 2022.3.62f3.");
         PlayerSettings.colorSpace = ColorSpace.Linear;
@@ -40,9 +44,11 @@ public static class MreTradeBuilder
             {
                 float x = -510 + (i % 2) * 250, y = 174 - (i / 2) * 72;
                 var own = Button("TradeOwnSlot" + i, content, x, y, 240, 62, "25342D99");
-                Text("TradeOwn" + i, own, "Пустая ячейка", -108, -20, 216, 40, 17, "EDF1E8");
+                Icon("TradeOwnIcon" + i, own, icon);
+                Text("TradeOwn" + i, own, "Пустая ячейка", -52, -20, 160, 40, 17, "EDF1E8");
                 var other = Box("TradeOtherSlot" + i, content, 240, 62, x + 650, y, "202B3199");
-                Text("TradeOther" + i, other, "Пустая ячейка", -108, -20, 216, 40, 17, "C3CFD4");
+                Icon("TradeOtherIcon" + i, other, icon);
+                Text("TradeOther" + i, other, "Пустая ячейка", -52, -20, 160, 40, 17, "C3CFD4");
             }
             Text("TradeHint", content, "Нажмите свою ячейку, чтобы выбрать предметы в обычном инвентаре. Чужие ячейки доступны только для просмотра.", -510, -205, 1020, 42, 17, "AEBBB4");
             Text("TradeStatus", content, "Сервер готовит обмен…", -510, -260, 1020, 45, 19, "EDF1E8");
@@ -50,8 +56,8 @@ public static class MreTradeBuilder
             var confirmText = Text("TradeConfirmLabel", confirm, "ПОДТВЕРДИТЬ", -225, -17, 450, 34, 20, "172018"); confirmText.alignment = TextAnchor.MiddleCenter;
             var cancel = Button("TradeCancel", content, 20, -315, 490, 58, "49322F");
             var cancelText = Text("TradeCancelLabel", cancel, "ОТМЕНИТЬ ОБМЕН", -225, -17, 450, 34, 20, "FFE8E4"); cancelText.alignment = TextAnchor.MiddleCenter;
-            Validate(root);
-            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath); AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
+            Validate(root, icon != null);
+            PrefabUtility.SaveAsPrefabAsset(root, prefabPath); AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
             Debug.Log("MRE Trade: создан prefab. Это не подтверждает отображение в Unturned.");
         }
         finally { UnityEngine.Object.DestroyImmediate(root); }
@@ -61,14 +67,43 @@ public static class MreTradeBuilder
     public static void BuildWindows()
     {
         Generate();
+        BuildBundle(PrefabPath, false);
+    }
+
+    // The extracted game icon is only imported for this explicit local experiment.
+    public static void BuildWindowsExperimental()
+    {
+        string root = Path.GetFullPath(Path.Combine(Application.dataPath, "../../.."));
+        string source = Path.Combine(root, "runtime/maplestrike-extract/maplestrike-icon.png");
+        if (!File.Exists(source)) throw new FileNotFoundException("Local experiment icon is missing.", source);
+        string folder = "Assets/MreTradeLocalExperiment";
+        if (AssetDatabase.IsValidFolder(folder) || Directory.Exists(folder)) throw new InvalidOperationException("Temporary experiment folder already exists; inspect it before removing it.");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.Copy(source, ExperimentalAsset);
+            AssetDatabase.ImportAsset(ExperimentalAsset, ImportAssetOptions.ForceSynchronousImport);
+            var importer = (TextureImporter)AssetImporter.GetAtPath(ExperimentalAsset);
+            importer.textureType = TextureImporterType.Sprite; importer.spriteImportMode = SpriteImportMode.Single;
+            importer.alphaIsTransparency = true; importer.SaveAndReimport();
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(ExperimentalAsset);
+            if (sprite == null) throw new InvalidDataException("Failed to import local experiment sprite.");
+            GeneratePrefab(ExperimentalPrefab, sprite);
+            BuildBundle(ExperimentalPrefab, true);
+        }
+        finally { AssetDatabase.DeleteAsset(folder); AssetDatabase.Refresh(); }
+    }
+
+    private static void BuildBundle(string prefabPath, bool experimental)
+    {
         string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "../../.."));
-        string output = Path.Combine(projectRoot, "runtime/ui-builds/MreTrade/Windows"); Directory.CreateDirectory(output);
-        var map = new AssetBundleBuild { assetBundleName = "MreTrade.unity3d", assetNames = new[] { PrefabPath }, addressableNames = new[] { "Effect" } };
+        string output = Path.Combine(projectRoot, experimental ? "runtime/ui-builds/MreTrade/ExperimentalMaplestrike/Windows" : "runtime/ui-builds/MreTrade/Windows"); Directory.CreateDirectory(output);
+        var map = new AssetBundleBuild { assetBundleName = "MreTrade.unity3d", assetNames = new[] { prefabPath }, addressableNames = new[] { "Effect" } };
         var result = BuildPipeline.BuildAssetBundles(output, new[] { map }, BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode | BuildAssetBundleOptions.ForceRebuildAssetBundle, BuildTarget.StandaloneWindows64);
         if (result == null) throw new InvalidOperationException("Unity не создал bundle обмена.");
         string source = Path.Combine(output, "MreTrade.unity3d");
         var bundle = AssetBundle.LoadFromFile(source); if (bundle == null) throw new InvalidDataException("Bundle не читается Unity.");
-        try { var prefab = bundle.LoadAsset<GameObject>("Effect"); if (prefab == null) throw new InvalidDataException("Нет prefab по адресу Effect."); Validate(prefab); }
+        try { var prefab = bundle.LoadAsset<GameObject>("Effect"); if (prefab == null) throw new InvalidDataException("Нет prefab по адресу Effect."); Validate(prefab, experimental); }
         finally { bundle.Unload(true); }
         string mod = Path.Combine(output, "MreTrade"); Directory.CreateDirectory(mod);
         File.Copy(source, Path.Combine(mod, "MreTrade.unity3d"), true);
@@ -95,6 +130,12 @@ public static class MreTradeBuilder
         var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = image;
         button.navigation = new Navigation { mode = Navigation.Mode.None }; return rect;
     }
+    private static void Icon(string name, Transform parent, Sprite sprite)
+    {
+        var rect = Rect(name, parent, 52, 48, -86, 0);
+        var image = rect.gameObject.AddComponent<Image>(); image.sprite = sprite; image.color = sprite == null ? Color.clear : Color.white; image.preserveAspect = true; image.raycastTarget = false;
+        rect.gameObject.SetActive(false);
+    }
     private static Text Text(string name, Transform parent, string value, float x, float y, float width, float height, int size, string color)
     {
         var rect = Rect(name, parent, width, height, x + width / 2, y + height / 2);
@@ -102,7 +143,7 @@ public static class MreTradeBuilder
         text.alignment = TextAnchor.MiddleLeft; text.supportRichText = false; text.raycastTarget = false;
         text.horizontalOverflow = HorizontalWrapMode.Wrap; text.verticalOverflow = VerticalWrapMode.Truncate; return text;
     }
-    private static void Validate(GameObject root)
+    private static void Validate(GameObject root, bool expectIcon)
     {
         var transforms = root.GetComponentsInChildren<RectTransform>(true);
         var names = transforms.Select(x => x.name).ToArray();
@@ -111,6 +152,13 @@ public static class MreTradeBuilder
             if (transforms.SingleOrDefault(x=>x.name==n)?.GetComponent<Text>() == null) throw new InvalidDataException("Нет поля " + n);
         foreach (string n in new[] { "TradeConfirm", "TradeCancel" }.Concat(Enumerable.Range(0,10).Select(i=>"TradeOwnSlot"+i)))
             if (transforms.SingleOrDefault(x=>x.name==n)?.GetComponent<Button>() == null) throw new InvalidDataException("Нет кнопки " + n);
+        foreach (string n in Enumerable.Range(0,10).Select(i=>"TradeOwnIcon"+i).Concat(Enumerable.Range(0,10).Select(i=>"TradeOtherIcon"+i)))
+        {
+            var icon = transforms.SingleOrDefault(x=>x.name==n);
+            var image = icon == null ? null : icon.GetComponent<Image>();
+            if (image == null || image.raycastTarget || icon.gameObject.activeSelf || (image.sprite != null) != expectIcon)
+                throw new InvalidDataException("Invalid icon contract: " + n);
+        }
         if (root.GetComponentsInChildren<Button>(true).Length != 12 || root.GetComponent<GraphicRaycaster>() == null || root.GetComponent<Canvas>().sortingOrder != 20)
             throw new InvalidDataException("Неверный контракт ввода окна обмена.");
         if (root.GetComponentsInChildren<Text>(true).Any(x=>x.supportRichText || x.raycastTarget)) throw new InvalidDataException("Текст должен быть без rich text и без перехвата кликов.");
