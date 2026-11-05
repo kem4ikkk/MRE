@@ -47,8 +47,8 @@ public static class MreTradeBuilder
                 var other = Box("TradeOtherSlot" + i, content, 490, 32, 265, otherY, "202B3199");
                 Text("TradeOther" + i, other, "\u041f\u0443\u0441\u0442\u0430\u044f \u044f\u0447\u0435\u0439\u043a\u0430", -235, -16, 470, 32, 17, "C3CFD4");
             }
-            Text("TradeHint", content, "Нажмите свою ячейку, затем перетащите предмет между инвентарём и областью обмена. Предложение партнёра — только для просмотра.", -510, -205, 1020, 42, 17, "AEBBB4");
-            Text("TradeStatus", content, "Сервер готовит обмен…", -510, -260, 1020, 45, 19, "EDF1E8");
+            Text("TradeHint", content, "Нажмите свою ячейку, затем перетащите предмет между инвентарём и областью обмена. После выбора нажмите «ПОДТВЕРДИТЬ ОБМЕН». Предложение партнёра — только для просмотра.", -510, -205, 1020, 42, 17, "AEBBB4");
+            Text("TradeStatus", content, "Выберите ячейку, перетащите предмет и подтвердите кнопкой.", -510, -260, 1020, 45, 19, "EDF1E8");
             var confirm = Button("TradeConfirm", content, -510, -315, 490, 58, "B8D66B");
             var confirmText = Text("TradeConfirmLabel", confirm, "ПОДТВЕРДИТЬ ОБМЕН", -225, -17, 450, 34, 20, "172018"); confirmText.alignment = TextAnchor.MiddleCenter;
             var cancel = Button("TradeCancel", content, 20, -315, 490, 58, "49322F");
