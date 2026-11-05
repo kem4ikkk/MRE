@@ -27,11 +27,15 @@ assert 'MreHud' not in script and 'MreHud' not in builder
 assert manifest['bundle_built'] is False and manifest['in_game_verified'] is False
 trade_ui = (root / 'src/MreTrade/TradeUi.cs').read_text(encoding='utf-8')
 confirm_handler = re.search(r'if \(name == "TradeConfirm"\)\s*\{([^}]*)\}', trade_ui)
-assert confirm_handler and 'Confirm(actor, s' not in confirm_handler.group(1)
-assert 'RequestConfirmation(actor, s)' in confirm_handler.group(1)
+assert confirm_handler and 'Confirm(actor, s)' in confirm_handler.group(1)
 trade_plugin = (root / 'src/MreTrade/MreTradePlugin.cs').read_text(encoding='utf-8')
-assert 'Guid.TryParseExact(args[1], "N"' in trade_plugin
-assert 'Confirm(actor, s, sessionId, revision)' in trade_plugin
+assert 'Guid.TryParseExact(args[1], "N"' not in trade_plugin
+assert 'Confirm(actor, s); return;' in trade_plugin
+assert 's.Acknowledge(id, listedRevision)' in trade_plugin
+session = (root / 'src/MreTrade/TradeSession.cs').read_text(encoding='utf-8')
+assert 'AcknowledgedRevisionA = 0' in session and 'AcknowledgedRevisionB = 0' in session
+assert 'AcknowledgedRevision(id) != Revision' in session
+assert 'ПОДТВЕРДИТЬ ОБМЕН' in builder
 for name in ['index.html', 'style.css', 'app.js']:
     assert (root / 'ui/trade-preview' / name).is_file()
 for i in range(10):

@@ -8,18 +8,22 @@ internal static class Program
         var t = new TradeSession(1, 2, DateTime.UtcNow.AddMinutes(2));
         Check(t.Revision == 1);
         bool failed = false; try { t.Accept(1); } catch (InvalidOperationException) { failed = true; } Check(failed);
-        t.Accept(2); Guid firstSession = t.SessionId; long firstRevision = t.Revision;
-        Check(!t.Confirm(1, firstSession, firstRevision));
+        failed = false; try { t.Acknowledge(1, t.Revision); } catch (InvalidOperationException) { failed = true; } Check(failed);
+        t.Accept(2); long firstRevision = t.Revision;
+        failed = false; try { t.Confirm(1); } catch (InvalidOperationException) { failed = true; } Check(failed); // list required first
+        Check(t.Acknowledge(1, firstRevision)); Check(t.AcknowledgedRevision(1) == firstRevision);
+        Check(!t.Confirm(1));
         Check(t.ConfirmedA && !t.ConfirmedB);
-        Check(!t.Confirm(1, firstSession, firstRevision)); // duplicate command stays idempotent
-        failed = false; try { t.Confirm(3, firstSession, firstRevision); } catch (InvalidOperationException) { failed = true; } Check(failed);
-        t.Changed(); Check(t.Revision == firstRevision + 1); Check(!t.ConfirmedA && !t.ConfirmedB);
-        failed = false; try { t.Confirm(2, firstSession, firstRevision); } catch (InvalidOperationException) { failed = true; } Check(failed);
-        Check(!t.Confirm(2, t.SessionId, t.Revision)); Check(t.Confirm(1, t.SessionId, t.Revision)); t.Committing = true;
-        failed = false; try { t.Confirm(2, firstSession, firstRevision); } catch (InvalidOperationException) { failed = true; } Check(failed);
-        var next = new TradeSession(1, 2, DateTime.UtcNow.AddMinutes(2)); next.Accept(2);
-        Check(next.Revision == firstRevision); Check(next.SessionId != firstSession);
-        failed = false; try { next.Confirm(1, firstSession, firstRevision); } catch (InvalidOperationException) { failed = true; } Check(failed);
+        Check(!t.Confirm(1)); // duplicate confirmation remains idempotent
+        failed = false; try { t.Acknowledge(3, firstRevision); } catch (InvalidOperationException) { failed = true; } Check(failed);
+        failed = false; try { t.Confirm(3); } catch (InvalidOperationException) { failed = true; } Check(failed);
+        Check(t.Acknowledge(2, firstRevision)); t.Changed(); Check(t.Revision == firstRevision + 1); Check(!t.ConfirmedA && !t.ConfirmedB);
+        Check(t.AcknowledgedRevision(1) != t.Revision && t.AcknowledgedRevision(2) != t.Revision);
+        Check(!t.Acknowledge(1, firstRevision)); // a list captured before mutation cannot acknowledge a newer revision
+        failed = false; try { t.Confirm(2); } catch (InvalidOperationException) { failed = true; } Check(failed);
+        Check(t.Acknowledge(2, t.Revision)); Check(!t.Confirm(2)); Check(t.Acknowledge(1, t.Revision)); Check(t.Confirm(1)); t.Committing = true;
+        failed = false; try { t.Acknowledge(1, t.Revision); } catch (InvalidOperationException) { failed = true; } Check(failed);
+        failed = false; try { t.Confirm(2); } catch (InvalidOperationException) { failed = true; } Check(failed);
         Console.WriteLine("Состояния подтверждения обмена проверены.");
     }
 }
