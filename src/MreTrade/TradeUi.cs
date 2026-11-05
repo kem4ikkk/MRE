@@ -125,8 +125,6 @@ namespace MreTrade
             for (int i = 0; i < 10; i++)
             {
                 var own = s.Own(id); var other = s.Own(s.Other(id));
-                EffectManager.sendUIEffectVisibility(TradeEffectKey, c, true, "TradeOwnIcon" + i, i < own.Count && own[i].Id == 363);
-                EffectManager.sendUIEffectVisibility(TradeEffectKey, c, true, "TradeOtherIcon" + i, i < other.Count && other[i].Id == 363);
                 EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeOwn" + i, i < own.Count ? SafeLabel(ItemName(own[i].Id)) + " ×" + own[i].Amount + " / " + own[i].Quality + "%" : "+");
                 EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeOther" + i, i < other.Count ? SafeLabel(ItemName(other[i].Id)) + " ×" + other[i].Amount + " / " + other[i].Quality + "%" : "—");
             }
