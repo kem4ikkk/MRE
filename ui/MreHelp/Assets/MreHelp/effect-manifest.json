@@ -1,0 +1,19 @@
+{
+  "effect_id": 48625,
+  "effect_guid": "6e4a31b49c874f428a622e1a68e4d203",
+  "effect_key": 14825,
+  "bundle": "MreHelp.unity3d",
+  "prefab_address": "Effect",
+  "unity_version": "2022.3.62f3",
+  "target": "StandaloneWindows64",
+  "schema_version": 1,
+  "canvas_reference_resolution": [1920, 1080],
+  "button_names": ["HelpClose", "HelpTabBasics", "HelpTabTravel", "HelpTabGroups", "HelpTabCombat"],
+  "row_name_pattern": "HelpRow{01..10}",
+  "row_visibility_pattern": "HelpContent{01..10}",
+  "command_name_pattern": "HelpCommand{01..10}",
+  "description_name_pattern": "HelpDescription{01..10}",
+  "footer_text_name": "HelpFooterText",
+  "workshop_published": false,
+  "in_game_verified": false
+}
