@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SDG.Unturned;
+using UnityEngine;
 
 namespace MreKits
 {
@@ -11,6 +12,7 @@ namespace MreKits
         private readonly PlayerInventory inventory;
         private readonly KitDefinition kit;
         private readonly List<Placement> planned = new List<Placement>();
+        private readonly List<Item> overflow = new List<Item>();
         private Item shirt, pants;
         private bool attemptedEquip;
         private Placement bowSlot;
@@ -18,7 +20,7 @@ namespace MreKits
         public InventoryDelivery(Player player, KitDefinition kit) { this.player = player; this.inventory = player.inventory; this.kit = kit; }
         public bool Preflight()
         {
-            planned.Clear(); shirt = null; pants = null; attemptedEquip = false; bowSlot = null; bowInInventory = false;
+            planned.Clear(); overflow.Clear(); shirt = null; pants = null; attemptedEquip = false; bowSlot = null; bowInInventory = false;
             var items = new List<Item>();
             foreach (KitItem entry in kit.Items) for (int count = 0; count < entry.Count; count++) {
                 var item = new Item(entry.Id, EItemOrigin.ADMIN); item.quality = 100;
@@ -66,16 +68,17 @@ namespace MreKits
                     if (item.id == 353) bowInInventory = true;
                     found = true; break;
                 }
-                if (!found) { planned.Clear(); return false; }
+                if (!found) overflow.Add(item);
             }
             return true;
         }
         public bool BowInInventory { get { return bowInInventory; } }
+        public int OverflowCount { get { return overflow.Count; } }
         public void TrySelectBow()
         {
             if (bowSlot == null || player.life.isDead) return;
             Items slot = inventory.items[bowSlot.Page];
-            if (slot == null || slot.items.Count != 1 || !Object.ReferenceEquals(slot.items[0].item, bowSlot.Item)) return;
+            if (slot == null || slot.items.Count != 1 || !object.ReferenceEquals(slot.items[0].item, bowSlot.Item)) return;
             player.equipment.ServerEquip(bowSlot.Page, bowSlot.X, bowSlot.Y);
         }
         public bool Deliver()
@@ -94,6 +97,8 @@ namespace MreKits
             }
             foreach (Placement p in planned)
                 if (!inventory.tryAddItem(p.Item, p.X, p.Y, p.Page, p.Rotation)) return false;
+            foreach (Item item in overflow)
+                ItemManager.dropItem(item, player.transform.position + player.transform.forward * 0.75f, false, true, true);
             return true;
         }
         public bool Rollback()
@@ -107,7 +112,7 @@ namespace MreKits
                     Items items = inventory.items[page];
                     if (items == null) continue;
                     for (int index = items.items.Count - 1; index >= 0; index--)
-                        if (Object.ReferenceEquals(items.items[index].item, p.Item)) {
+                        if (object.ReferenceEquals(items.items[index].item, p.Item)) {
                             inventory.removeItem(page, (byte)index);
                             if (page < PlayerInventory.SLOTS) player.equipment.sendSlot(page);
                         }
@@ -115,7 +120,7 @@ namespace MreKits
             }
             foreach (Placement p in planned) foreach (Items items in inventory.items)
                 if (items != null) foreach (ItemJar jar in items.items)
-                    if (Object.ReferenceEquals(jar.item, p.Item)) return false;
+                    if (object.ReferenceEquals(jar.item, p.Item)) return false;
             return true;
         }
     }

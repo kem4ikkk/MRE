@@ -10,8 +10,13 @@ namespace MreKits
 
         public static string Received(string name, bool bowInInventory)
         {
+            return Received(name, bowInInventory, 0);
+        }
+
+        public static string Received(string name, bool bowInInventory, int overflowCount)
+        {
             return Prefix + "Набор " + name + " получен." +
-                (bowInInventory ? " Лук помещён в инвентарь: оружейный слот занят или недоступен." : "");
+                (bowInInventory ? " Лук помещён в инвентарь: оружейный слот занят или недоступен." : "") + (overflowCount > 0 ? " Переполнение: " + overflowCount + " предметов выброшено рядом." : "");
         }
 
         public static string Duration(double totalSeconds)

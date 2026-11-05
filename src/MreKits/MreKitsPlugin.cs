@@ -31,7 +31,7 @@ namespace MreKits
                 if (kit == null || String.IsNullOrWhiteSpace(kit.Name) || kit.Name.Length > 32 ||
                     kit.Name.Any(c => !(Char.IsLetterOrDigit(c) || c == '_' || c == '-')) || !names.Add(kit.Name) ||
                     kit.CooldownSeconds < 1 || kit.CooldownSeconds > 31536000 || kit.Items == null || kit.Items.Count == 0 ||
-                    kit.Items.Any(i => i == null || i.Id == 0 || i.Count < 1 || i.Count > 100) || kit.Items.Sum(i => i.Count) > 100)
+                    kit.Items.Any(i => i == null || i.Id == 0 || i.Count < 1 || i.Count > 1000) || kit.Items.Sum(i => (long)i.Count) > 10000)
                     throw new InvalidDataException("Некорректный kit. Проверьте имя, cooldown и предметы.");
             }
             if (names.Contains("start") && names.Contains("starter"))
@@ -95,7 +95,7 @@ namespace MreKits
                 catch (Exception error) { Logger.LogException(error, "[MRE] Набор выдан, но выбрать лук не удалось."); }
                 try { KitClaimed?.Invoke(player.CSteamID.m_SteamID, kit.Name); }
                 catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка подписчика KitClaimed."); }
-                return KitText.Received(kit.Name, delivery.BowInInventory);
+                return KitText.Received(kit.Name, delivery.BowInInventory, delivery.OverflowCount);
             } catch (Exception error) {
                 Logger.LogException(error, "[MRE] Ошибка выдачи kit; проверьте claims.json и инвентарь перед повтором.");
                 return KitText.Prefix + "Не удалось выдать набор. Обратитесь к администратору для проверки.";
