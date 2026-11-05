@@ -31,14 +31,16 @@ namespace MreTrade
             if (expected.Any(x => Object.ReferenceEquals(x.Item, offer.Item))) throw new InvalidOperationException("Предмет уже существует в инвентаре.");
             expected.Add(new Entry { Item = (Item)offer.Item, Page = placement.Page, X = placement.X, Y = placement.Y, Rotation = placement.Rotation, Id = offer.Id, Amount = offer.Amount, Quality = offer.Quality, State = (byte[])offer.State.Clone() });
         }
-        internal bool Matches(PlayerInventory inventory)
+        internal bool Matches(PlayerInventory inventory) { return MatchesExcept(inventory, null); }
+        internal bool MatchesExcept(PlayerInventory inventory, TradeOffer missing)
         {
             var actual = new List<Tuple<byte, ItemJar>>();
             for (byte page = 0; page < PlayerInventory.STORAGE; page++) if (inventory.items[page] != null)
                 foreach (var jar in inventory.items[page].items) actual.Add(Tuple.Create(page, jar));
-            if (actual.Count != expected.Count) return false;
+            if (actual.Count != expected.Count - (missing == null ? 0 : 1)) return false;
             foreach (var entry in expected)
             {
+                if (missing != null && Object.ReferenceEquals(entry.Item, missing.Item)) continue;
                 var matches = actual.Where(p => Object.ReferenceEquals(p.Item2.item, entry.Item)).ToArray();
                 if (matches.Length != 1) return false;
                 var match = matches[0]; var item = match.Item2.item;

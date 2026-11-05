@@ -9,6 +9,7 @@ class Program
     {
         CheckSuccessfulTransfer();
         CheckInterruptionAfterRemoval();
+        CheckInterruptionWithChangedInventory();
         var a = new PlayerInventory(); var b = new PlayerInventory();
         var item = new Item(); var jar = new ItemJar { item = item };
         a.items[2].items.Add(jar);
@@ -48,9 +49,20 @@ class Program
         bool interrupted = false;
         try { TradeTransaction.Apply(a, b, new[] { offer }, Array.Empty<TradeOffer>(), Array.Empty<TradePlacement>(), new[] { new TradePlacement { Offer = offer, Page = 2 } }, () => { }); }
         catch (InvalidOperationException) { interrupted = true; }
-        if (!interrupted || a.items[2].items.Count != 0 || b.items[2].items.Count != 0)
-            throw new Exception("Сценарий сбоя после удаления не воспроизведён.");
-        Console.WriteLine("Воспроизведён риск потери при сбое после удаления; автоматического восстановления нет.");
+        if (!interrupted || a.items[2].items.Count != 1 || b.items[2].items.Count != 0 || !ReferenceEquals(a.items[2].items[0].item, offer.Item))
+            throw new Exception("Предмет не восстановлен после сбоя удаления.");
+        Console.WriteLine("Предмет восстановлен после синхронной ошибки удаления.");
+    }
+    static void CheckInterruptionWithChangedInventory()
+    {
+        var a = new PlayerInventory(); var b = new PlayerInventory(); var offer = AddOffer(a);
+        a.AfterRemove = () => { AddOffer(b); throw new InvalidOperationException("Вмешательство при удалении."); };
+        bool interrupted = false;
+        try { TradeTransaction.Apply(a, b, new[] { offer }, Array.Empty<TradeOffer>(), Array.Empty<TradePlacement>(), new[] { new TradePlacement { Offer = offer, Page = 2 } }, () => { }); }
+        catch (InvalidOperationException) { interrupted = true; }
+        if (!interrupted || a.items[2].items.Any(j => ReferenceEquals(j.item, offer.Item)) || b.items[2].items.Any(j => ReferenceEquals(j.item, offer.Item)))
+            throw new Exception("Откат не должен выполняться при изменении инвентаря второй стороны.");
+        Console.WriteLine("При постороннем изменении автоматический откат остановлен.");
     }
 }
 namespace SDG.Unturned
@@ -66,6 +78,7 @@ namespace SDG.Unturned
         public byte getIndex(byte x,byte y){int i=items.FindIndex(j=>j.x==x&&j.y==y);return i<0?byte.MaxValue:(byte)i;}
         public ItemJar getItem(byte i)=>items[i];
         public bool tryFindSpace(byte w,byte h,out byte x,out byte y,out byte rot){x=y=rot=0;return true;}
+        public bool checkSpaceEmpty(byte x,byte y,byte w,byte h,byte rot)=>getIndex(x,y)==byte.MaxValue;
     }
     public class PlayerInventory
     {
