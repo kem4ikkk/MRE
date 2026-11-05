@@ -14,7 +14,14 @@ namespace MreTrade
         private readonly string directory;
         internal TradeJournal(string directory) { this.directory = directory; System.IO.Directory.CreateDirectory(directory); }
         private string Lock(ulong id) { return Path.Combine(directory, id.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".lock"); }
-        internal bool Blocked(ulong id) { return File.Exists(Lock(id)); }
+        internal bool Blocked(ulong id)
+        {
+            // Незавершённая операция без lock может появиться после неполного восстановления копии.
+            // Не разрешать новые обмены, пока журнал целиком не сверили вручную.
+            try { return File.Exists(Lock(id)) || Directory.EnumerateFiles(directory, "*.pending").Any(); }
+            catch (IOException) { return true; }
+            catch (UnauthorizedAccessException) { return true; }
+        }
         private void Reserve(ulong id, string transaction)
         {
             using (var f = new FileStream(Lock(id), FileMode.CreateNew, FileAccess.Write, FileShare.None))

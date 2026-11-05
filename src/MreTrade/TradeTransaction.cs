@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using SDG.Unturned;
 
@@ -6,44 +6,86 @@ namespace MreTrade
 {
     internal static class TradeTransaction
     {
-        // Вызывать только после устойчивого резервирования обеих сторон.
+        private sealed class Change
+        {
+            internal PlayerInventory Inventory;
+            internal TradeInventoryState State;
+            internal TradeOffer Offer;
+            internal TradePlacement Placement;
+            internal bool Added;
+        }
+
+        // Откат выполняется только пока оба инвентаря и защитник подтверждают известное состояние.
         internal static System.Action Apply(PlayerInventory a, PlayerInventory b, IList<TradeOffer> offersA, IList<TradeOffer> offersB, IList<TradePlacement> toA, IList<TradePlacement> toB, System.Action guard)
         {
             var stateA = new TradeInventoryState(a); var stateB = new TradeInventoryState(b);
             System.Action verify = () => { guard(); if (!stateA.Matches(a) || !stateB.Matches(b)) throw new InvalidOperationException("Инвентарь изменился во время обмена."); };
-            verify();
-            foreach (var offer in offersA) { verify(); RemoveOrRestore(a, b, stateA, stateB, offer, guard); stateA.Remove(offer); verify(); }
-            foreach (var offer in offersB) { verify(); RemoveOrRestore(b, a, stateB, stateA, offer, guard); stateB.Remove(offer); verify(); }
-            foreach (var placement in toA) { verify(); TradeDelivery.Add(a, new[] { placement }); stateA.Add(placement); verify(); }
-            foreach (var placement in toB) { verify(); TradeDelivery.Add(b, new[] { placement }); stateB.Add(placement); verify(); }
-            return verify;
-        }
-        private static void RemoveOrRestore(PlayerInventory owner, PlayerInventory other, TradeInventoryState ownerState, TradeInventoryState otherState, TradeOffer offer, System.Action guard)
-        {
-            var jar = (ItemJar)offer.Jar;
-            byte rotation = jar.rot;
-            try { TradeDelivery.Remove(owner, new[] { offer }); }
-            catch
+            var changes = new List<Change>();
+            Action<Change> execute = change =>
             {
-                // Не возвращать предмет, если сторонний callback изменил состояние,
-                // защитник обнаружил вмешательство или исходная клетка занята.
+                verify();
+                var next = change.State.Copy();
+                if (change.Added) next.Add(change.Placement); else next.Remove(change.Offer);
                 try
                 {
-                    guard();
-                    var item = (Item)offer.Item;
-                    var page = owner.items[offer.Page];
-                    var asset = item.GetAsset();
-                    if (page != null && asset != null && ownerState.MatchesExcept(owner, offer) && otherState.Matches(other) &&
-                        page.checkSpaceEmpty(offer.X, offer.Y, asset.size_x, asset.size_y, rotation))
+                    if (change.Added) TradeDelivery.Add(change.Inventory, new[] { change.Placement });
+                    else TradeDelivery.Remove(change.Inventory, new[] { change.Offer });
+                }
+                catch
+                {
+                    // API может выбросить исключение как до мутации, так и после callback.
+                    // Записываем операцию только если её результат целиком наблюдаем.
+                    if (next.Matches(change.Inventory)) { change.State.CopyFrom(next); changes.Add(change); }
+                    throw;
+                }
+                change.State.CopyFrom(next); changes.Add(change); verify();
+            };
+            try
+            {
+                verify();
+                foreach (var offer in offersA) execute(new Change { Inventory = a, State = stateA, Offer = offer, Placement = Original(offer) });
+                foreach (var offer in offersB) execute(new Change { Inventory = b, State = stateB, Offer = offer, Placement = Original(offer) });
+                foreach (var placement in toA) execute(new Change { Inventory = a, State = stateA, Offer = placement.Offer, Placement = placement, Added = true });
+                foreach (var placement in toB) execute(new Change { Inventory = b, State = stateB, Offer = placement.Offer, Placement = placement, Added = true });
+            }
+            catch
+            {
+                try
+                {
+                    for (int i = changes.Count - 1; i >= 0; --i)
                     {
-                        TradeDelivery.Add(owner, new[] { new TradePlacement { Offer = offer, Page = offer.Page, X = offer.X, Y = offer.Y, Rotation = rotation } });
-                        guard();
-                        if (!ownerState.Matches(owner) || !otherState.Matches(other)) throw new InvalidOperationException("Откат требует ручной проверки.");
+                        verify();
+                        var change = changes[i];
+                        if (change.Added)
+                        {
+                            var page = change.Inventory.items[change.Placement.Page];
+                            byte index = page.getIndex(change.Placement.X, change.Placement.Y);
+                            var jar = index == byte.MaxValue ? null : page.getItem(index);
+                            var offer = change.Offer;
+                            var delivered = new TradeOffer { Page = change.Placement.Page, X = change.Placement.X, Y = change.Placement.Y, Jar = jar, Item = offer.Item, Id = offer.Id, Amount = offer.Amount, Quality = offer.Quality, State = offer.State };
+                            TradeDelivery.Remove(change.Inventory, new[] { delivered });
+                            change.State.Remove(offer);
+                        }
+                        else
+                        {
+                            var placement = change.Placement;
+                            var page = change.Inventory.items[placement.Page];
+                            var asset = ((Item)change.Offer.Item).GetAsset();
+                            if (page == null || asset == null || !page.checkSpaceEmpty(placement.X, placement.Y, asset.size_x, asset.size_y, placement.Rotation)) throw new InvalidOperationException("Место для отката занято.");
+                            TradeDelivery.Add(change.Inventory, new[] { placement });
+                            change.State.Add(placement);
+                        }
+                        verify();
                     }
                 }
-                catch { /* Блокировки и журнал сохраняются для ручной сверки. */ }
+                catch { /* Журнал и блокировки остаются для ручной сверки. */ }
                 throw;
             }
+            return verify;
+        }
+        private static TradePlacement Original(TradeOffer offer)
+        {
+            return new TradePlacement { Offer = offer, Page = offer.Page, X = offer.X, Y = offer.Y, Rotation = ((ItemJar)offer.Jar).rot };
         }
     }
 }

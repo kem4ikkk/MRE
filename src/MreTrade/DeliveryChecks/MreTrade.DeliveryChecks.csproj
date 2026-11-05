@@ -5,6 +5,7 @@
     <Compile Include="../TradeDelivery.cs" Link="TradeDelivery.cs"/>
     <Compile Include="../TradeInventoryState.cs" Link="TradeInventoryState.cs"/>
     <Compile Include="../TradeTransaction.cs" Link="TradeTransaction.cs"/>
+    <Compile Include="../TradeJournal.cs" Link="TradeJournal.cs"/>
     <Compile Include="Program.cs"/>
   </ItemGroup>
 </Project>

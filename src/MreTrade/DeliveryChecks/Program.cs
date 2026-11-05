@@ -10,6 +10,9 @@ class Program
         CheckSuccessfulTransfer();
         CheckInterruptionAfterRemoval();
         CheckInterruptionWithChangedInventory();
+        CheckRollbackAfterSecondRemoval();
+        CheckRollbackAfterFailedDelivery();
+        CheckMissingLockWithPendingJournal();
         var a = new PlayerInventory(); var b = new PlayerInventory();
         var item = new Item(); var jar = new ItemJar { item = item };
         a.items[2].items.Add(jar);
@@ -64,6 +67,42 @@ class Program
             throw new Exception("Откат не должен выполняться при изменении инвентаря второй стороны.");
         Console.WriteLine("При постороннем изменении автоматический откат остановлен.");
     }
+    static void CheckRollbackAfterSecondRemoval()
+    {
+        var a = new PlayerInventory(); var b = new PlayerInventory(); var oa = AddOffer(a); var ob = AddOffer(b);
+        b.AfterRemove = () => { throw new InvalidOperationException("Сбой удаления второй стороны."); };
+        bool interrupted = false;
+        try { TradeTransaction.Apply(a, b, new[] { oa }, new[] { ob }, new[] { new TradePlacement { Offer = ob, Page = 2 } }, new[] { new TradePlacement { Offer = oa, Page = 2 } }, () => { }); }
+        catch (InvalidOperationException) { interrupted = true; }
+        if (!interrupted || a.items[2].items.Count != 1 || b.items[2].items.Count != 1 || !ReferenceEquals(a.items[2].items[0].item, oa.Item) || !ReferenceEquals(b.items[2].items[0].item, ob.Item))
+            throw new Exception("Откат после удаления второй стороны не вернул оба предмета.");
+        Console.WriteLine("Откат после ошибки удаления второй стороны вернул оба предмета.");
+    }
+    static void CheckRollbackAfterFailedDelivery()
+    {
+        var a = new PlayerInventory(); var b = new PlayerInventory(); var oa = AddOffer(a); var ob = AddOffer(b);
+        bool once = true;
+        b.BeforeAdd = () => { if (once) { once = false; throw new InvalidOperationException("Сбой выдачи."); } };
+        bool interrupted = false;
+        try { TradeTransaction.Apply(a, b, new[] { oa }, new[] { ob }, new[] { new TradePlacement { Offer = ob, Page = 2 } }, new[] { new TradePlacement { Offer = oa, Page = 2 } }, () => { }); }
+        catch (InvalidOperationException) { interrupted = true; }
+        if (!interrupted || a.items[2].items.Count != 1 || b.items[2].items.Count != 1 || !ReferenceEquals(a.items[2].items[0].item, oa.Item) || !ReferenceEquals(b.items[2].items[0].item, ob.Item))
+            throw new Exception("Откат частичной выдачи не вернул оба предмета.");
+        Console.WriteLine("Откат после частичной выдачи вернул оба предмета.");
+    }
+    static void CheckMissingLockWithPendingJournal()
+    {
+        string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mre-trade-check-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var journal = new TradeJournal(directory);
+            if (journal.Blocked(123)) throw new Exception("Пустой журнал заблокирован.");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(directory, "test.pending"), "test");
+            if (!journal.Blocked(123)) throw new Exception("Незавершённый журнал без lock не остановил обмен.");
+            Console.WriteLine("Незавершённый журнал блокирует обмен даже без lock.");
+        }
+        finally { if (System.IO.Directory.Exists(directory)) System.IO.Directory.Delete(directory, true); }
+    }
 }
 namespace SDG.Unturned
 {
@@ -82,9 +121,9 @@ namespace SDG.Unturned
     }
     public class PlayerInventory
     {
-        public const byte SLOTS=2,STORAGE=7; public Items[] items=Enumerable.Range(0,9).Select(i=>new Items((byte)i)).ToArray(); public Action AfterRemove;
+        public const byte SLOTS=2,STORAGE=7; public Items[] items=Enumerable.Range(0,9).Select(i=>new Items((byte)i)).ToArray(); public Action AfterRemove, BeforeAdd;
         public void removeItem(byte page,byte index){items[page].items.RemoveAt(index);AfterRemove?.Invoke();}
-        public bool tryAddItem(Item item,byte x,byte y,byte page,byte rot){items[page].loadItem(x,y,rot,item);return true;}
+        public bool tryAddItem(Item item,byte x,byte y,byte page,byte rot){BeforeAdd?.Invoke();items[page].loadItem(x,y,rot,item);return true;}
     }
 }
 

@@ -10,6 +10,18 @@ namespace MreTrade
     {
         private sealed class Entry { internal Item Item; internal byte Page, X, Y, Rotation, Amount, Quality; internal ushort Id; internal byte[] State; }
         private readonly List<Entry> expected = new List<Entry>();
+        private TradeInventoryState() { }
+        internal TradeInventoryState Copy()
+        {
+            var copy = new TradeInventoryState();
+            copy.expected.AddRange(expected);
+            return copy;
+        }
+        internal void CopyFrom(TradeInventoryState source)
+        {
+            expected.Clear();
+            expected.AddRange(source.expected);
+        }
         internal TradeInventoryState(PlayerInventory inventory)
         {
             for (byte page = 0; page < PlayerInventory.STORAGE; page++) if (inventory.items[page] != null)
