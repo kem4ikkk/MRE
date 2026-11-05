@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
 using System.Text;
+using System.Threading;
 using HarmonyLib;
 using MreShared;
 using Rocket.Unturned.Player;
@@ -121,7 +122,7 @@ namespace MreTrade
             EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradePartner", "Обмен с " + SafeLabel(Online(s.Other(id)) == null ? "игроком" : Online(s.Other(id)).DisplayName));
             EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeOwnOffer", "Ваше предложение");
             EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradePartnerOffer", "Предложение партнёра");
-            EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeStatus", "Вы: " + ((id == s.A ? s.ConfirmedA : s.ConfirmedB) ? "подтверждено" : "ожидание") + " / партнёр: " + ((id == s.A ? s.ConfirmedB : s.ConfirmedA) ? "подтверждено" : "ожидание") + " | проверьте /trade list");
+            EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeStatus", "Вы: " + ((id == s.A ? s.ConfirmedA : s.ConfirmedB) ? "подтверждено" : "ожидание") + " / партнёр: " + ((id == s.A ? s.ConfirmedB : s.ConfirmedA) ? "подтверждено" : "ожидание") + " | версия " + s.Revision + " | /trade list перед подтверждением");
             for (int i = 0; i < 10; i++)
             {
                 var own = s.Own(id); var other = s.Own(s.Other(id));
@@ -142,13 +143,14 @@ namespace MreTrade
         }
         private void TradeButton(Player player, string name)
         {
+            if (Thread.CurrentThread.ManagedThreadId != gameThread) return;
             if (!uiReady || player == null || player.channel == null || player.channel.owner == null) return;
             ulong id = player.channel.owner.playerID.steamID.m_SteamID; TradeSession s;
             var actor = Online(id);
             if (actor == null || actor.Player != player || !sessions.TryGetValue(id, out s) || !s.Accepted || s.Committing || IsEditorOpen(id) || !Allowed(actor) || !Allowed(Online(s.Other(id)))) return;
-            // Событие содержит только статическое имя кнопки. Кнопка выдаёт токен
-            // актуальной версии, но не подтверждает её; игрок должен явно отправить токен.
-            if (name == "TradeConfirm") { RequestConfirmation(actor, s); return; }
+            // Callback не содержит ревизию; отметка просмотра создаётся только командой /trade list.
+            if (DateTime.UtcNow >= s.ExpiresUtc) { Cancel(s, "Обмен отменён: истекло время."); return; }
+            if (name == "TradeConfirm") { Confirm(actor, s); return; }
             if (name == "TradeCancel") { Cancel(s, "Обмен отменён."); return; }
             if (name != null && name.StartsWith("TradeOwnSlot", StringComparison.Ordinal))
             {

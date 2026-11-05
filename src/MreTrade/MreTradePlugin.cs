@@ -88,19 +88,8 @@ namespace MreTrade
             if (!s.Accepted) { Tell(id, "Ожидание согласия второго игрока: /trade accept."); return; }
             if (action == "list" && args.Length <= 2) { int pageNumber = 1; if (args.Length == 2 && (!Int32.TryParse(args[1], out pageNumber) || pageNumber < 1)) { Tell(id, "Укажите номер страницы: /trade list 1."); return; } List(actor, s, pageNumber); return; }
             if ((action == "offer" || action == "remove") && args.Length == 4) { Modify(actor, s, action, args); return; }
-            if (action == "confirm" && args.Length == 1) { RequestConfirmation(actor, s); return; }
-            if (action == "confirm" && args.Length == 3)
-            {
-                Guid sessionId; long revision;
-                if (!Guid.TryParseExact(args[1], "N", out sessionId) || !Int64.TryParse(args[2], NumberStyles.None, CultureInfo.InvariantCulture, out revision))
-                { Tell(id, "Код подтверждения неверен. Сверьте предложение через /trade list."); return; }
-                Confirm(actor, s, sessionId, revision); return;
-            }
+            if (action == "confirm" && args.Length == 1) { Confirm(actor, s); return; }
             Tell(id, "Команды: /trade list, offer <страница> <x> <y>, remove <страница> <x> <y>, confirm, cancel.");
-        }
-        private void RequestConfirmation(UnturnedPlayer actor, TradeSession s)
-        {
-            Tell(actor.CSteamID.m_SteamID, "Сначала проверьте обе стороны через /trade list. Затем подтвердите просмотренную версию: /trade confirm " + s.SessionId.ToString("N") + " " + s.Revision.ToString(CultureInfo.InvariantCulture));
         }
         private void Invite(UnturnedPlayer actor, string[] args)
         {
@@ -124,10 +113,12 @@ namespace MreTrade
                 if (inv.items[page] != null) foreach (var jar in inv.items[page].items) rows.Add(page + " " + jar.x + " " + jar.y + " — " + ItemName(jar.item.id) + " [" + jar.item.id + "] ×" + jar.item.amount + ", качество " + jar.item.quality + "%");
             int pages = Math.Max(1, (rows.Count + 7) / 8);
             if (number > pages) { Tell(id, "Такой страницы нет. Доступно: " + pages + "."); return; }
+            long listedRevision = s.Revision;
             Tell(id, "Ваш инвентарь, страница " + number + "/" + pages + ":");
             foreach (string row in rows.Skip((number - 1) * 8).Take(8)) Tell(id, row);
             Tell(id, "Ваше предложение: " + Describe(s.Own(id)) + "; предложение партнёра: " + Describe(s.Own(s.Other(id))) + ".");
-            Tell(id, "Версия " + s.Revision.ToString(CultureInfo.InvariantCulture) + ". После проверки нажмите кнопку подтверждения или введите /trade confirm " + s.SessionId.ToString("N") + " " + s.Revision.ToString(CultureInfo.InvariantCulture) + ".");
+            Tell(id, "Версия " + listedRevision.ToString(CultureInfo.InvariantCulture) + ". После проверки нажмите кнопку подтверждения или введите /trade confirm.");
+            if (!s.Acknowledge(id, listedRevision)) Tell(id, "Предложение изменилось во время вывода списка. Выполните /trade list ещё раз.");
         }
         private static string ItemName(ushort id) { var asset = Assets.find(EAssetType.ITEM, id) as ItemAsset; return asset == null ? "Предмет" : asset.itemName; }
         private static string Describe(List<TradeOffer> offers) { return offers.Count == 0 ? "пусто" : String.Join(", ", offers.Select(o => ItemName(o.Id) + " [" + o.Id + "] ×" + o.Amount + ", качество " + o.Quality + "%").ToArray()); }
@@ -145,14 +136,16 @@ namespace MreTrade
             s.Changed(); offers.Add(new TradeOffer { Page = page, X = x, Y = y, Jar = jar, Item = item, Id = item.id, Amount = item.amount, Quality = item.quality, State = (byte[])item.state.Clone() });
             Both(s, "Предложение изменено; подтвердите заново. /trade list");
         }
-        private void Confirm(UnturnedPlayer actor, TradeSession s, Guid expectedSessionId, long expectedRevision)
+        private void Confirm(UnturnedPlayer actor, TradeSession s)
         {
             ulong id = actor.CSteamID.m_SteamID; var a = Online(s.A); var b = Online(s.B);
+            if (DateTime.UtcNow >= s.ExpiresUtc) { Cancel(s, "Обмен отменён: истекло время."); return; }
+            if (s.AcknowledgedRevision(id) != s.Revision) { Tell(id, "Сначала проверьте актуальное предложение через /trade list."); return; }
             if (IsEditorOpen(s.A) || IsEditorOpen(s.B)) { Tell(id, "Оба игрока должны закрыть инвентарь перед подтверждением."); return; }
             if (s.OffersA.Count == 0 && s.OffersB.Count == 0) { Tell(id, "Пустой обмен не подтверждается."); return; }
             if (!Allowed(a) || !Allowed(b) || !NotEquipped(a, s.OffersA) || !NotEquipped(b, s.OffersB) || !TradeDelivery.Valid(a.Player.inventory, s.OffersA) || !TradeDelivery.Valid(b.Player.inventory, s.OffersB)) { s.Changed(); Both(s, "Предметы или состояние игроков изменились; проверьте предложение."); return; }
-            try { if (!s.Confirm(id, expectedSessionId, expectedRevision)) { Both(s, "Одна сторона подтвердила эту версию; ожидается вторая."); return; } }
-            catch (InvalidOperationException) { Tell(id, "Предложение изменилось или код устарел. Проверьте /trade list и подтвердите новую версию."); RefreshTradeUi(s); return; }
+            try { if (!s.Confirm(id)) { Both(s, "Одна сторона подтвердила эту версию; ожидается вторая."); return; } }
+            catch (InvalidOperationException) { Tell(id, "Сначала проверьте актуальное предложение через /trade list."); RefreshTradeUi(s); return; }
             try
             {
                 var ia = a.Player.inventory; var ib = b.Player.inventory;
