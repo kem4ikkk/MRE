@@ -27,6 +27,9 @@ internal static class Program
         Check(category == "TPA", "direct tpa metadata");
         Check(ChatFormatting.Format("MRE: old broadcast", false) == normal + " old broadcast", "legacy MRE prefix");
         Check(ChatFormatting.Format("[MRE \u00B7 \u041D\u0410\u0411\u041E\u0420\u042B] old kit notice", false) == normal + " old kit notice", "legacy kits prefix");
+        Check(ChatFormatting.Format("[MRE] Command not found.", false, out category) == normal + " Command not found." && category == "SERVER", "unknown command uses server icon category");
+        Check(ChatFormatting.Format("[MRE] \u041A\u043E\u043C\u0430\u043D\u0434\u0430 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430.", false, out category) == normal + " \u041A\u043E\u043C\u0430\u043D\u0434\u0430 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430." && category == "SERVER", "Russian unknown command uses server icon category");
+        Check(ChatFormatting.Format("[MRE-ADMIN] Command not found.", false, out category).StartsWith(admin, StringComparison.Ordinal) && category == "ADMIN", "admin prefix keeps admin category");
         Check(ChatFormatting.Format("<b>MRE:</b> <color=red>bad</color>", true).IndexOf("<color=red>", StringComparison.Ordinal) < 0, "incoming rich tags");
         Check(ChatFormatting.Format("<script>text</script>", false).Contains("\u2039script\u203a"), "unsafe angle brackets");
         Check(ChatFormatting.Format("\u001eMRECHAT:UNKNOWN\u001eplain", false, out category) == normal + " plain" && category == "SYSTEM", "unknown category");

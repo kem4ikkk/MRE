@@ -10,10 +10,13 @@ if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Не найде
 $original = [IO.File]::ReadAllText($path)
 $pattern = '(<Translation\s+Id="command_(?:god|vanish|duty|i|z|v|p|tp|tphere|clear|investigate|heal|rocket|more|tps)_[^"]*"\s+Value=")(?!\[MRE-ADMIN\])'
 $updated = [regex]::Replace($original, $pattern, '$1[MRE-ADMIN] ')
+$unknownCommandPattern = '(<Translation\s+Id="command_not_found"\s+Value=")[^"]*("\s*/>)'
+$updated = [regex]::Replace($updated, $unknownCommandPattern, '$1[MRE] Команда не найдена.$2')
 if ($updated -eq $original) { Write-Host 'Переводы Rocket уже отмечены или подходящие строки не найдены.'; return }
+[void][xml]$updated
 
 $backupDir = Join-Path $projectRoot ('runtime\backups\chat-prefix-' + (Get-Date -Format 'yyyyMMdd-HHmmss-ffff'))
 New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 Copy-Item -LiteralPath $path -Destination (Join-Path $backupDir 'Rocket.Unturned.en.translation.xml')
 [IO.File]::WriteAllText($path, $updated, [Text.UTF8Encoding]::new($false))
-Write-Host "Переводы администраторских команд обновлены. Копия: $backupDir"
+Write-Host "Переводы администраторских команд и ответа о неизвестной команде обновлены. Копия: $backupDir"

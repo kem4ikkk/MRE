@@ -43,6 +43,7 @@ namespace MreChatStyle
                 message = message.Substring("[MRE]".Length).TrimStart();
             message = Regex.Replace(message, @"^MRE\s*:\s*", String.Empty, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             message = Regex.Replace(message, @"^\[MRE[^\]]*\]\s*", String.Empty, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!admin && category == "SYSTEM" && IsUnknownCommand(message)) category = "SERVER";
 
             if (admin && category == "SYSTEM") category = "ADMIN";
             if (category == "ADMIN" || category == "STAFF") admin = true;
@@ -61,11 +62,20 @@ namespace MreChatStyle
             return true;
         }
 
+        private static bool IsUnknownCommand(string message)
+        {
+            return Regex.IsMatch(message ?? String.Empty, @"^command\s+not\s+found[.!]?$",
+                       RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) ||
+                Regex.IsMatch(message ?? String.Empty,
+                    "^\\u041A\\u043E\\u043C\\u0430\\u043D\\u0434\\u0430\\s+\\u043D\\u0435\\s+\\u043D\\u0430\\u0439\\u0434\\u0435\\u043D\\u0430[.!]?$",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+
         private static string NormalizeCategory(string category)
         {
             switch ((category ?? String.Empty).ToUpperInvariant())
             {
-                case "HOME": case "TPA": case "KITS": case "TRADE": case "VAULT":
+                case "HOME": case "TPA": case "KITS": case "TRADE": case "VAULT": case "SERVER":
                 case "VOTE": case "AIRDROP": case "STAFF": case "ADMIN": return category.ToUpperInvariant();
                 default: return "SYSTEM";
             }

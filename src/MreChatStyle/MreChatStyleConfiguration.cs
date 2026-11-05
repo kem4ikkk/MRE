@@ -38,6 +38,7 @@ namespace MreChatStyle
             string icon;
             switch (category)
             {
+                case "SERVER": icon = FallbackIconUrl; break;
                 case "HOME": icon = HomeIconUrl; break;
                 case "TPA": icon = TpaIconUrl; break;
                 case "KITS": icon = KitsIconUrl; break;
