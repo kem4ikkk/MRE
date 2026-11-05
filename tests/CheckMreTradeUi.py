@@ -26,12 +26,28 @@ assert 'Master_Bundle_Override' in script and 'Exclude_From_Master_Bundle' in bu
 assert 'MreHud' not in script and 'MreHud' not in builder
 assert manifest['bundle_built'] is False and manifest['in_game_verified'] is False
 trade_ui = (root / 'src/MreTrade/TradeUi.cs').read_text(encoding='utf-8')
-confirm_handler = re.search(r'if \(name == "TradeConfirm"\)\s*\{([^}]*)\}', trade_ui)
-assert confirm_handler and 'Confirm(actor, s)' in confirm_handler.group(1)
+confirm_handler = re.search(r'if \(name == "TradeConfirm"\)\s*\{(?P<body>.*?)\n\s*\}', trade_ui, re.S)
+assert confirm_handler and 's.Acknowledge(id, s.Revision)' in confirm_handler.group('body')
+assert 'Confirm(actor, s); return;' in confirm_handler.group('body')
+assert '/trade list' not in trade_ui
+assert 'RefreshTradeUi(s);' in trade_ui
+projection_drag = trade_ui.split('internal void ProjectionDrag', 1)[1]
+assert 'Modify(actor, s, "remove"' in projection_drag and 'Modify(actor, s, "offer"' in projection_drag
+assert 'editor.Previous = null; RefreshTradeUi(s);' in projection_drag
+assert 'перетащите предмет' in trade_ui and 'подтвердите кнопкой' in trade_ui
+assert 'if (name == "TradeCancel")' in trade_ui and 'Cancel(s,' in trade_ui
+assert '"TradeCancel"' in builder
+assert 'перетащите предмет' in builder and 'ПОДТВЕРДИТЬ ОБМЕН' in builder
 trade_plugin = (root / 'src/MreTrade/MreTradePlugin.cs').read_text(encoding='utf-8')
 assert 'Guid.TryParseExact(args[1], "N"' not in trade_plugin
-assert 'Confirm(actor, s); return;' in trade_plugin
-assert 's.Acknowledge(id, listedRevision)' in trade_plugin
+handle_body = trade_plugin.split('internal void Handle', 1)[1].split('private void Invite', 1)[0]
+assert 'action == "list"' not in handle_body
+assert 'action == "offer"' not in handle_body and 'action == "remove"' not in handle_body
+assert 'action == "confirm"' not in handle_body
+assert 'Продолжайте обмен в интерфейсе' in trade_plugin
+assert 'UInt64.TryParse(query' in trade_plugin and 'уникальное точное имя игрока' in trade_plugin
+cancel_handler = re.search(r'private void Cancel\(TradeSession s, string text\)\s*\{(?P<body>.*?)\n\s*\}', trade_plugin, re.S)
+assert cancel_handler and 'Both(s, text)' not in cancel_handler.group('body')
 session = (root / 'src/MreTrade/TradeSession.cs').read_text(encoding='utf-8')
 assert 'AcknowledgedRevisionA = 0' in session and 'AcknowledgedRevisionB = 0' in session
 assert 'AcknowledgedRevision(id) != Revision' in session
