@@ -31,7 +31,7 @@ public static class MreTradeBuilder
             scaler.referenceResolution = new Vector2(1920, 1080); scaler.matchWidthOrHeight = 0.5f;
             var group = root.GetComponent<CanvasGroup>(); group.interactable = true; group.blocksRaycasts = true;
             var content = Rect("TradeContent", root.transform, 1100, 750, 0, 0);
-            Box("TradeBackground", content, 1100, 750, 0, 0, "11191DB8").GetComponent<Image>().raycastTarget = true;
+            Box("TradeBackground", content, 1100, 750, 0, 0, "11191D00").GetComponent<Image>().raycastTarget = true;
             Text("TradeCaption", content, "MRE  /  ОБМЕН ПРЕДМЕТАМИ", -510, 325, 1020, 30, 24, "B8D66B");
             Text("TradePartner", content, "Партнёр: ожидание сервера", -510, 289, 1020, 28, 20, "EDF1E8");
             Text("TradeOwnOffer", content, "ВАШЕ ПРЕДЛОЖЕНИЕ", -510, 243, 490, 26, 18, "B8D66B");
@@ -39,9 +39,9 @@ public static class MreTradeBuilder
             for (int i = 0; i < 10; i++)
             {
                 float x = -510 + (i % 2) * 250, y = 174 - (i / 2) * 72;
-                var own = Button("TradeOwnSlot" + i, content, x, y, 240, 62, "25342DDB");
+                var own = Button("TradeOwnSlot" + i, content, x, y, 240, 62, "25342D00");
                 Text("TradeOwn" + i, own, "Пустая ячейка", -108, -20, 216, 40, 17, "EDF1E8");
-                var other = Box("TradeOtherSlot" + i, content, 240, 62, x + 650, y, "202B31DB");
+                var other = Box("TradeOtherSlot" + i, content, 240, 62, x + 650, y, "202B3100");
                 Text("TradeOther" + i, other, "Пустая ячейка", -108, -20, 216, 40, 17, "C3CFD4");
             }
             Text("TradeHint", content, "Нажмите свою ячейку, чтобы выбрать предметы в обычном инвентаре. Чужие ячейки доступны только для просмотра.", -510, -205, 1020, 42, 17, "AEBBB4");
