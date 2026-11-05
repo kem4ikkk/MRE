@@ -13,6 +13,7 @@ class Program
         CheckRollbackAfterSecondRemoval();
         CheckRollbackAfterFailedDelivery();
         CheckMissingLockWithPendingJournal();
+        CheckFailuresAtEveryTransferStep();
         var a = new PlayerInventory(); var b = new PlayerInventory();
         var item = new Item(); var jar = new ItemJar { item = item };
         a.items[2].items.Add(jar);
@@ -103,6 +104,25 @@ class Program
         }
         finally { if (System.IO.Directory.Exists(directory)) System.IO.Directory.Delete(directory, true); }
     }
+    static void CheckFailuresAtEveryTransferStep()
+    {
+        for (int step = 0; step < 4; step++)
+        for (int timing = 0; timing < 2; timing++)
+        {
+            var a = new PlayerInventory(); var b = new PlayerInventory(); var oa = AddOffer(a); var ob = AddOffer(b);
+            bool fired = false;
+            Action fail = () => { if (!fired) { fired = true; throw new InvalidOperationException("Инъекция сбоя."); } };
+            var owner = step == 0 || step == 2 ? a : b;
+            if (step < 2) { if (timing == 0) owner.BeforeRemove = fail; else owner.AfterRemove = fail; }
+            else { if (timing == 0) owner.BeforeAdd = fail; else owner.AfterAdd = fail; }
+            bool interrupted = false;
+            try { TradeTransaction.Apply(a, b, new[] { oa }, new[] { ob }, new[] { new TradePlacement { Offer = ob, Page = 2 } }, new[] { new TradePlacement { Offer = oa, Page = 2 } }, () => { }); }
+            catch (InvalidOperationException) { interrupted = true; }
+            if (!fired || !interrupted || a.items[2].items.Count != 1 || b.items[2].items.Count != 1 || !ReferenceEquals(a.items[2].items[0].item, oa.Item) || !ReferenceEquals(b.items[2].items[0].item, ob.Item))
+                throw new Exception("Некорректный откат на этапе " + step + ", момент " + timing + ".");
+        }
+        Console.WriteLine("Сбои до и после каждого из четырёх шагов переноса проверены.");
+    }
 }
 namespace SDG.Unturned
 {
@@ -121,9 +141,9 @@ namespace SDG.Unturned
     }
     public class PlayerInventory
     {
-        public const byte SLOTS=2,STORAGE=7; public Items[] items=Enumerable.Range(0,9).Select(i=>new Items((byte)i)).ToArray(); public Action AfterRemove, BeforeAdd;
-        public void removeItem(byte page,byte index){items[page].items.RemoveAt(index);AfterRemove?.Invoke();}
-        public bool tryAddItem(Item item,byte x,byte y,byte page,byte rot){BeforeAdd?.Invoke();items[page].loadItem(x,y,rot,item);return true;}
+        public const byte SLOTS=2,STORAGE=7; public Items[] items=Enumerable.Range(0,9).Select(i=>new Items((byte)i)).ToArray(); public Action BeforeRemove, AfterRemove, BeforeAdd, AfterAdd;
+        public void removeItem(byte page,byte index){BeforeRemove?.Invoke();items[page].items.RemoveAt(index);AfterRemove?.Invoke();}
+        public bool tryAddItem(Item item,byte x,byte y,byte page,byte rot){BeforeAdd?.Invoke();items[page].loadItem(x,y,rot,item);AfterAdd?.Invoke();return true;}
     }
 }
 

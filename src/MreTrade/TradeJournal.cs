@@ -12,15 +12,28 @@ namespace MreTrade
     internal sealed class TradeJournal
     {
         private readonly string directory;
-        internal TradeJournal(string directory) { this.directory = directory; System.IO.Directory.CreateDirectory(directory); }
+        private readonly bool recoveryRequired;
+        internal TradeJournal(string directory)
+        {
+            this.directory = directory;
+            System.IO.Directory.CreateDirectory(directory);
+            // .done подтверждает только выполнение в памяти, но не сохранение обоих
+            // инвентарей игрой. После перезапуска даже штатно завершённый обмен
+            // требует сверки; удаление файлов во время работы не снимает блокировку.
+            try { recoveryRequired = Directory.EnumerateFiles(directory, "*.done").Any() || Directory.EnumerateFiles(directory, "*.pending").Any(); }
+            catch (IOException) { recoveryRequired = true; }
+            catch (UnauthorizedAccessException) { recoveryRequired = true; }
+            catch (System.Security.SecurityException) { recoveryRequired = true; }
+        }
         private string Lock(ulong id) { return Path.Combine(directory, id.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".lock"); }
         internal bool Blocked(ulong id)
         {
             // Незавершённая операция без lock может появиться после неполного восстановления копии.
             // Не разрешать новые обмены, пока журнал целиком не сверили вручную.
-            try { return File.Exists(Lock(id)) || Directory.EnumerateFiles(directory, "*.pending").Any(); }
+            try { return recoveryRequired || File.Exists(Lock(id)) || Directory.EnumerateFiles(directory, "*.pending").Any(); }
             catch (IOException) { return true; }
             catch (UnauthorizedAccessException) { return true; }
+            catch (System.Security.SecurityException) { return true; }
         }
         private void Reserve(ulong id, string transaction)
         {
