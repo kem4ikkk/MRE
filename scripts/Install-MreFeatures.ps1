@@ -1,5 +1,5 @@
 ﻿[CmdletBinding(SupportsShouldProcess = $true)]
-param([switch]$Apply, [switch]$InterfaceOnly, [switch]$AdminOnly, [switch]$VaultOnly, [switch]$KitsOnly, [switch]$ChatOnly, [switch]$AirdropOnly)
+param([switch]$Apply, [switch]$InterfaceOnly, [switch]$AdminOnly, [switch]$VaultOnly, [switch]$KitsOnly, [switch]$ChatOnly, [switch]$AirdropOnly, [switch]$TradeOnly)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Get-MreProcessPath.ps1')
@@ -9,9 +9,9 @@ $serverRoot = Join-Path $runtimeRoot 'server'
 $pluginRoot = Join-Path $serverRoot 'Servers\MRE\Rocket\Plugins'
 $utf8 = New-Object Text.UTF8Encoding($false)
 $copies = @()
-if (@(@($InterfaceOnly,$AdminOnly,$VaultOnly,$KitsOnly,$ChatOnly,$AirdropOnly) | Where-Object { $_ }).Count -gt 1) { throw 'Выберите только один режим установки.' }
-$targetedInstall = $InterfaceOnly -or $AdminOnly -or $VaultOnly -or $KitsOnly -or $ChatOnly -or $AirdropOnly
-$names = if ($AirdropOnly) { @('MreAirdrop') } elseif ($VaultOnly) { @('MreVault') } elseif ($KitsOnly) { @('MreKits') } elseif ($ChatOnly) { @('MreChatStyle') } elseif ($InterfaceOnly) { @('MreInterface') } elseif ($AdminOnly) { @('MreInterface','MreModeration','MreInventoryAudit','MreFlight') } else { @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight') }
+if (@(@($InterfaceOnly,$AdminOnly,$VaultOnly,$KitsOnly,$ChatOnly,$AirdropOnly,$TradeOnly) | Where-Object { $_ }).Count -gt 1) { throw 'Выберите только один режим установки.' }
+$targetedInstall = $InterfaceOnly -or $AdminOnly -or $VaultOnly -or $KitsOnly -or $ChatOnly -or $AirdropOnly -or $TradeOnly
+$names = if ($TradeOnly) { @('MreTrade') } elseif ($AirdropOnly) { @('MreAirdrop') } elseif ($VaultOnly) { @('MreVault') } elseif ($KitsOnly) { @('MreKits') } elseif ($ChatOnly) { @('MreChatStyle') } elseif ($InterfaceOnly) { @('MreInterface') } elseif ($AdminOnly) { @('MreInterface','MreModeration','MreInventoryAudit','MreFlight') } else { @('MreEssentials','MreInterface','MreKits','MreModeration','MreInventoryAudit','MreFlight') }
 foreach ($name in $names) {
     $buildRoot = Join-Path $runtimeRoot ('builds\' + $name)
     $source = Join-Path $buildRoot ($name + '.dll')
@@ -69,7 +69,7 @@ try {
         [xml]$essentials = Get-Content -LiteralPath $essentialsPath -Raw -Encoding UTF8
         [xml]$homes = Get-Content -LiteralPath $homePath -Raw -Encoding UTF8
     }
-    if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly) {
+    if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly -and -not $TradeOnly) {
         if (Test-Path -LiteralPath $commandMapPath) { [xml]$commandMap = Get-Content -LiteralPath $commandMapPath -Raw -Encoding UTF8 }
         else { [xml]$commandMap = '<RocketCommands><Commands /></RocketCommands>' }
     }
@@ -85,7 +85,7 @@ try {
         Set-XmlValue $homes 'DefaultHomeDelay' '10'
     }
     # Rocket читает приоритет из сохраненного mapping, даже при Register(... High).
-    if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly -and -not $AirdropOnly) {
+    if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly -and -not $AirdropOnly -and -not $TradeOnly) {
     foreach ($mapping in @($commandMap.SelectNodes('/RocketCommands/Commands/Command'))) {
         if ($mapping.InnerText -in @('Rocket.Unturned.Commands.CommandAdmin/admin','Rocket.Unturned.Commands.UnturnedCommands/admin')) {
             $mapping.SetAttribute('Enabled','false')
@@ -125,7 +125,7 @@ try {
     $backupRoot=Join-Path $projectRoot ('backups\features-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fffffff'))
     New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
     $targets=@($copies | ForEach-Object Target)
-    if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly) { $targets += @($commandMapPath) }
+    if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly -and -not $TradeOnly) { $targets += @($commandMapPath) }
     if (-not $targetedInstall) { $targets += @($essentialsPath,$homePath) }
     foreach ($target in $targets) {
         if (-not (Test-Path -LiteralPath $target)) { continue }
@@ -146,12 +146,12 @@ try {
         else { [IO.File]::Move($temporary,$copy.Target) }
     }
     if (-not $targetedInstall) { $essentials.Save($essentialsPath); $homes.Save($homePath) }
-    if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly) { $commandMap.Save($commandMapPath) }
+    if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly -and -not $TradeOnly) { $commandMap.Save($commandMapPath) }
     $receipt=[ordered]@{
         installed_at_utc=[DateTime]::UtcNow.ToString('o')
         backup_path=$backupRoot
         files=@($copies | Select-Object Name,SHA256)
-        settings=if($targetedInstall){[ordered]@{InterfaceOnly=[bool]$InterfaceOnly;AdminOnly=[bool]$AdminOnly;VaultOnly=[bool]$VaultOnly;KitsOnly=[bool]$KitsOnly;ChatOnly=[bool]$ChatOnly;AirdropOnly=[bool]$AirdropOnly}}else{[ordered]@{MinimumPlayers=1;MaxSkillsEnabled=$true;DefaultMaxHomes=2;DefaultHomeDelay=10}}
+        settings=if($targetedInstall){[ordered]@{InterfaceOnly=[bool]$InterfaceOnly;AdminOnly=[bool]$AdminOnly;VaultOnly=[bool]$VaultOnly;KitsOnly=[bool]$KitsOnly;ChatOnly=[bool]$ChatOnly;AirdropOnly=[bool]$AirdropOnly;TradeOnly=[bool]$TradeOnly}}else{[ordered]@{MinimumPlayers=1;MaxSkillsEnabled=$true;DefaultMaxHomes=2;DefaultHomeDelay=10}}
         gameplay_validation='pending'
     }
     [IO.File]::WriteAllText((Join-Path $runtimeRoot 'features-installed.json'),($receipt | ConvertTo-Json -Depth 6),$utf8)
