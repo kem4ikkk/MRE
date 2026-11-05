@@ -73,12 +73,19 @@ internal static class VoteUiChecks
                 try { snapshot.WithPhase("arbitrary"); throw new Exception("Invalid phase was accepted"); }
                 catch(ArgumentOutOfRangeException) { }
             }),
-            ("instant solo pass still creates visible final card",()=>{
-                ulong[] solo={11}; var session=new VoteSession(solo,60,now.AddSeconds(60));
+            ("solo vote waits until deadline and creates visible final card",()=>{
+                ulong[] solo={11}; var session=new VoteSession(solo,60,now.AddSeconds(30));
                 session.TryVote(11,solo,now);
-                Assert(session.Evaluate(solo,now)==VoteOutcome.Passed,"Solo vote did not pass immediately");
-                var result=VoteUiSnapshot.Capture(session,solo,11,"Иван",60,now).WithPhase("passed");
-                Assert(result!=null && result.Phase=="passed" && result.YesVotes==1 && result.RequiredVotes==1 && !result.CanVote,"Immediate pass disappeared before UI had a result");
+                Assert(session.Evaluate(solo,now)==VoteOutcome.Active && session.Evaluate(solo,now.AddSeconds(30))==VoteOutcome.Passed,"Solo vote did not wait for deadline");
+                var result=VoteUiSnapshot.Capture(session,solo,11,"Иван",30,now.AddSeconds(30)).WithPhase("passed");
+                Assert(result!=null && result.Phase=="passed" && result.YesVotes==1 && result.RequiredVotes==1 && result.VotedYes && !result.VotedNo && !result.CanVote,"Final solo vote result was lost");
+            }),
+            ("vote snapshot distinguishes a negative ballot",()=>{
+                var session=NewVote(); session.TryVote(11,online,now,VoteChoice.No);
+                var snapshot=VoteUiSnapshot.Capture(session,online,11,"Иван",60,now);
+                Assert(snapshot.HasVoted && snapshot.VotedNo && !snapshot.VotedYes && snapshot.NoVotes==1 && !snapshot.CanVote,"Negative ballot was not shown");
+                var result=snapshot.WithPhase("expired");
+                Assert(result.VotedNo && !result.VotedYes,"Final snapshot lost the choice");
             })
         };
         foreach(var (name,test) in cases) {test();Console.WriteLine("PASS: "+name);}

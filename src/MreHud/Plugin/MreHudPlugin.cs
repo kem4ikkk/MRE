@@ -22,6 +22,8 @@ namespace MreHud
             public bool Spawned;
             public bool Failed;
             public BuildingHitState BuildingHit;
+            public bool BuildingRestart;
+            public readonly DamageSlots Damage = new DamageSlots(8);
             public readonly Dictionary<string, MeterAnimation> Meters = new Dictionary<string, MeterAnimation>();
             public readonly Dictionary<string, int> SegmentCounts = new Dictionary<string, int>();
             public float LastMeterTime;
@@ -38,6 +40,7 @@ namespace MreHud
         private EffectAsset effect;
         private bool waitingLogged;
         private IDisposable punchObserver;
+        private IDisposable damageObserver;
         private static readonly EPluginWidgetFlags[] ReplacedFlags = {
             EPluginWidgetFlags.ShowHealth, EPluginWidgetFlags.ShowFood, EPluginWidgetFlags.ShowWater,
             EPluginWidgetFlags.ShowVirus, EPluginWidgetFlags.ShowStamina, EPluginWidgetFlags.ShowOxygen,
@@ -56,8 +59,18 @@ namespace MreHud
             StructureManager.onDamageStructureRequested += OnStructureHit;
             try { punchObserver = StartPunchObserver(this); }
             catch (Exception error) { Logger.LogException(error, "[MRE UI] Harmony недоступен; остаются штатный HUD и damage-event."); }
+            try { damageObserver = StartDamageObserver(this); }
+            catch (Exception error) { Logger.LogException(error, "[MRE UI] Индикация урона отключена."); }
             Logger.Log("[MRE UI] HUD загружен. AssetsVerified=" + c.AssetsVerified +
                 ". До проверки клиентского bundle штатные показатели сохраняются.");
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static IDisposable StartDamageObserver(MreHudPlugin plugin)
+        {
+            var observer = new DamageNumberObserver(plugin);
+            observer.Start();
+            return observer;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -70,6 +83,8 @@ namespace MreHud
 
         protected override void Unload()
         {
+            if (damageObserver != null) damageObserver.Dispose();
+            damageObserver = null;
             if (punchObserver != null) punchObserver.Dispose();
             punchObserver = null;
             BarricadeManager.onDamageBarricadeRequested -= OnBarricadeHit;
@@ -226,29 +241,47 @@ namespace MreHud
         private void RememberHit(View view, string name, int maximum, Func<int> readHealth)
         {
             if (maximum <= 0) return;
+            // Restart the local animation during the render loop.
+            view.BuildingRestart = true;
             view.BuildingHit = new BuildingHitState { Name = HudFormatting.BuildingName(name), Maximum = maximum,
                 ReadHealth = readHealth, ExpiresUtc = DateTime.UtcNow.AddSeconds(5) };
             nextTickUtc = DateTime.MinValue;
+        }
+
+        internal void ObserveDamage(CSteamID attacker, int damage, DamageKind kind)
+        {
+            View view;
+            if (damage <= 0 || attacker.m_SteamID == 0 || !views.TryGetValue(attacker.m_SteamID, out view) ||
+                view.Player == null || view.Player.life.isDead || !view.Spawned) return;
+            int slot = view.Damage.Add(DateTime.UtcNow, TimeSpan.FromSeconds(1.2));
+            string suffix = slot.ToString(CultureInfo.InvariantCulture);
+            // Restart an occupied slot even when the next value and color match.
+            Visible(view, "DamageNumberPanel" + suffix, false);
+            // Send each hit immediately: several hits can occur between HUD refreshes.
+            Text(view, "DamageNumberText" + suffix, "<color=" + DamageNumber.Color(kind) + ">" + damage.ToString(CultureInfo.InvariantCulture) + "</color>");
+            Visible(view, "DamageNumberPanel" + suffix, true);
         }
 
         private void RenderBuildingHit(View view)
         {
             var hit = view.BuildingHit;
             bool visible = hit != null && hit.IsVisible(DateTime.UtcNow, !view.Player.life.isDead);
-            Visible(view, "BuildingPanel", visible);
-            if (!visible) { view.BuildingHit = null; return; }
+            if (visible && view.BuildingRestart) Visible(view, "BuildingPanel", false);
+            view.BuildingRestart = false;
+            if (!visible) { Visible(view, "BuildingPanel", false); view.BuildingHit = null; return; }
             int health = Math.Max(0, Math.Min(hit.Maximum, hit.ReadHealth()));
             Text(view, "BuildingName", hit.Name);
             Text(view, "BuildingHealth", health.ToString(CultureInfo.InvariantCulture) + " / " + hit.Maximum.ToString(CultureInfo.InvariantCulture));
             int filled = HudFormatting.FilledSegments(health, hit.Maximum, 100);
             SetSegments(view, "Building", filled, 100);
+            Visible(view, "BuildingPanel", true);
         }
 
         private void Render(View view)
         {
             Player p = view.Player;
             bool alive = !p.life.isDead;
-            if (!alive) { view.BuildingHit = null; view.Meters.Clear(); view.MeterTimeValid = false; Visible(view, "HudContent", false); return; }
+            if (!alive) { view.BuildingHit = null; view.Damage.Clear(); view.Meters.Clear(); view.MeterTimeValid = false; Visible(view, "HudContent", false); return; }
             float now = Time.realtimeSinceStartup;
             double elapsed = view.MeterTimeValid ? Math.Max(0, now - view.LastMeterTime) : 0;
             view.LastMeterTime = now; view.MeterTimeValid = true;
@@ -272,6 +305,8 @@ namespace MreHud
             Visible(view, "RaidPanel", hasTpa && teleportation.IsPlayerInRaid(id));
             RenderWeapon(view);
             RenderBuildingHit(view);
+            for (int i = 0; i < view.Damage.Count; i++)
+                Visible(view, "DamageNumberPanel" + i.ToString(CultureInfo.InvariantCulture), view.Damage.IsVisible(i, DateTime.UtcNow));
             RenderTeleport(view, hasTpa, id);
             RenderVote(view, id.m_SteamID);
             // При первом показе сначала заполняем значения; в prefab корень скрыт.
@@ -371,13 +406,17 @@ namespace MreHud
             Text(view, "VoteEligible", "голосов за · участников " + vote.EligibleCount.ToString(CultureInfo.InvariantCulture));
             int seconds = active ? (int)Math.Ceiling(Math.Max(0, vote.RemainingSeconds)) : 0;
             Text(view, "VoteTimer", active ? seconds.ToString(CultureInfo.InvariantCulture) + " с" : "");
+            Text(view, "VoteYesKey", "<plugin_2/>");
+            Text(view, "VoteNoKey", "<plugin_3/>");
+            Visible(view, "VoteYesSelected", vote.VotedYes);
+            Visible(view, "VoteNoSelected", vote.VotedNo);
             Text(view, "VoteStatus", active ? "ГОЛОСОВАНИЕ" : passed ? "ПРИНЯТО — НАСТУПИЛ ДЕНЬ" :
                 vote.Phase == "expired" ? "ВРЕМЯ ИСТЕКЛО — ГОЛОСОВ НЕДОСТАТОЧНО" : "ГОЛОСОВАНИЕ ОТМЕНЕНО");
             Text(view, "VoteHint", !active ? (passed ? "Спасибо за участие" : "Новый запуск: /vote day после перерыва") :
                 vote.HasVoted ? "Ваш голос принят" : vote.CanVote ? "За день: /vote yes  ·  /cv" : "Участие доступно со следующего голосования");
             Visible(view, "VoteSuccessAccent", !active && passed);
             Visible(view, "VoteFailureAccent", !active && !passed);
-            int percent = vote.RequiredVotes <= 0 ? 0 : (int)Math.Round(Math.Max(0, Math.Min(1, vote.YesVotes / (double)vote.RequiredVotes)) * 100);
+            int percent = !active || vote.DurationSeconds <= 0 ? 0 : (int)Math.Round(Math.Max(0, Math.Min(1, vote.RemainingSeconds / vote.DurationSeconds)) * 100);
             Segments(view, "VoteProgress", percent, 100);
         }
 

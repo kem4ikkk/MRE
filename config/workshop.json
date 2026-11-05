@@ -3,6 +3,14 @@
   "checked_at": "2026-10-29",
   "mods": [
     {
+      "id": 3832074683,
+      "name": "MRE HUD",
+      "default_enabled": true,
+      "source": "https://steamcommunity.com/sharedfiles/filedetails/?id=3832074683",
+      "use_basis": "Собственный пакет интерфейса MRE, опубликованный владельцем проекта.",
+      "compatibility": "Сервер загрузил Workshop-ресурс, владелец подтвердил отображение HUD в тестовом режиме; игровая приёмка продолжается."
+    },
+    {
       "id": 1232252658,
       "name": "More Farming Mod",
       "default_enabled": true,

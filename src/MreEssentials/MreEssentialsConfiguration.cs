@@ -22,7 +22,7 @@ namespace MreEssentials
             NightOnly = true;
             MinimumPlayers = 1;
             RequiredPercent = 60;
-            VoteDurationSeconds = 60;
+            VoteDurationSeconds = 30;
             VoteCooldownSeconds = 300;
             AutoSaveEnabled = true;
             AutoSaveIntervalSeconds = 300;

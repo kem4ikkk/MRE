@@ -7,6 +7,36 @@ static void Assert(bool condition, string message)
 
 var cases = new List<(string name, Action test)>
 {
+    ("damage reflects only confirmed health loss", () => {
+        Assert(DamageNumber.Calculate(100,78,true)==22,"player damage");
+        Assert(DamageNumber.Calculate(100,100,true)==0 && DamageNumber.Calculate(100,101,true)==0,"cancelled or healed hit");
+        Assert(DamageNumber.Calculate(9,0,false)==9,"lethal player hit");
+        Assert(DamageNumber.Calculate(9,0,false)==9,"resource final hit");
+    }),
+    ("rapid hits use separate slots and reuse the oldest", () => {
+        var slots = new DamageSlots(8); var start = new DateTime(2026, 1, 1);
+        for (int i = 0; i < 8; i++) {
+            Assert(slots.Add(start.AddMilliseconds(i * 10), TimeSpan.FromSeconds(1.2)) == i, "Hit shared a slot early");
+            Assert(slots.IsVisible(i, start.AddSeconds(1)), "Hit expired early");
+        }
+        Assert(slots.Add(start.AddMilliseconds(80), TimeSpan.FromSeconds(1.2)) == 0, "Ninth hit did not replace oldest");
+        Assert(slots.IsVisible(0, start.AddMilliseconds(1250)) && !slots.IsVisible(1, start.AddMilliseconds(1250)), "Reused slot did not get its own expiry");
+        slots.Clear(); Assert(!slots.IsVisible(0, start.AddMilliseconds(100)) && slots.Add(start, TimeSpan.FromSeconds(1.2)) == 0, "Clear did not reset slots");
+    }),
+    ("nested damage only invalidates the same target", () => {
+        var versions = new DamageTargetSequence(); var a = new object(); var b = new object();
+        long outer = versions.Begin(a); long other = versions.Begin(b);
+        Assert(versions.IsCurrent(a, outer) && versions.IsCurrent(b, other), "Different target suppressed outer hit");
+        long nested = versions.Begin(a);
+        Assert(!versions.IsCurrent(a, outer) && versions.IsCurrent(a, nested), "Same target could be double-counted");
+        Assert(versions.IsCurrent(b, other), "Same-target nesting affected another target");
+    }),
+    ("damage colors distinguish target and headshot", () => {
+        Assert(DamageNumber.Color(DamageKind.Resource)=="#A0A0A0", "Resource must be gray");
+        Assert(DamageNumber.Color(DamageKind.Building)=="#FFFFFF", "Building must be white");
+        Assert(DamageNumber.Color(DamageKind.PlayerBody)=="#40E060", "Body must be green");
+        Assert(DamageNumber.Color(DamageKind.PlayerHead)=="#FF4040", "Head must be red");
+    }),
     ("meter starts at actual value and animates in both directions", () => {
         var meter = new MeterAnimation();
         Assert(meter.Advance(80, 0) == 80, "First value animated from zero");

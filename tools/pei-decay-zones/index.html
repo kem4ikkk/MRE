@@ -1,0 +1,4 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><title>PEI — черновик зон</title>
+<style>body{font:16px sans-serif;max-width:1100px;margin:auto} canvas{max-width:100%;border:1px solid;cursor:crosshair} button,select{margin:4px} #status{color:#a21}</style>
+<h1>Черновая разметка PEI</h1><p>Жёлтые точки — положения подписей карты по CartographyVolume. Укажите вершины каждого полигона кликами. Границы требуют игровой проверки и не применяются автоматически.</p><p id="status">Загрузка карты…</p>
+<label>Локация <select id="zone"></select></label><button id="undo">Убрать последнюю вершину</button><button id="clear">Очистить полигон</button><button id="export">Скачать черновик JSON</button><label>Импорт черновика <input id="import" type="file" accept="application/json,.json"></label><p id="progress"></p><canvas id="map"></canvas><script src="/app.js"></script></html>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -52,6 +52,7 @@ public static class MreHudBuilder
             CreateBlockPanels(content);
             CreateVote(content);
             CreateBuilding(content);
+            CreateDamageNumber(content);
             ValidateNames(root);
             ValidateHealthText(root);
             ValidateTeleportKeys(root);
@@ -108,7 +109,8 @@ public static class MreHudBuilder
     private static void CreateVitals(RectTransform content)
     {
         RectTransform low = Rect("VitalsLowLayout", content, 0, 0, 0, 0);
-        RectTransform card = Box("VitalsPanel", low, 28, 80, 370, 168, Back);
+        // Штатные значки рисуются поверх HUD и могут закрыть часть нижней карточки.
+        RectTransform card = Box("VitalsPanel", low, 28, 28, 370, 168, Back);
         Box("VitalsRule", card, 0, 165, 370, 3, Lime);
         Label("VitalsCaption", card, "MRE  /  СОСТОЯНИЕ", 16, 138, 220, 17, 11, Muted, FontStyle.Bold);
         Label("HealthValue", card, "100", 14, 82, 103, 58, 42, TextColor, FontStyle.Bold);
@@ -119,18 +121,18 @@ public static class MreHudBuilder
         SmallMeter(card, "Water", "ВОДА", 132, 13, Water);
         SmallMeter(card, "Stamina", "ЭНЕРГИЯ", 248, 13, Lime);
 
-        RectTransform bleeding = Box("BleedingPanel", low, 28, 256, 178, 25, Panel);
+        RectTransform bleeding = Box("BleedingPanel", low, 28, 204, 178, 25, Panel);
         Label("BleedingCaption", bleeding, "+  КРОВОТЕЧЕНИЕ", 9, 3, 163, 20, 10, Red, FontStyle.Bold);
-        RectTransform broken = Box("BrokenPanel", low, 218, 256, 180, 25, Panel);
+        RectTransform broken = Box("BrokenPanel", low, 218, 204, 180, 25, Panel);
         Label("BrokenCaption", broken, "!  ПЕРЕЛОМ", 9, 3, 163, 20, 10, Red, FontStyle.Bold);
-        RectTransform oxygen = Box("OxygenPanel", low, 28, 289, 370, 30, Panel);
+        RectTransform oxygen = Box("OxygenPanel", low, 28, 237, 370, 30, Panel);
         Label("OxygenCaption", oxygen, "КИСЛОРОД", 12, 6, 90, 18, 10, Water);
         Label("OxygenValue", oxygen, "100", 317, 5, 41, 20, 14, TextColor);
         Bar("Oxygen", oxygen, 113, 12, 188, 5, 100, Water);
 
         var high = UnityEngine.Object.Instantiate(low.gameObject, content, false);
         high.name = "VitalsHighLayout";
-        high.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 180);
+        high.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 232);
         foreach (var child in high.GetComponentsInChildren<RectTransform>(true))
             if (child.gameObject != high) child.name += "High";
         high.SetActive(false);
@@ -161,14 +163,52 @@ public static class MreHudBuilder
         low.gameObject.SetActive(false);
     }
 
+    private static void CreateDamageNumber(RectTransform content)
+    {
+        // Shared clip restarts when a slot is hidden and shown again by the server.
+        var clip = new AnimationClip { name = "DamagePulse", legacy = true, wrapMode = WrapMode.Once };
+        clip.SetCurve("", typeof(CanvasGroup), "m_Alpha", new AnimationCurve(
+            new Keyframe(0, 0.2f), new Keyframe(0.12f, 1f)));
+        const string clipPath = "Assets/MreHud/DamagePulse.anim";
+        var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+        if (existing == null) AssetDatabase.CreateAsset(clip, clipPath);
+        else { EditorUtility.CopySerialized(clip, existing); UnityEngine.Object.DestroyImmediate(clip); clip = existing; }
+        for (int i = 0; i < 8; i++)
+        {
+            RectTransform card = Rect("DamageNumberPanel" + i, content, 0, 0, 68, 24);
+            card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
+            card.anchoredPosition = new Vector2(34 + (i % 2) * 72, 25 + (i / 2) * 25);
+            Label("DamageNumberText" + i, card, "22", 0, 0, 68, 24, 14, TextColor, FontStyle.Bold);
+            card.Find("DamageNumberText" + i).GetComponent<Text>().supportRichText = true;
+            card.gameObject.AddComponent<CanvasGroup>().alpha = 0.2f;
+            var animation = card.gameObject.AddComponent<Animation>();
+            animation.playAutomatically = true;
+            animation.clip = clip;
+            animation.AddClip(clip, clip.name);
+            card.gameObject.SetActive(false);
+        }
+    }
+
     private static void CreateBuilding(RectTransform content)
     {
-        RectTransform card = Box("BuildingPanel", content, 28, -139, 280, 90, Back, new Vector2(0, 1), new Vector2(0, 1));
-        Box("BuildingAccent", card, 0, 87, 280, 3, Lime);
-        Label("BuildingCaption", card, "СОСТОЯНИЕ ПОСТРОЙКИ", 14, 66, 252, 15, 10, Muted, FontStyle.Bold);
-        Label("BuildingName", card, "Постройка", 14, 38, 252, 24, 17, TextColor, FontStyle.Bold);
-        Label("BuildingHealth", card, "1000 / 1000", 14, 14, 252, 20, 14, Lime, FontStyle.Bold);
-        Bar("Building", card, 14, 8, 252, 4, 100, Lime);
+        RectTransform card = Box("BuildingPanel", content, 0, 198, 204, 46, Back, new Vector2(0.5f, 0), new Vector2(0.5f, 0));
+        Box("BuildingAccent", card, 0, 44, 204, 2, Lime);
+        Label("BuildingName", card, "Постройка", 9, 23, 186, 17, 13, TextColor, FontStyle.Bold);
+        Label("BuildingHealth", card, "1000 / 1000", 9, 6, 186, 17, 12, Lime, FontStyle.Bold);
+        Bar("Building", card, 9, 3, 186, 2, 100, Lime);
+        card.gameObject.AddComponent<CanvasGroup>().alpha = 0;
+        var clip = new AnimationClip { name = "BuildingFade", legacy = true, wrapMode = WrapMode.Once };
+        clip.SetCurve("", typeof(CanvasGroup), "m_Alpha", new AnimationCurve(
+            new Keyframe(0, 0), new Keyframe(0.18f, 1), new Keyframe(4.65f, 1), new Keyframe(5, 0)));
+        const string clipPath = "Assets/MreHud/BuildingFade.anim";
+        var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+        if (existing == null) AssetDatabase.CreateAsset(clip, clipPath);
+        else { EditorUtility.CopySerialized(clip, existing); UnityEngine.Object.DestroyImmediate(clip); clip = existing; }
+        var animation = card.gameObject.AddComponent<Animation>();
+        animation.playAutomatically = true;
+        animation.clip = clip;
+        animation.AddClip(clip, clip.name);
+        card.gameObject.SetActive(false);
     }
 
     private static void CreateTeleport(RectTransform content)
@@ -181,10 +221,10 @@ public static class MreHudBuilder
         Label("TpaHint", card, "хочет телепортироваться к вам", 16, 84, 337, 20, 12, Muted);
         Bar("TpaProgress", card, 16, 69, 338, 4, 100, Lime);
         RectTransform accept = Box("TpaAcceptPanel", card, 16, 16, 162, 37, Panel);
-        Label("TpaAcceptKey", accept, "\u0411 \u043f\u043e \u0443\u043c\u043e\u043b\u0447. \u00b7 <plugin_0/>", 6, 3, 150, 15, 11, Lime);
+        Label("TpaAcceptKey", accept, "Б по умолчанию", 6, 3, 150, 15, 11, Lime);
         Label("TpaAcceptText", accept, "\u041f\u0420\u0418\u041d\u042f\u0422\u042c", 6, 19, 150, 15, 11, TextColor);
         RectTransform deny = Box("TpaDenyPanel", card, 190, 16, 164, 37, Panel);
-        Label("TpaDenyKey", deny, "\u042e \u043f\u043e \u0443\u043c\u043e\u043b\u0447. \u00b7 <plugin_1/>", 6, 3, 152, 15, 11, Muted);
+        Label("TpaDenyKey", deny, "Ю по умолчанию", 6, 3, 152, 15, 11, Muted);
         Label("TpaDenyText", deny, "\u041e\u0422\u041a\u041b\u041e\u041d\u0418\u0422\u042c", 6, 19, 152, 15, 11, TextColor);
     }
 
@@ -206,18 +246,29 @@ public static class MreHudBuilder
 
     private static void CreateVote(RectTransform content)
     {
-        RectTransform card = Box("VotePanel", content, 0, -28, 370, 164, Back, new Vector2(0.5f, 1), new Vector2(0.5f, 1));
-        Box("VoteAccent", card, 0, 161, 370, 3, Lime);
-        Box("VoteSuccessAccent", card, 0, 161, 370, 3, Lime);
-        Box("VoteFailureAccent", card, 0, 161, 370, 3, Red);
-        Label("VoteStatus", card, "ГОЛОСОВАНИЕ", 16, 135, 286, 15, 9, Muted, FontStyle.Bold);
-        Label("VoteTimer", card, "60 с", 307, 125, 47, 27, 19, Lime, FontStyle.Bold);
-        Label("VoteTopic", card, "Наступление дня", 16, 101, 338, 28, 22, TextColor, FontStyle.Bold);
-        Label("VoteInitiator", card, "Инициатор: Игрок", 16, 80, 338, 18, 11, Muted);
-        Label("VoteCount", card, "1 / 2", 16, 51, 90, 25, 21, Lime, FontStyle.Bold);
-        Label("VoteEligible", card, "голосов за · участников 2", 112, 54, 242, 20, 10, Muted);
-        Bar("VoteProgress", card, 16, 40, 338, 4, 100, Lime);
-        Label("VoteHint", card, "За день: /vote yes  ·  /cv", 16, 12, 338, 20, 12, TextColor);
+        RectTransform card = Box("VotePanel", content, -28, 0, 220, 78, Back, new Vector2(1, 0.5f), new Vector2(1, 0.5f));
+        Box("VoteAccent", card, 0, 76, 220, 2, Lime);
+        Box("VoteSuccessAccent", card, 0, 76, 220, 2, Lime).gameObject.SetActive(false);
+        Box("VoteFailureAccent", card, 0, 76, 220, 2, Red).gameObject.SetActive(false);
+        Box("VoteSunCore", card, 17, 53, 10, 10, Lime);
+        Box("VoteSunTop", card, 21, 66, 2, 5, Lime);
+        Box("VoteSunBottom", card, 21, 45, 2, 5, Lime);
+        Box("VoteSunLeft", card, 9, 57, 5, 2, Lime);
+        Box("VoteSunRight", card, 30, 57, 5, 2, Lime);
+        Label("VoteTimer", card, "30 \u0441", 172, 49, 40, 21, 14, Lime, FontStyle.Bold);
+        Bar("VoteProgress", card, 44, 55, 120, 3, 100, Lime);
+        RectTransform yes = Box("VoteYesPanel", card, 12, 8, 92, 30, Panel);
+        Box("VoteYesSelected", yes, 0, 0, 92, 30, Hex("4d7134", 0.98f)).gameObject.SetActive(false);
+        Label("VoteYesKey", yes, "Q", 4, 4, 84, 22, 16, TextColor, FontStyle.Bold);
+        RectTransform no = Box("VoteNoPanel", card, 116, 8, 92, 30, Panel);
+        Box("VoteNoSelected", no, 0, 0, 92, 30, Hex("843d38", 0.98f)).gameObject.SetActive(false);
+        Label("VoteNoKey", no, "E", 4, 4, 84, 22, 16, TextColor, FontStyle.Bold);
+        // Hidden text targets preserve the existing server contract.
+        foreach (string name in new[] { "VoteStatus", "VoteInitiator", "VoteEligible", "VoteHint", "VoteTopic", "VoteCount", "VoteYesLabel", "VoteNoLabel" })
+        {
+            Label(name, card, "", 0, 0, 1, 1, 9, Muted);
+            card.Find(name).gameObject.SetActive(false);
+        }
     }
 
     private static void Bar(string name, RectTransform parent, float x, float y, float width, float height, int count, Color color)
@@ -270,6 +321,13 @@ public static class MreHudBuilder
         text.verticalOverflow = name == "HealthValue" ? VerticalWrapMode.Overflow : VerticalWrapMode.Truncate;
         text.supportRichText = false;
         text.raycastTarget = false;
+        if (name == "VoteYesKey" || name == "VoteNoKey")
+        {
+            text.alignment = TextAnchor.MiddleCenter;
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = 8;
+            text.resizeTextMaxSize = size;
+        }
         if (name == "TpaAcceptKey" || name == "TpaDenyKey")
         {
             text.resizeTextForBestFit = true;
@@ -309,13 +367,13 @@ public static class MreHudBuilder
             var rect = label.GetComponent<RectTransform>();
             var settings = label.GetGenerationSettings(rect.rect.size);
             settings.resizeTextForBestFit = false;
-            settings.fontSize = 8;
-            string value = (name == "TpaAcceptKey" ? "\u0411" : "\u042e") + " \u043f\u043e \u0443\u043c\u043e\u043b\u0447. \u00b7 RightControl";
+            settings.fontSize = label.fontSize;
+            string value = label.text;
             var generator = new TextGenerator();
             if (!generator.Populate(value, settings) || generator.characterCountVisible != value.Length ||
                 generator.GetPreferredWidth(value, settings) > rect.rect.width ||
                 generator.GetPreferredHeight(value, settings) > rect.rect.height)
-                throw new InvalidOperationException(name + " does not fit RightControl");
+                throw new InvalidOperationException(name + " does not fit its label");
         }
     }
 
@@ -327,8 +385,50 @@ public static class MreHudBuilder
             "WeaponName", "MagazineName", "AmmoValue", "AmmoCapacity", "FireModeValue", "DurabilityValue", "VitalsLowLayout", "VitalsHighLayout", "WeaponLowLayout", "WeaponHighLayout",
             "TpaPanel", "TpaTitle", "TpaPlayerName", "TpaHint", "TpaTimer", "TpaAcceptPanel", "TpaAcceptKey", "TpaDenyKey", "TpaDenyText",
             "OxygenPanel", "LowHealth", "BleedingPanel", "BrokenPanel", "CombatPanel", "RaidPanel", "EmptyMagazine", "WeaponPanel",
-            "VotePanel", "VoteTopic", "VoteInitiator", "VoteCount", "VoteEligible", "VoteTimer", "VoteStatus", "VoteHint", "VoteSuccessAccent", "VoteFailureAccent", "BuildingPanel", "BuildingName", "BuildingHealth" };
+            "VotePanel", "VoteTopic", "VoteInitiator", "VoteCount", "VoteEligible", "VoteTimer", "VoteStatus", "VoteHint", "VoteSuccessAccent", "VoteFailureAccent", "VoteYesPanel", "VoteYesSelected", "VoteYesKey", "VoteYesLabel", "VoteNoPanel", "VoteNoSelected", "VoteNoKey", "VoteNoLabel", "VoteSunCore", "VoteSunTop", "VoteSunBottom", "VoteSunLeft", "VoteSunRight", "BuildingPanel", "BuildingName", "BuildingHealth" };
         var rects = root.GetComponentsInChildren<RectTransform>(true).ToDictionary(x => x.name);
+        if (rects["VitalsPanel"].anchoredPosition.y != 28 || rects["WeaponPanel"].anchoredPosition.y != 28 ||
+            rects["VitalsPanelHigh"].anchoredPosition.y + rects["VitalsHighLayout"].anchoredPosition.y != 260 ||
+            rects["BleedingPanel"].anchoredPosition.y != 204 || rects["BrokenPanel"].anchoredPosition.y != 204 ||
+            rects["OxygenPanel"].anchoredPosition.y != 237)
+            throw new InvalidOperationException("Unexpected HUD layout geometry");
+        var vote = rects["VotePanel"];
+        if (vote.anchorMin != new Vector2(1, 0.5f) || vote.anchorMax != vote.anchorMin ||
+            vote.pivot != new Vector2(1, 0.5f) || vote.anchoredPosition != new Vector2(-28, 0) ||
+            vote.sizeDelta != new Vector2(220, 78) || rects["VoteYesSelected"].gameObject.activeSelf ||
+            rects["VoteNoSelected"].gameObject.activeSelf || rects["VoteYesKey"].GetComponent<Text>().text != "Q" ||
+            rects["VoteNoKey"].GetComponent<Text>().text != "E" ||
+            !rects["VoteYesKey"].GetComponent<Text>().resizeTextForBestFit ||
+            !rects["VoteNoKey"].GetComponent<Text>().resizeTextForBestFit)
+            throw new InvalidOperationException("Invalid vote panel geometry or default selection");
+        for (int i = 0; i < 8; i++)
+        {
+            var damagePanel = rects["DamageNumberPanel" + i];
+            var damageLabel = rects["DamageNumberText" + i].GetComponent<Text>();
+            var damageAnimation = damagePanel.GetComponent<Animation>();
+            var damageGroup = damagePanel.GetComponent<CanvasGroup>();
+            if (damageAnimation == null || !damageAnimation.playAutomatically || damageAnimation.clip == null ||
+                !damageAnimation.clip.legacy || damageGroup == null || damageGroup.alpha != 0.2f)
+                throw new InvalidOperationException("Invalid damage number animation " + i);
+            var pulse = AnimationUtility.GetEditorCurve(damageAnimation.clip, EditorCurveBinding.FloatCurve("", typeof(CanvasGroup), "m_Alpha"));
+            if (pulse == null || pulse.length != 2 || Math.Abs(pulse.keys[1].time - 0.12f) > 0.001f ||
+                pulse.keys[0].value != 0.2f || pulse.keys[1].value != 1f || AnimationUtility.GetAnimationEvents(damageAnimation.clip).Length != 0)
+                throw new InvalidOperationException("Invalid damage number pulse " + i);
+            if (damagePanel.anchoredPosition != new Vector2(34 + (i % 2) * 72, 25 + (i / 2) * 25) ||
+                damagePanel.sizeDelta != new Vector2(68, 24) || damagePanel.gameObject.activeSelf ||
+                damageLabel == null || damageLabel.fontSize != 14 || !damageLabel.supportRichText)
+                throw new InvalidOperationException("Invalid damage number slot " + i);
+        }
+        var building = rects["BuildingPanel"];
+        var buildingAnimation = building.GetComponent<Animation>();
+        var buildingGroup = building.GetComponent<CanvasGroup>();
+        if (building.anchoredPosition != new Vector2(0, 198) || building.sizeDelta != new Vector2(204, 46) ||
+            building.gameObject.activeSelf || buildingGroup == null || buildingAnimation == null ||
+            !buildingAnimation.playAutomatically || buildingAnimation.clip == null || !buildingAnimation.clip.legacy)
+            throw new InvalidOperationException("Invalid building panel geometry or animation: position=" + building.anchoredPosition + " size=" + building.sizeDelta + " active=" + building.gameObject.activeSelf + " group=" + (buildingGroup != null) + " anim=" + (buildingAnimation != null) + " autoplay=" + (buildingAnimation != null && buildingAnimation.playAutomatically) + " clip=" + (buildingAnimation != null && buildingAnimation.clip != null));
+        var fade = AnimationUtility.GetEditorCurve(buildingAnimation.clip, EditorCurveBinding.FloatCurve("", typeof(CanvasGroup), "m_Alpha"));
+        if (fade == null || fade.length != 4 || Math.Abs(fade.keys[3].time - 5f) > 0.001f || fade.keys[0].value != 0 || fade.keys[1].value != 1 || fade.keys[2].value != 1 || fade.keys[3].value != 0 || AnimationUtility.GetAnimationEvents(buildingAnimation.clip).Length != 0)
+            throw new InvalidOperationException("Invalid building fade curve");
         var names = rects.Keys.ToArray();
         foreach (string name in required)
             if (!names.Contains(name)) throw new InvalidOperationException("Отсутствует UI-элемент: " + name);

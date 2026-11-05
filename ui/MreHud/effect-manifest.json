@@ -10,7 +10,7 @@
   "canvas_reference_resolution": [1920, 1080],
   "panels": ["vitals", "weapon", "teleport", "home", "vote_day", "building_health"],
   "native_hud_hidden_by_default": false,
-  "workshop_file_id": null,
-  "client_bundle_status": "built_locally_delivery_and_ingame_verification_pending",
+  "workshop_file_id": 3832074683,
+  "client_bundle_status": "workshop_updated_server_loaded_client_verification_pending",
   "in_game_verification": "pending"
 }

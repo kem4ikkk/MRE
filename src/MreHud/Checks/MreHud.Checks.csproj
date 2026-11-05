@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Plugin/HudFormatting.cs" Link="Actual/HudFormatting.cs" />
+    <Compile Include="../Plugin/DamageNumber.cs" Link="Actual/DamageNumber.cs" />
     <Compile Include="../Plugin/BuildingHitState.cs" Link="Actual/BuildingHitState.cs" />
     <Compile Include="../../MreEssentials/VoteSession.cs" Link="Actual/VoteSession.cs" />
     <Compile Include="../../MreEssentials/VoteUiSnapshot.cs" Link="Actual/VoteUiSnapshot.cs" />

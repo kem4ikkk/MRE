@@ -81,8 +81,9 @@ namespace MreKits
             busy = true;
             try {
                 string ledgerName = KitNames.LedgerName(kit.Name);
+                var delivery = new InventoryDelivery(player.Player, kit);
                 string result = ClaimTransaction.Execute(ledger, player.CSteamID.m_SteamID, ledgerName, DateTime.UtcNow,
-                    kit.CooldownSeconds, new InventoryDelivery(player.Player, kit));
+                    kit.CooldownSeconds, delivery);
                 if (result == "inventory_full") return KitText.Prefix + "Освободите место для всего набора и повторите /kit " + kit.Name + ".";
                 if (result == "unavailable") {
                     ClaimRecord record = ledger.Get(player.CSteamID.m_SteamID, ledgerName);
@@ -90,9 +91,11 @@ namespace MreKits
                         ? KitText.Prefix + "Выдача набора проверяется. Обратитесь к администратору."
                         : KitText.Prefix + "Набор " + kit.Name + " будет доступен через " + KitText.Duration((record.NextClaimUtc - DateTime.UtcNow).TotalSeconds) + ".";
                 }
+                try { delivery.TrySelectBow(); }
+                catch (Exception error) { Logger.LogException(error, "[MRE] Набор выдан, но выбрать лук не удалось."); }
                 try { KitClaimed?.Invoke(player.CSteamID.m_SteamID, kit.Name); }
                 catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка подписчика KitClaimed."); }
-                return KitText.Prefix + "Набор " + kit.Name + " получен. Следующий — через " + KitText.Duration(kit.CooldownSeconds) + ".";
+                return KitText.Received(kit.Name, delivery.BowInInventory);
             } catch (Exception error) {
                 Logger.LogException(error, "[MRE] Ошибка выдачи kit; проверьте claims.json и инвентарь перед повтором.");
                 return KitText.Prefix + "Не удалось выдать набор. Обратитесь к администратору для проверки.";

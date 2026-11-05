@@ -10,6 +10,9 @@
     <Compile Include="../KitLedger.cs" Link="Actual/KitLedger.cs" />
     <Compile Include="../ClaimTransaction.cs" Link="Actual/ClaimTransaction.cs" />
     <Compile Include="../KitNames.cs" Link="Actual/KitNames.cs" />
+    <Compile Include="../KitText.cs" Link="Actual/KitText.cs" />
+    <Compile Include="../WeaponSlotPlan.cs" Link="Actual/WeaponSlotPlan.cs" />
+    <Compile Include="../InventoryDelivery.cs" Link="Actual/InventoryDelivery.cs" />
     <Reference Include="Newtonsoft.Json">
       <HintPath>../../../runtime/server/Unturned_Data/Managed/Newtonsoft.Json.dll</HintPath>
       <Private>true</Private>

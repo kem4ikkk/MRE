@@ -8,6 +8,12 @@ namespace MreKits
     {
         public const string Prefix = "[MRE · НАБОРЫ] ";
 
+        public static string Received(string name, bool bowInInventory)
+        {
+            return Prefix + "Набор " + name + " получен." +
+                (bowInInventory ? " Лук помещён в инвентарь: оружейный слот занят или недоступен." : "");
+        }
+
         public static string Duration(double totalSeconds)
         {
             int seconds = (int)Math.Ceiling(Math.Max(0, totalSeconds));

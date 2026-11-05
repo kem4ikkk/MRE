@@ -1,0 +1,28 @@
+[2026-11-04 13:43:29] Loading level: 100%
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_DIAG id=60971 type=SDG.Unturned.ItemStorageAsset guidSame=True
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60971 name=_storage_x type=Byte value=10
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60971 name=_storage_y type=Byte value=10
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60971 name=_barricade type=GameObject value=Barricade
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_MODEL id=60971 name=_barricade renderers=0 colliders=1
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60971 name=_nav type=GameObject value=Nav
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_MODEL id=60971 name=_nav renderers=0 colliders=1
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60971 name=_item type=GameObject value=NULL
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_DIAG id=60972 type=SDG.Unturned.ItemStorageAsset guidSame=True
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60972 name=_storage_x type=Byte value=10
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60972 name=_storage_y type=Byte value=20
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60972 name=_barricade type=GameObject value=Barricade
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_MODEL id=60972 name=_barricade renderers=0 colliders=1
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60972 name=_nav type=GameObject value=Nav
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_MODEL id=60972 name=_nav renderers=0 colliders=1
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60972 name=_item type=GameObject value=NULL
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_DIAG id=60973 type=SDG.Unturned.ItemStorageAsset guidSame=True
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60973 name=_storage_x type=Byte value=15
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60973 name=_storage_y type=Byte value=20
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60973 name=_barricade type=GameObject value=Barricade
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_MODEL id=60973 name=_barricade renderers=0 colliders=1
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60973 name=_nav type=GameObject value=Nav
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_MODEL id=60973 name=_nav renderers=0 colliders=1
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_FIELD id=60973 name=_item type=GameObject value=NULL
+[2026-11-04 13:44:28] SafeDiagnostic >> SAFE_DIAG_DONE requesting shutdown
+[2026-11-04 13:44:28] Saving during server shutdown
+[2026-11-04 13:44:28] Quit game: server shutdown

@@ -6,6 +6,8 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../VoteDoubleTapKeys.cs" Link="VoteDoubleTapKeys.cs" />
+    <Compile Include="../VoteHoldKeys.cs" Link="VoteHoldKeys.cs" />
     <Compile Include="../VoteSession.cs" Link="VoteSession.cs" />
     <Compile Include="../LocalControlBridge.cs" Link="LocalControlBridge.cs" />
     <Compile Include="../RuntimeDiagnostics.cs" Link="RuntimeDiagnostics.cs" />

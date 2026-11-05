@@ -26,6 +26,9 @@ namespace MreInventorySort
         private readonly Dictionary<ulong, DateTime> nextUse = new Dictionary<ulong, DateTime>();
         private int gameThread;
         private bool compatible, faulted;
+        // No client acknowledgement or generation is available for queued coordinate RPCs.
+        // Configuration must not enable mutations until a verified protocol barrier exists.
+        private static bool ProtocolBarrierVerified => false;
 
         protected override void Load()
         {
@@ -72,18 +75,19 @@ namespace MreInventorySort
         public bool CanSortInventory(UnturnedPlayer actor)
         {
             RequireThread();
-            return Configuration.Instance.Enabled && compatible && !faulted && Live(actor) && actor.HasPermission("mre.sort") && EmptyHand(actor);
+            return ProtocolBarrierVerified && Configuration.Instance.Enabled && compatible && !faulted && Live(actor) && actor.HasPermission("mre.sort") && EmptyHand(actor);
         }
         public bool CanSortStorage(UnturnedPlayer actor)
         {
             RequireThread();
-            return Configuration.Instance.Enabled && compatible && !faulted && Live(actor) && actor.HasPermission("mre.sort") &&
+            return ProtocolBarrierVerified && Configuration.Instance.Enabled && compatible && !faulted && Live(actor) && actor.HasPermission("mre.sort") &&
                 StorageValid(actor, actor.Player.inventory.storage);
         }
 
         public string Sort(UnturnedPlayer actor, bool storage)
         {
             RequireThread();
+            if (!ProtocolBarrierVerified) return "Сортировка недоступна: защита сетевых операций ещё не подтверждена.";
             if (!Configuration.Instance.Enabled) return "Сортировка ещё проходит независимую проверку и пока отключена.";
             if (!compatible || faulted) return "Безопасная сортировка временно недоступна. Обратитесь к администрации.";
             if (!Live(actor) || !actor.HasPermission("mre.sort")) return "Нет доступа к сортировке.";

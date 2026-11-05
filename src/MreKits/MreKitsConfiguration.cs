@@ -27,7 +27,13 @@ namespace MreKits
                         new KitItem { Id = 162, Count = 1 }, new KitItem { Id = 208, Count = 1 },
                         new KitItem { Id = 294, Count = 1 }, new KitItem { Id = 95, Count = 2 },
                         new KitItem { Id = 16, Count = 1 }, new KitItem { Id = 13, Count = 2 },
-                        new KitItem { Id = 14, Count = 2 } } }
+                        new KitItem { Id = 14, Count = 2 } } },
+                new KitDefinition { Name = "home", Description = "Берёзовые строительные элементы, дверь, верстак, планировщик и шкаф", CooldownSeconds = 172800, AutoEquipClothing = false,
+                    Items = new List<KitItem> { new KitItem { Id = 55, Count = 1 }, new KitItem { Id = 51, Count = 1 },
+                        new KitItem { Id = 57, Count = 3 }, new KitItem { Id = 53, Count = 4 },
+                        new KitItem { Id = 49, Count = 1 }, new KitItem { Id = 378, Count = 1 },
+                        new KitItem { Id = 1916, Count = 1 }, new KitItem { Id = 1764, Count = 1 },
+                        new KitItem { Id = 328, Count = 1 }, new KitItem { Id = 290, Count = 1 } } }
             };
         }
     }

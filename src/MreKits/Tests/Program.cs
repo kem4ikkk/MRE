@@ -29,6 +29,20 @@ internal static class Program
         root = Path.Combine(Path.GetTempPath(), "mre-kit-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try {
+            Test("success message omits cooldown and preserves bow fallback", () => {
+                string normal = KitText.Received("start", false);
+                Check(normal == KitText.Prefix + "Набор start получен.", "success text");
+                Check(KitText.Received("start", true).Contains("Лук помещён в инвентарь"), "bow fallback");
+                Check(KitText.Status(new ClaimRecord { Status = "completed", NextClaimUtc = Now.AddHours(1) }, Now).Contains("1 ч."), "cooldown status remains visible");
+            });
+            InventoryDeliveryTests.Run(Test, Check);
+            Test("weapon slot preference and occupied or incompatible fallback", () => {
+                Check(WeaponSlotPlan.Choose(353, p => true) == 0, "bow primary");
+                Check(WeaponSlotPlan.Choose(16, p => true) == 1, "axe secondary");
+                Check(WeaponSlotPlan.Choose(353, p => p == 1) == 1, "alternate slot");
+                Check(WeaponSlotPlan.Choose(16, p => false) == -1, "inventory fallback");
+                Check(WeaponSlotPlan.Choose(348, p => true) == -1, "other items stay in inventory");
+            });
             Test("start retains legacy starter cooldown and pending", () => {
                 string path = PathFor("legacy"); var l = new KitLedger(path); l.Reserve(1, "starter", Now, 86400);
                 Check(!l.Available(1, KitNames.LedgerName("START"), Now.AddDays(2)), "legacy pending blocks start");

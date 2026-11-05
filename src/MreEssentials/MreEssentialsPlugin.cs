@@ -16,27 +16,46 @@ namespace MreEssentials
     public sealed class MreEssentialsPlugin : RocketPlugin<MreEssentialsConfiguration>
     {
         public static MreEssentialsPlugin Instance { get; private set; }
+        public const int VoteDurationSeconds = 30;
+        private readonly System.Diagnostics.Stopwatch voteClock = new System.Diagnostics.Stopwatch();
+        private DateTime voteClockOriginUtc;
+        private DateTime VoteNow() { return voteClockOriginUtc.Add(voteClock.Elapsed); }
         private VoteSession session;
+        private sealed class VoteInput
+        {
+            public readonly Player Player;
+            public readonly VoteHoldKeys Hold = new VoteHoldKeys(2, 3, ControlsSettings.NUM_PLUGIN_KEYS, 2, 0.6);
+            public uint Frame;
+            public bool HasFrame, HasYes, HasNo, Yes, No;
+            public VoteInput(Player player) { Player = player; }
+        }
+        private readonly Dictionary<ulong, VoteInput> voteInputs = new Dictionary<ulong, VoteInput>();
         private string voteInitiatorName;
-        private VoteUiSnapshot lastVoteUi;
+        private VoteSession finishedVote;
+        private string finishedVotePhase;
+        private List<ulong> finishedVoteOnline;
         private DateTime voteUiVisibleUntilUtc;
 
         public VoteUiSnapshot GetVoteUiSnapshot(ulong viewerSteamId)
         {
-            DateTime now = DateTime.UtcNow;
+            DateTime now = VoteNow();
             if (session != null)
                 return VoteUiSnapshot.Capture(session, OnlinePlayers(), viewerSteamId,
-                    voteInitiatorName, Configuration.Instance.VoteDurationSeconds, now);
-            return now < voteUiVisibleUntilUtc ? lastVoteUi : null;
+                    voteInitiatorName, VoteDurationSeconds, now);
+            if (now >= voteUiVisibleUntilUtc || finishedVote == null) return null;
+            var finished = VoteUiSnapshot.Capture(finishedVote, finishedVoteOnline, viewerSteamId,
+                voteInitiatorName, VoteDurationSeconds, now);
+            return finished == null ? null : finished.WithPhase(finishedVotePhase);
         }
 
         private void FinishVoteUi(string phase, DateTime now)
         {
-            var snapshot = VoteUiSnapshot.Capture(session, OnlinePlayers(), 0,
-                voteInitiatorName, Configuration.Instance.VoteDurationSeconds, now);
-            lastVoteUi = snapshot == null ? null : snapshot.WithPhase(phase);
+            finishedVote = session;
+            finishedVotePhase = phase;
+            finishedVoteOnline = OnlinePlayers();
             voteUiVisibleUntilUtc = now.AddSeconds(8);
             session = null;
+            voteInputs.Clear();
         }
         private DateTime nextVoteUtc;
         private DateTime nextSaveUtc;
@@ -53,9 +72,10 @@ namespace MreEssentials
         {
             var c = Configuration.Instance;
             if (c.MinimumPlayers < 1 || c.RequiredPercent < 50 || c.RequiredPercent > 100 ||
-                c.VoteDurationSeconds < 10 || c.VoteDurationSeconds > 600 ||
-                c.VoteCooldownSeconds < c.VoteDurationSeconds || c.AutoSaveIntervalSeconds < 30)
+                c.VoteCooldownSeconds < VoteDurationSeconds || c.AutoSaveIntervalSeconds < 30)
                 throw new InvalidOperationException("Некорректная конфигурация MreEssentials. Проверьте minimum/percent/duration/cooldown/autosave.");
+            voteClockOriginUtc = DateTime.UtcNow;
+            voteClock.Restart();
             nextVoteUtc = DateTime.MinValue;
             nextTickUtc = DateTime.UtcNow;
             nextSaveUtc = DateTime.UtcNow.AddSeconds(c.AutoSaveIntervalSeconds);
@@ -76,6 +96,7 @@ namespace MreEssentials
             pendingSkills.Clear();
             Provider.onServerConnected += OnServerConnected;
             Provider.onServerDisconnected += OnServerDisconnected;
+            PlayerInput.onPluginKeyTick += OnVotePluginKeyTick;
             PlayerLife.OnRevived_Global += OnPlayerRevived;
             Logger.Log("[MRE] MreEssentials загружен: /vote day, автоматическое сохранение и полные навыки.");
         }
@@ -85,10 +106,14 @@ namespace MreEssentials
             if (presence != null) { presence.Stop(); presence = null; }
             Provider.onServerConnected -= OnServerConnected;
             Provider.onServerDisconnected -= OnServerDisconnected;
+            PlayerInput.onPluginKeyTick -= OnVotePluginKeyTick;
             PlayerLife.OnRevived_Global -= OnPlayerRevived;
             pendingSkills.Clear();
+            voteInputs.Clear();
             session = null;
-            lastVoteUi = null;
+            finishedVote = null;
+            finishedVotePhase = null;
+            finishedVoteOnline = null;
             voteUiVisibleUntilUtc = DateTime.MinValue;
             control = null;
             Instance = null;
@@ -116,6 +141,7 @@ namespace MreEssentials
                 try { control.Poll(); }
                 catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка локального управления."); }
             }
+            if (session != null) ResolveVote(VoteNow());
             if (now < nextTickUtc) return;
             nextTickUtc = now.AddSeconds(1);
             if (!Ready()) return;
@@ -152,7 +178,6 @@ namespace MreEssentials
                 try { SaveManager.save(); Logger.Log("[MRE] Автосохранение мира завершено."); }
                 catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка автосохранения."); }
             }
-            ResolveVote(now);
         }
 
         private bool ExecuteLocalCommand(string command)
@@ -180,6 +205,30 @@ namespace MreEssentials
         private void OnServerDisconnected(CSteamID steamId)
         {
             pendingSkills.Remove(steamId.m_SteamID);
+            voteInputs.Remove(steamId.m_SteamID);
+        }
+
+        private void OnVotePluginKeyTick(Player player, uint simulation, byte key, bool state)
+        {
+            if (session == null || player == null || player.channel == null || player.channel.owner == null ||
+                (key != 2 && key != 3)) return;
+            ulong id = player.channel.owner.playerID.steamID.m_SteamID;
+            VoteInput input;
+            if (!voteInputs.TryGetValue(id, out input) || input.Player != player)
+                voteInputs[id] = input = new VoteInput(player);
+            if (!input.HasFrame || unchecked((int)(simulation - input.Frame)) > 0)
+            {
+                input.Frame = simulation; input.HasFrame = true; input.HasYes = false; input.HasNo = false;
+            }
+            else if (simulation != input.Frame) return;
+            if (key == 2) { input.Yes = state; input.HasYes = true; }
+            else { input.No = state; input.HasNo = true; }
+            if (!input.HasYes || !input.HasNo) return;
+            VoteHoldKeys.Choice choice = input.Hold.Observe(session, simulation, voteClock.Elapsed.TotalSeconds, input.Yes, input.No);
+            if (choice == VoteHoldKeys.Choice.None) return;
+            UnturnedPlayer caller = UnturnedPlayer.FromCSteamID(player.channel.owner.playerID.steamID);
+            if (caller == null || caller.Player != player) return;
+            HandleVoteCommand(caller, new[] { choice == VoteHoldKeys.Choice.Yes ? "yes" : "no" });
         }
 
         private void OnPlayerRevived(PlayerLife life)
@@ -239,21 +288,21 @@ namespace MreEssentials
         public void HandleVoteCommand(IRocketPlayer caller, string[] args)
         {
             if (!Ready()) { MreChat.Say(caller, "MRE: уровень еще не готов."); return; }
-            if (args.Length > 1) { MreChat.Say(caller, "Использование: /vote day, /vote yes, /vote status или /cv."); return; }
+            if (args.Length > 1) { MreChat.Say(caller, "Использование: /vote day, /vote yes, /vote no, /vote status или /cv."); return; }
             string action = args.Length == 0 ? "yes" : args[0].ToLowerInvariant();
-            DateTime now = DateTime.UtcNow;
+            DateTime now = VoteNow();
             ResolveVote(now);
 
             if (action == "status")
             {
                 if (session == null) MreChat.Say(caller, "MRE: активного голосования нет.");
-                else MreChat.Say(caller, String.Format("MRE: за день {0}/{1}; осталось {2} с.",
+                else MreChat.Say(caller, String.Format("MRE: за {0}/{1}, против {3}; осталось {2} с.",
                     session.CountOnlineVotes(OnlinePlayers()), session.RequiredVotes,
-                    Math.Max(0, (int)Math.Ceiling((session.DeadlineUtc - now).TotalSeconds))));
+                    Math.Max(0, (int)Math.Ceiling((session.DeadlineUtc - now).TotalSeconds)), session.CountOnlineVotes(OnlinePlayers(), VoteChoice.No)));
                 return;
             }
-            if (action != "day" && action != "yes")
-            { MreChat.Say(caller, "Использование: /vote day, /vote yes, /vote status или /cv."); return; }
+            if (action != "day" && action != "yes" && action != "no")
+            { MreChat.Say(caller, "Использование: /vote day, /vote yes, /vote no, /vote status или /cv."); return; }
             var player = caller as UnturnedPlayer;
             if (player == null) { MreChat.Say(caller, "Голосовать могут только подключенные игроки."); return; }
             var c = Configuration.Instance;
@@ -265,16 +314,19 @@ namespace MreEssentials
                 if (now < nextVoteUtc) { MreChat.Say(caller, "До следующего голосования: " + Math.Ceiling((nextVoteUtc - now).TotalSeconds) + " с."); return; }
                 var online = OnlinePlayers();
                 if (online.Count < c.MinimumPlayers) { MreChat.Say(caller, "Для голосования нужно игроков: " + c.MinimumPlayers + "."); return; }
-                session = new VoteSession(online, c.RequiredPercent, now.AddSeconds(c.VoteDurationSeconds));
+                session = new VoteSession(online, c.RequiredPercent, now.AddSeconds(VoteDurationSeconds));
+                voteInputs.Clear();
                 voteInitiatorName = player.DisplayName;
-                lastVoteUi = null;
+                finishedVote = null;
+                finishedVotePhase = null;
+                finishedVoteOnline = null;
                 voteUiVisibleUntilUtc = DateTime.MinValue;
                 nextVoteUtc = now.AddSeconds(c.VoteCooldownSeconds);
-                MreChat.Say(String.Format("MRE: начато голосование за день! Нужно {0} из {1}. Голос: /vote yes или /cv. Время: {2} с.",
-                    session.RequiredVotes, session.EligibleCount, c.VoteDurationSeconds));
+                MreChat.Say(String.Format("MRE: голосование за день! Нужно {0} из {1}. Удерживайте Code Hotkey #3 (за) или #4 (против) 2 с; /vote yes и /vote no. Время: {2} с.",
+                    session.RequiredVotes, session.EligibleCount, VoteDurationSeconds));
             }
-            VoteResult result = session.TryVote(player.CSteamID.m_SteamID, OnlinePlayers(), now);
-            if (result == VoteResult.Added) MreChat.Say(caller, "Ваш голос за день принят.");
+            VoteResult result = session.TryVote(player.CSteamID.m_SteamID, OnlinePlayers(), now, action == "no" ? VoteChoice.No : VoteChoice.Yes);
+            if (result == VoteResult.Added) MreChat.Say(caller, action == "no" ? "Ваш голос против принят." : "Ваш голос за день принят.");
             else if (result == VoteResult.Duplicate) MreChat.Say(caller, "Вы уже голосовали.");
             else if (result == VoteResult.NotEligible) MreChat.Say(caller, "Вы подключились после начала. Участвовать можно в следующем голосовании.");
             else MreChat.Say(caller, "Голос уже не может быть принят.");
@@ -288,7 +340,7 @@ namespace MreEssentials
             { FinishVoteUi("canceled", now); MreChat.Say("MRE: наступил день; голосование отменено."); return; }
             VoteOutcome outcome = session.Evaluate(OnlinePlayers(), now);
             if (outcome == VoteOutcome.Expired)
-            { FinishVoteUi("expired", now); MreChat.Say("MRE: голосование завершено без кворума."); return; }
+            { FinishVoteUi("expired", now); MreChat.Say("MRE: голосование отклонено: недостаточно голосов за или нет большинства."); return; }
             if (outcome != VoteOutcome.Passed) return;
             FinishVoteUi("passed", now);
             LightingManager.time = (uint)(LightingManager.cycle * LevelLighting.transition);
