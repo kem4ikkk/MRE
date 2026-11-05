@@ -2,6 +2,7 @@
 param([switch]$Apply, [switch]$UpdateConfiguration)
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Get-MreProcessPath.ps1')
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $runtimeRoot = Join-Path $projectRoot 'runtime'
 $buildRoot = Join-Path $runtimeRoot 'plugin-builds\MreHud'
@@ -39,11 +40,13 @@ $maintenanceLock = $null
 try {
     $maintenanceLock = [IO.File]::Open((Join-Path $runtimeRoot '.mre-maintenance.lock'),'OpenOrCreate','ReadWrite','None')
     $serverExe = [IO.Path]::GetFullPath((Join-Path $serverRoot 'Unturned.exe'))
-    foreach ($processInfo in @(Get-CimInstance Win32_Process -Filter "Name = 'Unturned.exe'")) {
+    foreach ($processInfo in @(Get-CimInstance Win32_Process -Filter "Name = 'Unturned.exe' OR Name = 'Unturned_Headless.exe'")) {
         $liveProcess = Get-Process -Id $processInfo.ProcessId -ErrorAction SilentlyContinue
         if (-not $liveProcess -or $liveProcess.HasExited) { continue }
-        if (-not $processInfo.ExecutablePath) { throw 'Нельзя проверить путь работающего Unturned; установка остановлена.' }
-        if ([IO.Path]::GetFullPath($processInfo.ExecutablePath) -eq $serverExe) { throw 'Сначала корректно остановите MRE.' }
+        $processPath = Get-MreProcessPath $processInfo
+        if (-not $processPath) { throw 'Нельзя проверить путь работающего Unturned; установка остановлена.' }
+        $serverPrefix = [IO.Path]::GetFullPath($serverRoot).TrimEnd('\') + '\'
+        if ([IO.Path]::GetFullPath($processPath).StartsWith($serverPrefix, [StringComparison]::OrdinalIgnoreCase)) { throw 'Сначала корректно остановите MRE.' }
     }
     if (-not (Test-Path -LiteralPath $installedHarmony -PathType Leaf) -or
         (Get-FileHash -LiteralPath $installedHarmony -Algorithm SHA256).Hash.ToLowerInvariant() -ne $build.harmony_sha256) {

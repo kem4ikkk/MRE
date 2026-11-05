@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Globalization;
 namespace MreHud
 {
     // Weak keys avoid retaining destroyed world objects. A nested hit on another
@@ -37,6 +38,12 @@ namespace MreHud
 
     public static class DamageNumber
     {
+        public static string Format(int value)
+        {
+            if (value <= 0) throw new ArgumentOutOfRangeException("value");
+            return "-" + value.ToString(CultureInfo.InvariantCulture);
+        }
+
         public static string Color(DamageKind kind)
         {
             switch (kind)

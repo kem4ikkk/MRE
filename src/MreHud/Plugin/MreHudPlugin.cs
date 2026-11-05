@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using MreEssentials;
 using RestoreMonarchy.Teleportation;
@@ -31,6 +32,7 @@ namespace MreHud
             public EPluginWidgetFlags NativeFlagsChanged;
             public readonly Dictionary<string, string> Text = new Dictionary<string, string>();
             public readonly Dictionary<string, bool> Visibility = new Dictionary<string, bool>();
+            public DateTime NextStatsUtc;
         }
 
         private readonly Dictionary<ulong, View> views = new Dictionary<ulong, View>();
@@ -41,6 +43,10 @@ namespace MreHud
         private bool waitingLogged;
         private IDisposable punchObserver;
         private IDisposable damageObserver;
+        private DateTime nextStatsDiscoveryUtc;
+        private PropertyInfo statsInstance, statsKills, statsDeaths, statsKd, statsZombies;
+        private MethodInfo statsGetSnapshot;
+        private Type statsSnapshotType;
         private static readonly EPluginWidgetFlags[] ReplacedFlags = {
             EPluginWidgetFlags.ShowHealth, EPluginWidgetFlags.ShowFood, EPluginWidgetFlags.ShowWater,
             EPluginWidgetFlags.ShowVirus, EPluginWidgetFlags.ShowStamina, EPluginWidgetFlags.ShowOxygen,
@@ -258,7 +264,7 @@ namespace MreHud
             // Restart an occupied slot even when the next value and color match.
             Visible(view, "DamageNumberPanel" + suffix, false);
             // Send each hit immediately: several hits can occur between HUD refreshes.
-            Text(view, "DamageNumberText" + suffix, "<color=" + DamageNumber.Color(kind) + ">" + damage.ToString(CultureInfo.InvariantCulture) + "</color>");
+            Text(view, "DamageNumberText" + suffix, "<color=" + DamageNumber.Color(kind) + ">" + DamageNumber.Format(damage) + "</color>");
             Visible(view, "DamageNumberPanel" + suffix, true);
         }
 
@@ -309,9 +315,51 @@ namespace MreHud
                 Visible(view, "DamageNumberPanel" + i.ToString(CultureInfo.InvariantCulture), view.Damage.IsVisible(i, DateTime.UtcNow));
             RenderTeleport(view, hasTpa, id);
             RenderVote(view, id.m_SteamID);
+            RenderStats(view, id.m_SteamID);
             // При первом показе сначала заполняем значения; в prefab корень скрыт.
             Visible(view, "HudContent", true);
         }
+
+        // Reflection keeps MreStats optional, including when it is loaded after HUD.
+        private void RenderStats(View view, ulong id)
+        {
+            if (DateTime.UtcNow < view.NextStatsUtc) return;
+            view.NextStatsUtc = DateTime.UtcNow.AddSeconds(1);
+            try
+            {
+                if (DateTime.UtcNow >= nextStatsDiscoveryUtc)
+                {
+                    nextStatsDiscoveryUtc = DateTime.UtcNow.AddSeconds(2);
+                    Type type = AppDomain.CurrentDomain.GetAssemblies().Reverse().Select(a => a.GetType("MreStats.MreStatsPlugin", false)).FirstOrDefault(t => t != null);
+                    statsInstance = type == null ? null : type.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
+                    statsGetSnapshot = type == null ? null : type.GetMethod("GetSnapshot", new[] { typeof(ulong) });
+                }
+                object instance = statsInstance == null ? null : statsInstance.GetValue(null, null);
+                object snapshot = instance == null || statsGetSnapshot == null ? null : statsGetSnapshot.Invoke(instance, new object[] { id });
+                if (snapshot == null) { HideStats(view); return; }
+                Type snapshotType = snapshot.GetType();
+                if (snapshotType != statsSnapshotType)
+                {
+                    statsSnapshotType = snapshotType;
+                    statsKills = snapshotType.GetProperty("Kills"); statsDeaths = snapshotType.GetProperty("Deaths");
+                    statsKd = snapshotType.GetProperty("Kd"); statsZombies = snapshotType.GetProperty("Zombies");
+                }
+                object kills = statsKills?.GetValue(snapshot, null);
+                object deaths = statsDeaths?.GetValue(snapshot, null);
+                object kd = statsKd?.GetValue(snapshot, null);
+                object zombies = statsZombies?.GetValue(snapshot, null);
+                if (!(kills is long) || !(deaths is long) || !(kd is double) || (zombies != null && !(zombies is long)))
+                { HideStats(view); return; }
+                Text(view, "StatsKillsValue", ((long)kills).ToString(CultureInfo.InvariantCulture));
+                Text(view, "StatsDeathsValue", ((long)deaths).ToString(CultureInfo.InvariantCulture));
+                Text(view, "StatsKdValue", ((double)kd).ToString("0.00", CultureInfo.InvariantCulture));
+                Text(view, "StatsZombiesValue", zombies == null ? "—" : ((long)zombies).ToString(CultureInfo.InvariantCulture));
+                Visible(view, "StatsPanel", true);
+            }
+            catch (Exception) { HideStats(view); }
+        }
+
+        private void HideStats(View view) { try { Visible(view, "StatsPanel", false); } catch (Exception) { } }
 
         private void RenderWeapon(View view)
         {
@@ -474,7 +522,9 @@ namespace MreHud
                 child.StartsWith("Oxygen", StringComparison.Ordinal) || child == "LowHealth" ||
                 child == "BleedingPanel" || child == "BrokenPanel" || child == "WeaponPanel" ||
                 child == "WeaponName" || child == "MagazineName" || child == "AmmoValue" || child == "AmmoCapacity" ||
-                child == "FireModeValue" || child == "DurabilityValue" || child == "EmptyMagazine";
+                child == "FireModeValue" || child == "DurabilityValue" || child == "EmptyMagazine" ||
+                child == "StatsPanel" || child == "StatsKillsValue" || child == "StatsDeathsValue" ||
+                child == "StatsKdValue" || child == "StatsZombiesValue";
         }
 
         private static void HideNative(View view)

@@ -13,6 +13,12 @@ var cases = new List<(string name, Action test)>
         Assert(DamageNumber.Calculate(9,0,false)==9,"lethal player hit");
         Assert(DamageNumber.Calculate(9,0,false)==9,"resource final hit");
     }),
+    ("creature and object damage uses actual remaining health", () => {
+        Assert(DamageNumber.Calculate(250, 213, false) == 37, "Modified damage did not use actual HP change");
+        Assert(DamageNumber.Calculate(250, 250, false) == 0, "Cancelled hit displayed damage");
+        Assert(DamageNumber.Calculate(7, 0, false) == 7, "Lethal hit exceeded remaining HP");
+        Assert(DamageNumber.Calculate(0, 0, false) == 0, "Dead target displayed damage");
+    }),
     ("rapid hits use separate slots and reuse the oldest", () => {
         var slots = new DamageSlots(8); var start = new DateTime(2026, 1, 1);
         for (int i = 0; i < 8; i++) {
@@ -30,6 +36,13 @@ var cases = new List<(string name, Action test)>
         long nested = versions.Begin(a);
         Assert(!versions.IsCurrent(a, outer) && versions.IsCurrent(a, nested), "Same target could be double-counted");
         Assert(versions.IsCurrent(b, other), "Same-target nesting affected another target");
+    }),
+    ("damage numbers always show a minus and preserve magnitude", () => {
+        Assert(DamageNumber.Format(225) == "-225", "Normal damage format");
+        Assert(DamageNumber.Format(1) == "-1" && DamageNumber.Format(65535) == "-65535", "Damage boundary format");
+        Assert(DamageNumber.Format(int.MaxValue) == "-2147483647", "Large damage overflowed");
+        bool rejected = false; try { DamageNumber.Format(0); } catch (ArgumentOutOfRangeException) { rejected = true; }
+        Assert(rejected, "Zero damage was formatted");
     }),
     ("damage colors distinguish target and headshot", () => {
         Assert(DamageNumber.Color(DamageKind.Resource)=="#A0A0A0", "Resource must be gray");

@@ -21,7 +21,7 @@ namespace MreHud
         private readonly MreHudPlugin plugin;
         private Harmony harmony;
         private readonly List<State> playerScopes = new List<State>();
-        private MethodInfo playerMethod, resourceMethod, barricadeMethod, structureMethod, vehicleMethod;
+        private MethodInfo playerMethod, zombieMethod, animalMethod, mapObjectMethod, resourceMethod, barricadeMethod, structureMethod, vehicleMethod;
         private sealed class State { public int Before; public long Sequence; public object Target; public CSteamID Attacker; public ResourceSpawnpoint Resource; public PlayerLife Victim; public int After; public DamageKind Kind; public bool HealthObserved; public Func<int> Read; }
         internal DamageNumberObserver(MreHudPlugin plugin) { this.plugin = plugin; }
         internal void Start()
@@ -32,17 +32,23 @@ namespace MreHud
                 if (BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant() != GameHash)
                 { Logger.LogWarning("[MRE UI] Версия игры не проверена: индикация урона выключена."); return; }
             playerMethod = typeof(PlayerLife).GetMethod("askDamage", new[] { typeof(byte), typeof(Vector3), typeof(EDeathCause), typeof(ELimb), typeof(CSteamID), typeof(EPlayerKill).MakeByRefType(), typeof(bool), typeof(ERagdollEffect), typeof(bool), typeof(bool) });
+            zombieMethod = typeof(DamageTool).GetMethod("damageZombie", new[] { typeof(DamageZombieParameters), typeof(EPlayerKill).MakeByRefType(), typeof(uint).MakeByRefType() });
+            animalMethod = typeof(DamageTool).GetMethod("damageAnimal", new[] { typeof(DamageAnimalParameters), typeof(EPlayerKill).MakeByRefType(), typeof(uint).MakeByRefType() });
+            mapObjectMethod = typeof(ObjectManager).GetMethod("damage", new[] { typeof(Transform), typeof(Vector3), typeof(byte), typeof(float), typeof(float), typeof(EPlayerKill).MakeByRefType(), typeof(uint).MakeByRefType(), typeof(CSteamID), typeof(EDamageOrigin), typeof(bool) });
             resourceMethod = typeof(ResourceManager).GetMethod("damage", new[] { typeof(Transform), typeof(Vector3), typeof(float), typeof(float), typeof(float), typeof(EPlayerKill).MakeByRefType(), typeof(uint).MakeByRefType(), typeof(CSteamID), typeof(EDamageOrigin), typeof(bool) });
             barricadeMethod = typeof(BarricadeManager).GetMethod("damage", new[] { typeof(Transform), typeof(float), typeof(float), typeof(bool), typeof(CSteamID), typeof(EDamageOrigin) });
             structureMethod = typeof(StructureManager).GetMethod("damage", new[] { typeof(Transform), typeof(Vector3), typeof(float), typeof(float), typeof(bool), typeof(CSteamID), typeof(EDamageOrigin) });
             vehicleMethod = typeof(VehicleManager).GetMethod("damage", new[] { typeof(InteractableVehicle), typeof(float), typeof(float), typeof(bool), typeof(CSteamID), typeof(EDamageOrigin) });
-            if (playerMethod == null || resourceMethod == null || barricadeMethod == null || structureMethod == null || vehicleMethod == null) throw new InvalidOperationException("Сигнатуры урона отличаются от проверенных.");
+            if (playerMethod == null || zombieMethod == null || animalMethod == null || mapObjectMethod == null || resourceMethod == null || barricadeMethod == null || structureMethod == null || vehicleMethod == null) throw new InvalidOperationException("Сигнатуры урона отличаются от проверенных.");
             harmony = new Harmony(Id);
             try
             {
                 active = this;
                 harmony.Patch(playerMethod, prefix: new HarmonyMethod(typeof(DamageNumberObserver), "BeforePlayer") { priority = Priority.Last }, postfix: new HarmonyMethod(typeof(DamageNumberObserver), "AfterPlayer") { priority = Priority.Last }, finalizer: new HarmonyMethod(typeof(DamageNumberObserver), "FinishPlayer"));
                 PlayerLife.OnTellHealth_Global += OnPlayerHealth;
+                harmony.Patch(zombieMethod, prefix: new HarmonyMethod(typeof(DamageNumberObserver), "BeforeZombie") { priority = Priority.Last }, postfix: new HarmonyMethod(typeof(DamageNumberObserver), "AfterZombie") { priority = Priority.Last });
+                harmony.Patch(animalMethod, prefix: new HarmonyMethod(typeof(DamageNumberObserver), "BeforeAnimal") { priority = Priority.Last }, postfix: new HarmonyMethod(typeof(DamageNumberObserver), "AfterAnimal") { priority = Priority.Last });
+                harmony.Patch(mapObjectMethod, prefix: new HarmonyMethod(typeof(DamageNumberObserver), "BeforeMapObject") { priority = Priority.Last }, postfix: new HarmonyMethod(typeof(DamageNumberObserver), "AfterObject") { priority = Priority.Last });
                 harmony.Patch(resourceMethod, prefix: new HarmonyMethod(typeof(DamageNumberObserver), "BeforeResource") { priority = Priority.Last }, postfix: new HarmonyMethod(typeof(DamageNumberObserver), "AfterResource") { priority = Priority.Last });
                 harmony.Patch(barricadeMethod, prefix: new HarmonyMethod(typeof(DamageNumberObserver), "BeforeBarricade") { priority = Priority.Last }, postfix: new HarmonyMethod(typeof(DamageNumberObserver), "AfterObject") { priority = Priority.Last });
                 harmony.Patch(structureMethod, prefix: new HarmonyMethod(typeof(DamageNumberObserver), "BeforeStructure") { priority = Priority.Last }, postfix: new HarmonyMethod(typeof(DamageNumberObserver), "AfterObject") { priority = Priority.Last });
@@ -86,6 +92,56 @@ namespace MreHud
             catch (Exception e) { Logger.LogException(e, "[MRE UI] Ошибка завершения наблюдения урона."); }
             return __exception;
         }
+        private static void BeforeZombie(DamageZombieParameters __0, out State __state)
+        {
+            __state = null;
+            try
+            {
+                var zombie = __0.zombie;
+                if (active == null || !Provider.isServer || zombie == null) return;
+                __state = new State { Target = zombie, Before = (int)zombie.GetHealth(), Sequence = active.sequences.Begin(zombie) };
+            }
+            catch (Exception e) { Logger.LogException(e, "[MRE UI] Failed to observe zombie damage."); }
+        }
+        private static void AfterZombie(DamageZombieParameters __0, State __state)
+        {
+            try
+            {
+                if (active == null || __state == null || !ReferenceEquals(__state.Target, __0.zombie) ||
+                    !active.sequences.IsCurrent(__state.Target, __state.Sequence)) return;
+                var player = __0.instigator as Player;
+                if (player == null || player.channel == null || player.channel.owner == null) return;
+                int delta = DamageNumber.Calculate(__state.Before, (int)__0.zombie.GetHealth(), false);
+                if (delta > 0) active.plugin.ObserveDamage(player.channel.owner.playerID.steamID, delta,
+                    __0.limb == ELimb.SKULL ? DamageKind.PlayerHead : DamageKind.PlayerBody);
+            }
+            catch (Exception e) { Logger.LogException(e, "[MRE UI] Failed to display zombie damage."); }
+        }
+        private static void BeforeAnimal(DamageAnimalParameters __0, out State __state)
+        {
+            __state = null;
+            try
+            {
+                var animal = __0.animal;
+                if (active == null || !Provider.isServer || animal == null) return;
+                __state = new State { Target = animal, Before = (int)animal.GetHealth(), Sequence = active.sequences.Begin(animal) };
+            }
+            catch (Exception e) { Logger.LogException(e, "[MRE UI] Failed to observe animal damage."); }
+        }
+        private static void AfterAnimal(DamageAnimalParameters __0, State __state)
+        {
+            try
+            {
+                if (active == null || __state == null || !ReferenceEquals(__state.Target, __0.animal) ||
+                    !active.sequences.IsCurrent(__state.Target, __state.Sequence)) return;
+                var player = __0.instigator as Player;
+                if (player == null || player.channel == null || player.channel.owner == null) return;
+                int delta = DamageNumber.Calculate(__state.Before, (int)__0.animal.GetHealth(), false);
+                if (delta > 0) active.plugin.ObserveDamage(player.channel.owner.playerID.steamID, delta,
+                    __0.limb == ELimb.SKULL ? DamageKind.PlayerHead : DamageKind.PlayerBody);
+            }
+            catch (Exception e) { Logger.LogException(e, "[MRE UI] Failed to display animal damage."); }
+        }
         private static void BeforeResource(Transform __0, CSteamID __7, out State __state)
         {
             __state = null;
@@ -114,6 +170,22 @@ namespace MreHud
         private static State ObjectState(CSteamID attacker, object target, Func<int> read)
         {
             return new State { Attacker = attacker, Before = read(), Read = read, Sequence = active.sequences.Begin(target), Target = target, Kind = DamageKind.Building };
+        }
+        private static void BeforeMapObject(Transform __0, byte __2, CSteamID __7, out State __state)
+        {
+            __state = null;
+            try
+            {
+                if (active == null || !Provider.isServer || __0 == null || __2 == byte.MaxValue) return;
+                byte x, y; ushort index;
+                if (!ObjectManager.tryGetRegion(__0, out x, out y, out index)) return;
+                var levelObject = LevelObjects.objects[x, y][index];
+                var rubble = levelObject == null ? null : levelObject.rubble;
+                if (rubble == null || !rubble.IsSectionIndexValid(__2)) return;
+                var section = rubble.getSectionInfo(__2);
+                if (section != null) __state = ObjectState(__7, section, () => section.health);
+            }
+            catch (Exception e) { Logger.LogException(e, "[MRE UI] Failed to observe map object damage."); }
         }
         private static void BeforeBarricade(Transform __0, CSteamID __4, out State __state)
         {
@@ -170,7 +242,7 @@ namespace MreHud
             if (active == this) active = null;
             if (harmony != null)
             {
-                try { if (playerMethod != null) harmony.Unpatch(playerMethod, HarmonyPatchType.All, Id); if (resourceMethod != null) harmony.Unpatch(resourceMethod, HarmonyPatchType.All, Id); if (barricadeMethod != null) harmony.Unpatch(barricadeMethod, HarmonyPatchType.All, Id); if (structureMethod != null) harmony.Unpatch(structureMethod, HarmonyPatchType.All, Id); if (vehicleMethod != null) harmony.Unpatch(vehicleMethod, HarmonyPatchType.All, Id); }
+                try { if (playerMethod != null) harmony.Unpatch(playerMethod, HarmonyPatchType.All, Id); if (zombieMethod != null) harmony.Unpatch(zombieMethod, HarmonyPatchType.All, Id); if (animalMethod != null) harmony.Unpatch(animalMethod, HarmonyPatchType.All, Id); if (mapObjectMethod != null) harmony.Unpatch(mapObjectMethod, HarmonyPatchType.All, Id); if (resourceMethod != null) harmony.Unpatch(resourceMethod, HarmonyPatchType.All, Id); if (barricadeMethod != null) harmony.Unpatch(barricadeMethod, HarmonyPatchType.All, Id); if (structureMethod != null) harmony.Unpatch(structureMethod, HarmonyPatchType.All, Id); if (vehicleMethod != null) harmony.Unpatch(vehicleMethod, HarmonyPatchType.All, Id); }
                 catch (Exception e) { Logger.LogException(e, "[MRE UI] Не удалось снять наблюдение урона."); }
             }
             harmony = null; playerMethod = null; resourceMethod = null;

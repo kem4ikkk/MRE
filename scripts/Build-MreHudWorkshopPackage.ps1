@@ -40,6 +40,16 @@ if ((Get-FileHash -LiteralPath (Join-Path $target 'MreHud.unity3d') -Algorithm S
 }
 # Unturned's WorkshopTool.detectUGCMetaType проверяет файл Object.meta в корне работы.
 [IO.File]::WriteAllBytes((Join-Path $content 'Object.meta'), [byte[]]@(0))
+$fontRoot = Join-Path $root 'ui\MreHud\Assets\MreFonts'
+$fontLicense = Join-Path $fontRoot 'PTSans-OFL.txt'
+$fontNotice = Join-Path $fontRoot 'PTSans-README.md'
+foreach ($path in @($fontLicense, $fontNotice)) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Отсутствует лицензия шрифта: $path" }
+}
+$licenseTarget = Join-Path $content 'Licenses\PTSans'
+New-Item -ItemType Directory -Path $licenseTarget -Force | Out-Null
+Copy-Item -LiteralPath $fontLicense -Destination (Join-Path $licenseTarget 'OFL.txt')
+Copy-Item -LiteralPath $fontNotice -Destination (Join-Path $licenseTarget 'README.md')
 $receipt = [ordered]@{
     workshop_file_id = 3832074683
     content_path = $content
