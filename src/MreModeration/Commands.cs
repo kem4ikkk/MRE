@@ -37,7 +37,7 @@ namespace MreModeration
             }catch(Exception error){Say(actor,"Действие не выполнено: "+error.Message);Logger.LogException(error,"[MRE] Ошибка/отказ /staff.");}
         }
         private static string Moscow(DateTime utc) {return utc.ToUniversalTime().AddHours(3).ToString("dd.MM.yyyy HH:mm")+" МСК";}
-        private static void Say(UnturnedPlayer actor,string text) {MreChat.Say(actor,"MRE: "+MreModerationPlugin.Plain(text));}
+        private static void Say(UnturnedPlayer actor,string text) {MreChat.SayStaff(actor,"MRE: "+MreModerationPlugin.Plain(text));}
     }
     public sealed class MyTrustscoreCommand : IRocketCommand
     {

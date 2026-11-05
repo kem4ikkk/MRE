@@ -68,19 +68,19 @@ namespace MreTrade
             foreach (var s in sessions.Values.Distinct().ToArray())
                 if (!s.Committing && (DateTime.UtcNow >= s.ExpiresUtc || !Allowed(Online(s.A)) || !Allowed(Online(s.B)))) Cancel(s, "Обмен отменён: время истекло или проверка игрока не пройдена.");
         }
-        private void Tell(ulong id, string text) { var p = Online(id); if (p != null) MreChat.Say(p, "MRE: " + text); }
+        private void Tell(ulong id, string text) { var p = Online(id); if (p != null) MreChat.Say(MreChatSection.Trade, p, "MRE: " + text); }
         private void Both(TradeSession s, string text) { Tell(s.A, text); Tell(s.B, text); RefreshTradeUi(s); }
         private void Cancel(TradeSession s, string text) { ClearTradeUi(s.A); ClearTradeUi(s.B); sessions.Remove(s.A); sessions.Remove(s.B); Both(s, text); }
         internal void Handle(UnturnedPlayer actor, string[] args)
         {
             if (Thread.CurrentThread.ManagedThreadId != gameThread) throw new InvalidOperationException("Обмен доступен только на игровом потоке.");
-            if (!Configuration.Instance.ExperimentalTradeEnabled) { MreChat.Say(actor, "MRE: обмен временно недоступен."); return; }
+            if (!Configuration.Instance.ExperimentalTradeEnabled) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен временно недоступен."); return; }
             ulong id = actor.CSteamID.m_SteamID;
-            if (!Allowed(actor)) { MreChat.Say(actor, "MRE: обмен недоступен: проверка боя, рейда, входа или журнала не пройдена."); return; }
-            if (args.Length == 0) { MreChat.Say(actor, "MRE: /trade <имя|SteamID>, accept, list, offer <страница> <x> <y>, remove <страница> <x> <y>, confirm, cancel."); return; }
+            if (!Allowed(actor)) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен недоступен: проверка боя, рейда, входа или журнала не пройдена."); return; }
+            if (args.Length == 0) { MreChat.Say(MreChatSection.Trade, actor, "MRE: /trade <имя|SteamID>, accept, list, offer <страница> <x> <y>, remove <страница> <x> <y>, confirm, cancel."); return; }
             string action = args[0].ToLowerInvariant(); TradeSession s;
             if (!sessions.TryGetValue(id, out s)) { Invite(actor, args); return; }
-            if (s.Committing) { MreChat.Say(actor, "MRE: обмен обрабатывается."); return; }
+            if (s.Committing) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен обрабатывается."); return; }
             if (!Allowed(Online(s.Other(id))) || DateTime.UtcNow >= s.ExpiresUtc) { Cancel(s, "Обмен отменён: игрок недоступен, в бою или истекло время."); return; }
             if (action == "cancel" && args.Length == 1) { Cancel(s, "Обмен отменён."); return; }
             if (action == "accept" && args.Length == 1) { try { s.Accept(id); Both(s, "Обмен принят. Выберите предметы: /trade list; /trade offer <страница> <x> <y>. Содержимое, патроны и модификации в чате не показаны — проверяйте отдельно."); ShowTradeUi(s.A); ShowTradeUi(s.B); } catch (InvalidOperationException) { Tell(id, "Запрос может принять только получатель один раз."); } return; }
@@ -96,11 +96,11 @@ namespace MreTrade
             if (!UInt64.TryParse(query, out targetId))
             {
                 var found = Provider.clients.Where(p => p != null && (String.Equals(p.playerID.characterName, query, StringComparison.OrdinalIgnoreCase) || String.Equals(p.playerID.playerName, query, StringComparison.OrdinalIgnoreCase))).ToArray();
-                if (found.Length != 1) { MreChat.Say(actor, "MRE: укажите SteamID64 или уникальное точное имя игрока."); return; }
+                if (found.Length != 1) { MreChat.Say(MreChatSection.Trade, actor, "MRE: укажите SteamID64 или уникальное точное имя игрока."); return; }
                 targetId = found[0].playerID.steamID.m_SteamID;
             }
             var target = Online(targetId); ulong own = actor.CSteamID.m_SteamID;
-            if (targetId == own || !Allowed(target) || sessions.ContainsKey(targetId)) { MreChat.Say(actor, "MRE: игрок недоступен для обмена."); return; }
+            if (targetId == own || !Allowed(target) || sessions.ContainsKey(targetId)) { MreChat.Say(MreChatSection.Trade, actor, "MRE: игрок недоступен для обмена."); return; }
             var s = new TradeSession(own, targetId, DateTime.UtcNow.AddMinutes(5)); sessions[own] = s; sessions[targetId] = s;
             Tell(own, "Запрос отправлен. Ожидайте принятия."); Tell(targetId, "Игрок " + actor.DisplayName + " предлагает обмен. /trade accept или /trade cancel; 5 минут.");
         }

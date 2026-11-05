@@ -16,9 +16,9 @@ namespace MreAirdrop
         public void Execute(IRocketPlayer caller, string[] args)
         {
             var plugin = MreAirdropPlugin.Instance;
-            if (plugin == null || !plugin.Running) { MreChat.Say(caller, "MRE: расписание аирдропов временно недоступно."); return; }
+            if (plugin == null || !plugin.Running) { MreChat.Say(MreChatSection.Airdrop, caller, "MRE: расписание аирдропов временно недоступно."); return; }
             var left = plugin.NextUtc - DateTime.UtcNow;
-            MreChat.Say(caller, AirdropCountdown.Message(left, plugin.DrySiteRetryPending));
+            MreChat.Say(MreChatSection.Airdrop, caller, AirdropCountdown.Message(left, plugin.DrySiteRetryPending));
         }
     }
 }

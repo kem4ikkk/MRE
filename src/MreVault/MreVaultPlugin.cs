@@ -62,12 +62,12 @@ namespace MreVault
         }
         internal void Open(UnturnedPlayer player)
         {
-            if (!Allowed(player)) { MreChat.Say(player, "MRE: хранилище недоступно во время боя или рейда либо проверка недоступна."); return; }
+            if (!Allowed(player)) { MreChat.Say(MreChatSection.Vault, player, "MRE: хранилище недоступно во время боя или рейда либо проверка недоступна."); return; }
             ulong id = player.CSteamID.m_SteamID;
-            if (sessions.ContainsKey(id) || player.Player.inventory.isStoring) { MreChat.Say(player, "MRE: сначала закройте открытое хранилище."); return; }
+            if (sessions.ContainsKey(id) || player.Player.inventory.isStoring) { MreChat.Say(MreChatSection.Vault, player, "MRE: сначала закройте открытое хранилище."); return; }
             try
             {
-                if (store.Locked(id)) { MreChat.Say(player, "MRE: хранилище заблокировано до проверки администрацией."); return; }
+                if (store.Locked(id)) { MreChat.Say(MreChatSection.Vault, player, "MRE: хранилище заблокировано до проверки администрацией."); return; }
                 var stored = store.Read(id);
                 var items = new Items(PlayerInventory.STORAGE); items.resize(4, 4);
                 foreach (var x in stored)
@@ -89,7 +89,7 @@ namespace MreVault
                 inventory.updateItems(PlayerInventory.STORAGE, items);
                 inventory.sendStorage();
             }
-            catch (Exception e) { Rocket.Core.Logging.Logger.LogException(e, "[MRE] Ошибка открытия хранилища."); MreChat.Say(player, "MRE: хранилище недоступно; обратитесь к администрации."); }
+            catch (Exception e) { Rocket.Core.Logging.Logger.LogException(e, "[MRE] Ошибка открытия хранилища."); MreChat.Say(MreChatSection.Vault, player, "MRE: хранилище недоступно; обратитесь к администрации."); }
         }
         private void Update()
         {

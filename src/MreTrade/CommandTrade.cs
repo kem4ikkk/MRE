@@ -17,7 +17,7 @@ namespace MreTrade
         {
             var player = caller as UnturnedPlayer;
             if (player == null) return;
-            if (MreTradePlugin.Instance == null) { MreChat.Say(player, "MRE: обмен временно недоступен."); return; }
+            if (MreTradePlugin.Instance == null) { MreChat.Say(MreChatSection.Trade, player, "MRE: обмен временно недоступен."); return; }
             MreTradePlugin.Instance.Handle(player, args);
         }
     }

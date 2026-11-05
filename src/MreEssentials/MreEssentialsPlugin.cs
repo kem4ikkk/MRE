@@ -287,33 +287,33 @@ namespace MreEssentials
 
         public void HandleVoteCommand(IRocketPlayer caller, string[] args)
         {
-            if (!Ready()) { MreChat.Say(caller, "MRE: уровень еще не готов."); return; }
-            if (args.Length > 1) { MreChat.Say(caller, "Использование: /vote day, /vote yes, /vote no, /vote status или /cv."); return; }
+            if (!Ready()) { MreChat.Say(MreChatSection.Vote, caller, "MRE: уровень еще не готов."); return; }
+            if (args.Length > 1) { MreChat.Say(MreChatSection.Vote, caller, "Использование: /vote day, /vote yes, /vote no, /vote status или /cv."); return; }
             string action = args.Length == 0 ? "yes" : args[0].ToLowerInvariant();
             DateTime now = VoteNow();
             ResolveVote(now);
 
             if (action == "status")
             {
-                if (session == null) MreChat.Say(caller, "MRE: активного голосования нет.");
-                else MreChat.Say(caller, String.Format("MRE: за {0}/{1}, против {3}; осталось {2} с.",
+                if (session == null) MreChat.Say(MreChatSection.Vote, caller, "MRE: активного голосования нет.");
+                else MreChat.Say(MreChatSection.Vote, caller, String.Format("MRE: за {0}/{1}, против {3}; осталось {2} с.",
                     session.CountOnlineVotes(OnlinePlayers()), session.RequiredVotes,
                     Math.Max(0, (int)Math.Ceiling((session.DeadlineUtc - now).TotalSeconds)), session.CountOnlineVotes(OnlinePlayers(), VoteChoice.No)));
                 return;
             }
             if (action != "day" && action != "yes" && action != "no")
-            { MreChat.Say(caller, "Использование: /vote day, /vote yes, /vote no, /vote status или /cv."); return; }
+            { MreChat.Say(MreChatSection.Vote, caller, "Использование: /vote day, /vote yes, /vote no, /vote status или /cv."); return; }
             var player = caller as UnturnedPlayer;
-            if (player == null) { MreChat.Say(caller, "Голосовать могут только подключенные игроки."); return; }
+            if (player == null) { MreChat.Say(MreChatSection.Vote, caller, "Голосовать могут только подключенные игроки."); return; }
             var c = Configuration.Instance;
-            if (!c.VoteDayEnabled) { MreChat.Say(caller, "Голосование за день отключено."); return; }
+            if (!c.VoteDayEnabled) { MreChat.Say(MreChatSection.Vote, caller, "Голосование за день отключено."); return; }
             if (session == null)
             {
-                if (action != "day") { MreChat.Say(caller, "Сейчас нет голосования. Ночью начать: /vote day."); return; }
-                if (c.NightOnly && !LightingManager.isNighttime) { MreChat.Say(caller, "Уже день. Голосование доступно ночью."); return; }
-                if (now < nextVoteUtc) { MreChat.Say(caller, "До следующего голосования: " + Math.Ceiling((nextVoteUtc - now).TotalSeconds) + " с."); return; }
+                if (action != "day") { MreChat.Say(MreChatSection.Vote, caller, "Сейчас нет голосования. Ночью начать: /vote day."); return; }
+                if (c.NightOnly && !LightingManager.isNighttime) { MreChat.Say(MreChatSection.Vote, caller, "Уже день. Голосование доступно ночью."); return; }
+                if (now < nextVoteUtc) { MreChat.Say(MreChatSection.Vote, caller, "До следующего голосования: " + Math.Ceiling((nextVoteUtc - now).TotalSeconds) + " с."); return; }
                 var online = OnlinePlayers();
-                if (online.Count < c.MinimumPlayers) { MreChat.Say(caller, "Для голосования нужно игроков: " + c.MinimumPlayers + "."); return; }
+                if (online.Count < c.MinimumPlayers) { MreChat.Say(MreChatSection.Vote, caller, "Для голосования нужно игроков: " + c.MinimumPlayers + "."); return; }
                 session = new VoteSession(online, c.RequiredPercent, now.AddSeconds(VoteDurationSeconds));
                 voteInputs.Clear();
                 voteInitiatorName = player.DisplayName;
@@ -322,14 +322,14 @@ namespace MreEssentials
                 finishedVoteOnline = null;
                 voteUiVisibleUntilUtc = DateTime.MinValue;
                 nextVoteUtc = now.AddSeconds(c.VoteCooldownSeconds);
-                MreChat.Say(String.Format("MRE: голосование за день! Нужно {0} из {1}. Удерживайте Code Hotkey #3 (за) или #4 (против) 2 с; /vote yes и /vote no. Время: {2} с.",
+                MreChat.Say(MreChatSection.Vote, String.Format("MRE: голосование за день! Нужно {0} из {1}. Удерживайте Code Hotkey #3 (за) или #4 (против) 2 с; /vote yes и /vote no. Время: {2} с.",
                     session.RequiredVotes, session.EligibleCount, VoteDurationSeconds));
             }
             VoteResult result = session.TryVote(player.CSteamID.m_SteamID, OnlinePlayers(), now, action == "no" ? VoteChoice.No : VoteChoice.Yes);
-            if (result == VoteResult.Added) MreChat.Say(caller, action == "no" ? "Ваш голос против принят." : "Ваш голос за день принят.");
-            else if (result == VoteResult.Duplicate) MreChat.Say(caller, "Вы уже голосовали.");
-            else if (result == VoteResult.NotEligible) MreChat.Say(caller, "Вы подключились после начала. Участвовать можно в следующем голосовании.");
-            else MreChat.Say(caller, "Голос уже не может быть принят.");
+            if (result == VoteResult.Added) MreChat.Say(MreChatSection.Vote, caller, action == "no" ? "Ваш голос против принят." : "Ваш голос за день принят.");
+            else if (result == VoteResult.Duplicate) MreChat.Say(MreChatSection.Vote, caller, "Вы уже голосовали.");
+            else if (result == VoteResult.NotEligible) MreChat.Say(MreChatSection.Vote, caller, "Вы подключились после начала. Участвовать можно в следующем голосовании.");
+            else MreChat.Say(MreChatSection.Vote, caller, "Голос уже не может быть принят.");
             ResolveVote(now);
         }
 
@@ -337,14 +337,14 @@ namespace MreEssentials
         {
             if (session == null || !Ready()) return;
             if (Configuration.Instance.NightOnly && !LightingManager.isNighttime)
-            { FinishVoteUi("canceled", now); MreChat.Say("MRE: наступил день; голосование отменено."); return; }
+            { FinishVoteUi("canceled", now); MreChat.Say(MreChatSection.Vote, "MRE: наступил день; голосование отменено."); return; }
             VoteOutcome outcome = session.Evaluate(OnlinePlayers(), now);
             if (outcome == VoteOutcome.Expired)
-            { FinishVoteUi("expired", now); MreChat.Say("MRE: голосование отклонено: недостаточно голосов за или нет большинства."); return; }
+            { FinishVoteUi("expired", now); MreChat.Say(MreChatSection.Vote, "MRE: голосование отклонено: недостаточно голосов за или нет большинства."); return; }
             if (outcome != VoteOutcome.Passed) return;
             FinishVoteUi("passed", now);
             LightingManager.time = (uint)(LightingManager.cycle * LevelLighting.transition);
-            MreChat.Say("MRE: голосование принято — наступил день!");
+            MreChat.Say(MreChatSection.Vote, "MRE: голосование принято — наступил день!");
         }
     }
 }

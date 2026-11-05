@@ -3,26 +3,34 @@ using MreChatStyle;
 
 internal static class Program
 {
-    private static void Check(bool condition) { if (!condition) throw new Exception("Ошибка форматирования чата."); }
+    private static void Check(bool condition, string name)
+    {
+        if (!condition) throw new Exception("Chat formatting check failed: " + name);
+    }
+
     private static void Main()
     {
-        Check(ChatFormatting.Format("Наборы: start, vip", false) == "<color=#B8D66B>Наборы:</color> start, vip");
-        Check(ChatFormatting.Format("MRE: привет", false) == "<color=#B8D66B>MRE:</color> Привет");
-        Check(ChatFormatting.Format("<color=red>MRE · TPA</color> привет", true) == "<color=#B8D66B>TPA:</color> привет");
-        Check(ChatFormatting.Format("[MRE · НАБОРЫ] готово", false) == "<color=#B8D66B>Наборы:</color> готово");
-        Check(ChatFormatting.Format("Наборы: <color=red>bad</color>", false).Contains("‹color=red›"));
-        Check(!ChatFormatting.Format("<b>MRE:</b> <color=red>bad</color>", true).Contains("<color=red>"));
-        Check(ChatFormatting.Format(null, false) == "<color=#B8D66B>MRE:</color>");
-        Check(ChatFormatting.Format("MRE: \u0432 \u043f\u0443\u0442\u0438", false) == "<color=#B8D66B>MRE:</color> \u0412 \u043f\u0443\u0442\u0438");
-        Check(ChatFormatting.Format("<b>MRE:</b> <color=red>\u043d\u0435\u0442 \u043f\u0440\u0430\u0432</color>", true) == "<color=#B8D66B>MRE:</color> \u041d\u0435\u0442 \u043f\u0440\u0430\u0432");
-        Check(ChatFormatting.Format("MRE: /airdrop", false).EndsWith(" /airdrop"));
-        Check(ChatFormatting.Format("MRE: mre.airdrop.admin", false).EndsWith(" mre.airdrop.admin"));
-        Check(ChatFormatting.Format("MRE: https://example.com", false).EndsWith(" https://example.com"));
-        Check(ChatFormatting.Format("MRE: player_123", false).EndsWith(" player_123"));
-        Check(ChatFormatting.Format("MRE: ошибка: нет прав", false).EndsWith(" Ошибка: нет прав"));
-        Check(ChatFormatting.Format("ошибка: нет прав", false).EndsWith(" Ошибка: нет прав"));
-        Check(ChatFormatting.Format("MRE: mre.airdrop.admin.", false).EndsWith(" mre.airdrop.admin."));
-        Check(ChatFormatting.Format("MRE: \u00e9clair", false).EndsWith(" \u00c9clair"));
-        Console.WriteLine("Проверки форматирования чата пройдены.");
+        string category;
+        string normal = "<b><color=#B8D66B>[MRE]</color></b>";
+        string admin = "<b><color=#FF756A>[MRE-ADMIN]</color></b>";
+
+        string trade = ChatFormatting.Format("\u001eMRECHAT:TRADE\u001eTrade is unavailable during combat.", false, out category);
+        Check(category == "TRADE" && trade == normal + " <b><color=#D6C78E>\u041E\u0411\u041C\u0415\u041D</color></b> Trade is unavailable during combat.", "trade category");
+        Check(ChatFormatting.Format("\u001eMRECHAT:ADMIN\u001e[MRE-ADMIN] /admin help", false, out category) == admin + " <b><color=#D6C78E>\u0410\u0414\u041C\u0418\u041D</color></b> /admin help", "admin category");
+        Check(ChatFormatting.Format("\u001eMRECHAT:STAFF\u001e[MRE-ADMIN] staff profile opened", false, out category).StartsWith(admin + " <b><color=#D6C78E>\u041F\u0415\u0420\u0421\u041E\u041D\u0410\u041B</color></b>", StringComparison.Ordinal), "staff category");
+        Check(category == "STAFF", "staff metadata");
+        Check(ChatFormatting.Format("<color=green><b>MRE \u00B7 HOME</b></color> Teleport completed.", true, out category) == normal + " <b><color=#D6C78E>\u0414\u041E\u041C</color></b> Teleport completed.", "rich HOME header");
+        Check(category == "HOME", "home metadata");
+        Check(ChatFormatting.Format("[MRE] \u00B7 \u0422\u0415\u041B\u0415\u041F\u041E\u0420\u0422\u0410\u0426\u0418\u042F /tpa player", false, out category) == normal + " <b><color=#D6C78E>TPA</color></b> /tpa player", "legacy TPA header");
+        Check(category == "TPA", "tpa metadata");
+        Check(ChatFormatting.Format("MRE \u00B7 \u0422\u0415\u041B\u0415\u041F\u041E\u0420\u0422\u0410\u0426\u0418\u042F /tpa player", false, out category) == normal + " <b><color=#D6C78E>TPA</color></b> /tpa player", "direct legacy TPA header");
+        Check(category == "TPA", "direct tpa metadata");
+        Check(ChatFormatting.Format("MRE: old broadcast", false) == normal + " old broadcast", "legacy MRE prefix");
+        Check(ChatFormatting.Format("[MRE \u00B7 \u041D\u0410\u0411\u041E\u0420\u042B] old kit notice", false) == normal + " old kit notice", "legacy kits prefix");
+        Check(ChatFormatting.Format("<b>MRE:</b> <color=red>bad</color>", true).IndexOf("<color=red>", StringComparison.Ordinal) < 0, "incoming rich tags");
+        Check(ChatFormatting.Format("<script>text</script>", false).Contains("\u2039script\u203a"), "unsafe angle brackets");
+        Check(ChatFormatting.Format("\u001eMRECHAT:UNKNOWN\u001eplain", false, out category) == normal + " plain" && category == "SYSTEM", "unknown category");
+        Check(ChatFormatting.Format(null, false) == normal, "null message");
+        Console.WriteLine("Chat formatting checks passed.");
     }
 }

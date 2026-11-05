@@ -17,7 +17,7 @@ namespace MreEssentials
         public void Execute(IRocketPlayer caller, string[] command)
         {
             var plugin = MreEssentialsPlugin.Instance;
-            if (plugin == null) { MreChat.Say(caller, "MRE: плагин голосования пока недоступен."); return; }
+            if (plugin == null) { MreChat.Say(MreChatSection.Vote, caller, "MRE: плагин голосования пока недоступен."); return; }
             plugin.HandleVoteCommand(caller, command);
         }
     }

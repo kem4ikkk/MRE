@@ -20,7 +20,7 @@ namespace MreKits
             var plugin = MreKitsPlugin.Instance;
             if (player == null || plugin == null) return;
             if (command.Length != 1) { plugin.List(player); return; }
-            MreChat.Say(player, plugin.Claim(player, command[0]));
+            MreChat.Say(MreChatSection.Kits, player, plugin.Claim(player, command[0]));
         }
     }
     public sealed class CommandKits : IRocketCommand

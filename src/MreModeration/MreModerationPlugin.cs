@@ -123,12 +123,12 @@ namespace MreModeration
             if(!ledger.Exists(target))ledger.Visit(target,online!=null?online.playerID.characterName:target.ToString(),DateTime.UtcNow);
             if(!ledger.Record(target,actor.CSteamID.m_SteamID,kind,reason,operationId,DateTime.UtcNow,durationSeconds))return "Действие уже записано; повтор не выполнен.";
             if(kind=="kick") {
-                try{Provider.kick(new CSteamID(target),"MRE: "+StaffPolicy.Clean(reason,300));ledger.SetKickResult(target,operationId,true);}catch{ledger.SetKickResult(target,operationId,false);throw;}
+                try{Provider.kick(new CSteamID(target),"[MRE-ADMIN] "+StaffPolicy.Clean(reason,300));ledger.SetKickResult(target,operationId,true);}catch{ledger.SetKickResult(target,operationId,false);throw;}
             }else if(kind=="ban") {
                 // Сначала durable pending; при неясном результате повтор автоматически не выполняется.
                 string nativeReason="[MRE:"+operationId+"] "+StaffPolicy.Clean(reason,300);
                 SteamBlacklist.ban(new CSteamID(target),actor.CSteamID,nativeReason,durationSeconds==0?SteamBlacklist.PERMANENT:(uint)durationSeconds);SteamBlacklist.save();ledger.SetBanApplied(target,operationId);
-            }else if((kind=="warn"||kind=="mute")&&online!=null)MreChat.Say(UnturnedPlayer.FromPlayer(online.player),"MRE: "+(kind=="warn"?"Предупреждение: ":"Чат ограничен: ")+Plain(reason));
+            }else if((kind=="warn"||kind=="mute")&&online!=null)MreChat.SayStaff(UnturnedPlayer.FromPlayer(online.player),"MRE: "+(kind=="warn"?"Предупреждение: ":"Чат ограничен: ")+Plain(reason));
             var profile=ledger.Get(target);var entry=profile.Records.First(r=>r.Id==operationId);Publish(target,entry);Changed(target);if(online!=null)ApplyTrustGroup(UnturnedPlayer.FromPlayer(online.player));
             return "Записано: "+kind+"; id "+operationId+".";
         }
@@ -153,7 +153,7 @@ namespace MreModeration
         }
         private void CheckBan(SteamPlayerID player,uint remoteIp,ref bool banned,ref string reason,ref uint remaining)
         {
-            try{var record=ledger.ActivePunishment(player.steamID.m_SteamID,"ban",DateTime.UtcNow);if(record!=null){banned=true;reason="MRE: "+record.Reason;remaining=record.ExpiresUtc.HasValue?(uint)Math.Max(1,Math.Ceiling((record.ExpiresUtc.Value-DateTime.UtcNow).TotalSeconds)):SteamBlacklist.PERMANENT;}}
+            try{var record=ledger.ActivePunishment(player.steamID.m_SteamID,"ban",DateTime.UtcNow);if(record!=null){banned=true;reason="[MRE-ADMIN] "+record.Reason;remaining=record.ExpiresUtc.HasValue?(uint)Math.Max(1,Math.Ceiling((record.ExpiresUtc.Value-DateTime.UtcNow).TotalSeconds)):SteamBlacklist.PERMANENT;}}
             catch(Exception error){banned=true;reason="Ошибка учета ограничений MRE; обратитесь к владельцу.";remaining=60;Logger.LogException(error,"[MRE] Ошибка проверки сохраненного бана; вход закрыт до сверки.");}
         }
         private void Chatted(SteamPlayer player,EChatMode mode,ref Color color,ref bool rich,string text,ref bool visible)

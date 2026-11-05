@@ -104,7 +104,7 @@ namespace MreKits
         public void List(UnturnedPlayer player)
         {
             string[] names = GetKitNames(player);
-            MreChat.Say(player, "Наборы: " + (names.Length == 0 ? "пока нет доступных наборов" : String.Join(", ", names)));
+            MreChat.Say(MreChatSection.Kits, player, "Наборы: " + (names.Length == 0 ? "пока нет доступных наборов" : String.Join(", ", names)));
         }
     }
 }

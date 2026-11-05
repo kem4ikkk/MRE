@@ -142,22 +142,22 @@ namespace MreAirdrop
             if (!(caller is ConsolePlayer) && (player == null || player.Player == null ||
                 !Provider.clients.Any(x => x != null && x.player == player.Player && x.playerID.steamID == player.CSteamID) ||
                 (!player.IsAdmin && !R.Permissions.HasPermission(player, new List<string> { "mre.airdrop.admin" }))))
-            { if (caller != null) MreChat.Say(caller, "MRE: нет права на запуск аирдропа."); return; }
+            { if (caller != null) MreChat.SayAdmin(caller, "MRE: нет права на запуск аирдропа."); return; }
             if (!Running || !Provider.isServer || !Level.isLoaded)
-            { MreChat.Say(caller, "MRE: запуск аирдропа временно недоступен."); return; }
+            { MreChat.SayAdmin(caller, "MRE: запуск аирдропа временно недоступен."); return; }
             try
             {
                 // Ручные запуски не меняют NextUtc и файл часового расписания.
                 var node = FindDryNode();
-                if (node == null) { MreChat.Say(caller, "MRE: сухая точка не найдена, аирдроп не запущен."); return; }
+                if (node == null) { MreChat.SayAdmin(caller, "MRE: сухая точка не найдена, аирдроп не запущен."); return; }
                 Launch(node);
                 Logger.Log("[MRE] Ручной аирдроп: actor=" + caller.Id + "; часовой таймер не изменён.");
-                MreChat.Say(caller, "MRE: аирдроп запущен. Часовое расписание не изменено.");
+                MreChat.SayAdmin(caller, "MRE: аирдроп запущен. Часовое расписание не изменено.");
             }
             catch (Exception error)
             {
                 Logger.LogException(error, "[MRE] Ошибка ручного запуска аирдропа; повтор автоматически не выполняется.");
-                MreChat.Say(caller, "MRE: аирдроп не подтверждён; проверьте серверный журнал.");
+                MreChat.SayAdmin(caller, "MRE: аирдроп не подтверждён; проверьте серверный журнал.");
             }
         }
         private AirdropDevkitNode FindDryNode()
@@ -253,7 +253,7 @@ namespace MreAirdrop
             var added = planes.Cast<object>().Where(x => !before.Contains(x)).ToArray();
             if (added.Length != 1 || !(added[0] is AirdropInfo)) throw new InvalidOperationException("Не удалось однозначно определить новый самолёт.");
             Planes.Add((AirdropInfo)added[0], new TrackedPlane { Cargo = cargo, Loot = ids.ToArray(), Until = DateTime.UtcNow.AddMinutes(20) });
-            MreChat.Say("MRE: в пути " + selected.Item1.Name.ToLowerInvariant() + " аирдроп!");
+            MreChat.Say(MreChatSection.Airdrop, "MRE: в пути " + selected.Item1.Name.ToLowerInvariant() + " аирдроп!");
         }
     }
 }

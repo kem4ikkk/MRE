@@ -17,8 +17,8 @@ namespace MreVault
         {
             var p = caller as UnturnedPlayer;
             if (p == null) return;
-            if (args.Length != 0) { MreChat.Say(p, "MRE: использование: /s."); return; }
-            if (MreVaultPlugin.Instance == null) { MreChat.Say(p, "MRE: хранилище недоступно."); return; }
+            if (args.Length != 0) { MreChat.Say(MreChatSection.Vault, p, "MRE: использование: /s."); return; }
+            if (MreVaultPlugin.Instance == null) { MreChat.Say(MreChatSection.Vault, p, "MRE: хранилище недоступно."); return; }
             MreVaultPlugin.Instance.Open(p);
         }
     }

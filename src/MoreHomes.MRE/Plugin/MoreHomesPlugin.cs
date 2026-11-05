@@ -133,6 +133,7 @@ namespace RestoreMonarchy.MoreHomes
             }
 
             UnturnedPlayer unturnedPlayer = (UnturnedPlayer)player;
+            msg = "<color=#B8D66B><b>MRE · HOME</b></color> " + msg;
             ChatManager.serverSendMessage(msg, MessageColor, null, unturnedPlayer.SteamPlayer(), EChatMode.SAY, Configuration.Instance.MessageIconUrl, true);
         }
     }
