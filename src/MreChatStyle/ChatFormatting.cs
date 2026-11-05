@@ -37,22 +37,38 @@ namespace MreChatStyle
             else if (TryStripSectionHeader(ref message, "[MRE] \u00B7 TPA", "TPA")) category = "TPA";
             else if (TryStripSectionHeader(ref message, "[MRE] \u00B7 \u0422\u0415\u041B\u0415\u041F\u041E\u0420\u0422\u0410\u0426\u0418\u042F", "TPA")) category = "TPA";
 
-            bool admin = message.StartsWith("[MRE-ADMIN]", StringComparison.OrdinalIgnoreCase);
-            if (admin) message = message.Substring("[MRE-ADMIN]".Length).TrimStart();
-            else if (message.StartsWith("[MRE]", StringComparison.OrdinalIgnoreCase))
-                message = message.Substring("[MRE]".Length).TrimStart();
+            string legacyCategory;
+            if (TryStripMrePrefix(ref message, out legacyCategory) && category == "SYSTEM") category = legacyCategory;
             message = Regex.Replace(message, @"^MRE\s*:\s*", String.Empty, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             message = Regex.Replace(message, @"^\[MRE[^\]]*\]\s*", String.Empty, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-            if (!admin && category == "SYSTEM" && IsUnknownCommand(message)) category = "SERVER";
+            if (category == "SYSTEM" && IsUnknownCommand(message)) category = "SERVER";
 
-            if (admin && category == "SYSTEM") category = "ADMIN";
-            if (category == "ADMIN" || category == "STAFF") admin = true;
+            bool admin = category == "ADMIN" || category == "STAFF";
             string labelColor = admin ? "#FF756A" : "#B8D66B";
-            string prefix = "<b><color=" + labelColor + ">" + (admin ? "[MRE-ADMIN]" : "[MRE]") + "</color></b>";
-            string section = SectionLabel(category);
-            if (section.Length > 0) prefix += " <b><color=#D6C78E>" + section + "</color></b>";
+            string prefix = "<b><color=" + labelColor + ">" + CategoryPrefix(category) + "</color></b>";
             message = message.Trim();
             return prefix + (message.Length == 0 ? String.Empty : " " + message);
+        }
+
+        private static bool TryStripMrePrefix(ref string message, out string category)
+        {
+            string[] names = { "ADMIN", "STAFF", "SERVER", "HOME", "TPA", "KITS", "TRADE", "VAULT", "VOTE", "AIRDROP" };
+            foreach (string name in names)
+            {
+                string prefix = "[MRE-" + name + "]";
+                if (!message.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                message = message.Substring(prefix.Length).TrimStart();
+                category = name;
+                return true;
+            }
+            if (message.StartsWith("[MRE]", StringComparison.OrdinalIgnoreCase))
+            {
+                message = message.Substring("[MRE]".Length).TrimStart();
+                category = "SYSTEM";
+                return true;
+            }
+            category = "SYSTEM";
+            return false;
         }
 
         private static bool TryStripSectionHeader(ref string message, string header, string category)
@@ -81,20 +97,14 @@ namespace MreChatStyle
             }
         }
 
-        private static string SectionLabel(string category)
+        private static string CategoryPrefix(string category)
         {
             switch (category)
             {
-                case "HOME": return "\u0414\u041E\u041C";
-                case "TPA": return "TPA";
-                case "KITS": return "\u041D\u0410\u0411\u041E\u0420\u042B";
-                case "TRADE": return "\u041E\u0411\u041C\u0415\u041D";
-                case "VAULT": return "\u0425\u0420\u0410\u041D\u0418\u041B\u0418\u0429\u0415";
-                case "VOTE": return "\u0413\u041E\u041B\u041E\u0421\u041E\u0412\u0410\u041D\u0418\u0415";
-                case "AIRDROP": return "\u0410\u0418\u0420\u0414\u0420\u041E\u041F";
-                case "STAFF": return "\u041F\u0415\u0420\u0421\u041E\u041D\u0410\u041B";
-                case "ADMIN": return String.Empty;
-                default: return String.Empty;
+                case "HOME": case "TPA": case "KITS": case "TRADE": case "VAULT":
+                case "VOTE": case "AIRDROP": case "STAFF": case "ADMIN": case "SERVER":
+                    return "[MRE-" + category + "]";
+                default: return "[MRE]";
             }
         }
     }
