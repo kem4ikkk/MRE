@@ -52,6 +52,22 @@ session = (root / 'src/MreTrade/TradeSession.cs').read_text(encoding='utf-8')
 assert 'AcknowledgedRevisionA = 0' in session and 'AcknowledgedRevisionB = 0' in session
 assert 'AcknowledgedRevision(id) != Revision' in session
 assert 'ПОДТВЕРДИТЬ ОБМЕН' in builder
+prefab_path = root / 'ui/MreTrade/Assets/MreTrade/Effect.prefab'
+assert prefab_path.is_file(), 'generated prefab must be tracked as build input'
+prefab = prefab_path.read_text(encoding='utf-8')
+def prefab_text(object_name):
+    offset = prefab.index(f'm_Name: {object_name}')
+    lines = prefab[offset:].splitlines()
+    start = next(i for i, line in enumerate(lines) if line.strip().startswith('m_Text:'))
+    value = lines[start].split(':', 1)[1].strip()
+    i = start + 1
+    while not value.endswith('"'):
+        value += ' ' + lines[i].strip()
+        i += 1
+    value = value.replace(r'\xAB', r'\u00AB').replace(r'\xBB', r'\u00BB')
+    return json.loads(value)
+assert prefab_text('TradeConfirmLabel') == 'ПОДТВЕРДИТЬ ОБМЕН'
+assert 'перетащите предмет' in prefab_text('TradeHint').lower()
 for name in ['index.html', 'style.css', 'app.js']:
     assert (root / 'ui/trade-preview' / name).is_file()
 for i in range(10):
