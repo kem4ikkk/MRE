@@ -29,6 +29,14 @@ namespace RestoreMonarchy.Teleportation
         public Dictionary<CSteamID, Timer> RaidPlayers { get; set; }
         public Dictionary<CSteamID, DateTime> Cooldowns { get; set; }
         public Color MessageColor { get; set; }
+        internal readonly Dictionary<CSteamID, long> CombatDeadlines = new Dictionary<CSteamID, long>();
+        internal readonly Dictionary<CSteamID, long> RaidDeadlines = new Dictionary<CSteamID, long>();
+
+        // Read on the server main thread, like the block dictionaries and damage handlers.
+        public double GetCombatRemainingSeconds(CSteamID player) =>
+            Configuration.Instance.AllowCombat ? 0 : BlockDeadline.RemainingSeconds(CombatDeadlines, player);
+        public double GetRaidRemainingSeconds(CSteamID player) =>
+            Configuration.Instance.AllowRaid ? 0 : BlockDeadline.RemainingSeconds(RaidDeadlines, player);
 
         public MovementDetectorComponent MovementDetector { get; set; }
         private readonly PluginKeyEdges hotkeyEdges = new PluginKeyEdges();
@@ -137,11 +145,15 @@ namespace RestoreMonarchy.Teleportation
                 combatPlayer.Value.Dispose();
             foreach (var raidPlayer in RaidPlayers)
                 raidPlayer.Value.Dispose();
+            CombatPlayers.Clear();
+            RaidPlayers.Clear();
 
             TPRequests = null;
             HomeRequests = null;
             CombatPlayers = null;
             RaidPlayers = null;
+            CombatDeadlines.Clear();
+            RaidDeadlines.Clear();
             Cooldowns = null;
 
             Destroy(MovementDetector);

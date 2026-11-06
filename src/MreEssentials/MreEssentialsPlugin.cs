@@ -67,6 +67,22 @@ namespace MreEssentials
         private readonly HashSet<ulong> pendingSkills = new HashSet<ulong>();
         private bool initialSkillsApplied;
         private DateTime nextSkillsRefreshUtc;
+        private readonly HashSet<VehicleAsset> protectedTireAssets = new HashSet<VehicleAsset>();
+
+        private void ProtectTires()
+        {
+            if (!Provider.isServer || !Configuration.Instance.ProtectVehicleTires) return;
+            var assets = new List<VehicleAsset>();
+            Assets.find(assets);
+            foreach (VehicleAsset asset in assets)
+            {
+                if (asset != null && asset.canTiresBeDamaged)
+                {
+                    protectedTireAssets.Add(asset);
+                    asset.canTiresBeDamaged = false;
+                }
+            }
+        }
 
         protected override void Load()
         {
@@ -98,6 +114,8 @@ namespace MreEssentials
             Provider.onServerDisconnected += OnServerDisconnected;
             PlayerInput.onPluginKeyTick += OnVotePluginKeyTick;
             PlayerLife.OnRevived_Global += OnPlayerRevived;
+            Assets.onAssetsRefreshed += ProtectTires;
+            ProtectTires();
             Logger.Log("[MRE] MreEssentials загружен: /vote day, автоматическое сохранение и полные навыки.");
         }
 
@@ -108,6 +126,10 @@ namespace MreEssentials
             Provider.onServerDisconnected -= OnServerDisconnected;
             PlayerInput.onPluginKeyTick -= OnVotePluginKeyTick;
             PlayerLife.OnRevived_Global -= OnPlayerRevived;
+            Assets.onAssetsRefreshed -= ProtectTires;
+            foreach (VehicleAsset asset in protectedTireAssets)
+                if (asset != null) asset.canTiresBeDamaged = true;
+            protectedTireAssets.Clear();
             pendingSkills.Clear();
             voteInputs.Clear();
             session = null;

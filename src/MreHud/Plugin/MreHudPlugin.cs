@@ -47,6 +47,9 @@ namespace MreHud
         private PropertyInfo statsInstance, statsKills, statsDeaths, statsKd, statsZombies;
         private MethodInfo statsGetSnapshot;
         private Type statsSnapshotType;
+        private DateTime nextProtectionDiscoveryUtc;
+        private PropertyInfo protectionInstance;
+        private MethodInfo protectionRemaining;
         private static readonly EPluginWidgetFlags[] ReplacedFlags = {
             EPluginWidgetFlags.ShowHealth, EPluginWidgetFlags.ShowFood, EPluginWidgetFlags.ShowWater,
             EPluginWidgetFlags.ShowVirus, EPluginWidgetFlags.ShowStamina, EPluginWidgetFlags.ShowOxygen,
@@ -257,8 +260,12 @@ namespace MreHud
         internal void ObserveDamage(CSteamID attacker, int damage, DamageKind kind)
         {
             View view;
-            if (damage <= 0 || attacker.m_SteamID == 0 || !views.TryGetValue(attacker.m_SteamID, out view) ||
-                view.Player == null || view.Player.life.isDead || !view.Spawned) return;
+            bool found = views.TryGetValue(attacker.m_SteamID, out view);
+            if (Environment.GetEnvironmentVariable("MRE_HUD_DAMAGE_DIAGNOSTICS") == "1")
+                Logger.Log("[MRE UI] Damage diagnostic: HUD view=" + found + " spawned=" + (found && view.Spawned) +
+                    " alive=" + (found && view.Player != null && view.Player.life != null && !view.Player.life.isDead) + " damage=" + damage);
+            if (damage <= 0 || attacker.m_SteamID == 0 || !found ||
+                view.Player == null || view.Player.life == null || view.Player.life.isDead || !view.Spawned) return;
             int slot = view.Damage.Add(DateTime.UtcNow, TimeSpan.FromSeconds(1.2));
             string suffix = slot.ToString(CultureInfo.InvariantCulture);
             // Restart an occupied slot even when the next value and color match.
@@ -309,18 +316,46 @@ namespace MreHud
             bool hasTpa = teleportation != null && teleportation.TPRequests != null;
             Visible(view, "CombatPanel", hasTpa && teleportation.IsPlayerInCombat(id));
             Visible(view, "RaidPanel", hasTpa && teleportation.IsPlayerInRaid(id));
+            if (hasTpa)
+            {
+                Text(view, "CombatTimer", Math.Ceiling(teleportation.GetCombatRemainingSeconds(id)).ToString(CultureInfo.InvariantCulture) + " с");
+                Text(view, "RaidTimer", Math.Ceiling(teleportation.GetRaidRemainingSeconds(id)).ToString(CultureInfo.InvariantCulture) + " с");
+            }
             RenderWeapon(view);
             RenderBuildingHit(view);
             for (int i = 0; i < view.Damage.Count; i++)
                 Visible(view, "DamageNumberPanel" + i.ToString(CultureInfo.InvariantCulture), view.Damage.IsVisible(i, DateTime.UtcNow));
             RenderTeleport(view, hasTpa, id);
             RenderVote(view, id.m_SteamID);
+            RenderSpawnProtection(view);
             RenderStats(view, id.m_SteamID);
             // При первом показе сначала заполняем значения; в prefab корень скрыт.
             Visible(view, "HudContent", true);
         }
 
         // Reflection keeps MreStats optional, including when it is loaded after HUD.
+        private void RenderSpawnProtection(View view)
+        {
+            try
+            {
+                if (DateTime.UtcNow >= nextProtectionDiscoveryUtc)
+                {
+                    nextProtectionDiscoveryUtc = DateTime.UtcNow.AddSeconds(2);
+                    Type type = AppDomain.CurrentDomain.GetAssemblies().Reverse()
+                        .Select(a => a.GetType("MreSpawnProtection.MreSpawnProtectionPlugin", false)).FirstOrDefault(t => t != null);
+                    protectionInstance = type == null ? null : type.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
+                    protectionRemaining = type == null ? null : type.GetMethod("GetRemainingSeconds", new[] { typeof(Player) });
+                }
+                object instance = protectionInstance == null ? null : protectionInstance.GetValue(null, null);
+                object result = instance == null || protectionRemaining == null ? null : protectionRemaining.Invoke(instance, new object[] { view.Player });
+                double seconds = result is double ? (double)result : 0;
+                bool shown = !Double.IsNaN(seconds) && !Double.IsInfinity(seconds) && seconds > 0;
+                if (shown) Text(view, "SpawnProtectionTimer", Math.Ceiling(Math.Min(999, seconds)).ToString(CultureInfo.InvariantCulture) + " с");
+                Visible(view, "SpawnProtectionPanel", shown);
+            }
+            catch (Exception) { Visible(view, "SpawnProtectionPanel", false); }
+        }
+
         private void RenderStats(View view, ulong id)
         {
             if (DateTime.UtcNow < view.NextStatsUtc) return;
@@ -455,12 +490,13 @@ namespace MreHud
             // Plugin Key #3/#4 can be assigned to physical Q/E in the client controls.
             // The server receives only those plugin-key events, so the HUD deliberately
             // shows the requested Q/E labels instead of pretending to read raw keyboard input.
-            bool showChoices = active && vote.CanVote;
+            bool showChoices = active && (vote.CanVote || vote.HasVoted);
             Visible(view, "VoteYesPanel", showChoices);
             Visible(view, "VoteNoPanel", showChoices);
             Visible(view, "VoteCount", active);
             Visible(view, "VoteTimerBack", active);
             Visible(view, "VoteProgressTrack", active);
+            Visible(view, "VoteHoldCaption", active && vote.CanVote);
             Visible(view, "VoteStatus", !showChoices);
             Text(view, "VoteYesKey", showChoices ? "Q" : "");
             Text(view, "VoteNoKey", showChoices ? "E" : "");

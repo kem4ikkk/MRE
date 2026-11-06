@@ -149,7 +149,7 @@ internal static class Program
     {
         var configuration = new MreEssentialsConfiguration();
         configuration.LoadDefaults();
-        Check(configuration.MinimumPlayers == 1 && configuration.MaxSkillsEnabled, "Конфигурация по умолчанию разрешает solo vote и максимальные навыки");
+        Check(configuration.MinimumPlayers == 1 && configuration.MaxSkillsEnabled && configuration.ProtectVehicleTires, "Конфигурация по умолчанию разрешает solo vote, максимальные навыки и защиту шин");
         var snapshot = RuntimeDiagnostics.Capture(typeof(DiagnosticsFixtures.Provider), typeof(DiagnosticsFixtures.BarricadeManager), configuration, new[] { typeof(Program).Assembly });
         using var parsed = JsonDocument.Parse(RuntimeDiagnostics.ToJson(snapshot));
         var provider = parsed.RootElement.GetProperty("provider");

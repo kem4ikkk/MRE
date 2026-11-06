@@ -17,6 +17,7 @@ namespace MreHud
         private const string Id = "mre.hud.damage-number.v1";
         private const string GameHash = "15666f1e20afc32a01a5510eb71eef2512a6eb4064ee628b806ee333ab4e4660";
         private static DamageNumberObserver active;
+        private static readonly bool DamageDiagnostics = Environment.GetEnvironmentVariable("MRE_HUD_DAMAGE_DIAGNOSTICS") == "1";
         private readonly DamageTargetSequence sequences = new DamageTargetSequence();
         private readonly MreHudPlugin plugin;
         private Harmony harmony;
@@ -59,16 +60,19 @@ namespace MreHud
         private static void BeforePlayer(PlayerLife __instance, ELimb __3, CSteamID __4, out State __state)
         {
             __state = null;
-            try { if (active != null && Provider.isServer && __instance != null) { __state = new State { Before = __instance.health, Attacker = __4, Sequence = active.sequences.Begin(__instance), Target = __instance, Victim = __instance, Kind = __3 == ELimb.SKULL ? DamageKind.PlayerHead : DamageKind.PlayerBody }; active.playerScopes.Add(__state); } }
+            try { if (active != null && Provider.isServer && __instance != null) { __state = new State { Before = __instance.health, Attacker = __4, Sequence = active.sequences.Begin(__instance), Target = __instance, Victim = __instance, Kind = __3 == ELimb.SKULL ? DamageKind.PlayerHead : DamageKind.PlayerBody }; active.playerScopes.Add(__state); if (DamageDiagnostics) Logger.Log("[MRE UI] Damage diagnostic: player prefix sequence=" + __state.Sequence + " before=" + __state.Before + " attackerPresent=" + (__4.m_SteamID != 0) + " scopes=" + active.playerScopes.Count); } }
             catch (Exception e) { Logger.LogException(e, "[MRE UI] Ошибка наблюдения урона игроку."); }
         }
         private static void AfterPlayer(PlayerLife __instance, State __state)
         {
             try
             {
-                if (active == null || __state == null || !active.sequences.IsCurrent(__state.Target, __state.Sequence) || __instance == null || !__state.HealthObserved) return;
+                if (active == null || __state == null || __instance == null) return;
+                bool current = active.sequences.IsCurrent(__state.Target, __state.Sequence);
+                if (DamageDiagnostics) Logger.Log("[MRE UI] Damage diagnostic: player postfix sequence=" + __state.Sequence + " current=" + current + " healthObserved=" + __state.HealthObserved + " after=" + __state.After + " self=" + (__instance.channel.owner.playerID.steamID == __state.Attacker));
+                if (!current || !__state.HealthObserved) return;
                 int delta = DamageNumber.Calculate(__state.Before, __state.After, false);
-                if (delta > 0 && __instance.channel.owner.playerID.steamID != __state.Attacker) active.plugin.ObserveDamage(__state.Attacker, delta, __state.Kind);
+                if (delta > 0 && __instance.channel.owner.playerID.steamID != __state.Attacker) { if (DamageDiagnostics) Logger.Log("[MRE UI] Damage diagnostic: dispatch sequence=" + __state.Sequence + " delta=" + delta); active.plugin.ObserveDamage(__state.Attacker, delta, __state.Kind); }
             }
             catch (Exception e) { Logger.LogException(e, "[MRE UI] Ошибка индикации урона игроку."); }
         }

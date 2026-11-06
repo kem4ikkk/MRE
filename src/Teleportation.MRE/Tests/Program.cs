@@ -23,6 +23,17 @@ static (TeleportationPlugin plugin, UnturnedPlayer sender, UnturnedPlayer target
 
 var cases = new List<(string name, Action test)>
 {
+    ("block deadlines report remaining time and clamp expired or absent entries", () => {
+        var player = new Steamworks.CSteamID(123); var deadlines = new Dictionary<Steamworks.CSteamID, long>();
+        long frequency = System.Diagnostics.Stopwatch.Frequency;
+        Assert(BlockDeadline.RemainingSeconds(deadlines, player, 100) == 0, "Missing block must be zero");
+        deadlines[player] = 100 + frequency * 20;
+        Assert(BlockDeadline.RemainingSeconds(deadlines, player, 100 + frequency * 5) == 15, "Remaining time is incorrect");
+        Assert(BlockDeadline.RemainingSeconds(deadlines, player, 100 + frequency * 20) == 0, "Expiration must be zero");
+        Assert(BlockDeadline.RemainingSeconds(deadlines, player, 100 + frequency * 21) == 0, "Expired block must be zero");
+        deadlines[player] = 100 + frequency * 30;
+        Assert(BlockDeadline.RemainingSeconds(deadlines, player, 100 + frequency * 20) == 10, "Renewal must use new deadline");
+    }),
     ("actual TPA command accepts a alias case-insensitively exactly once", () => {
         foreach(string alias in new[]{"a","A"}) {
             var (p,s,t)=Setup(); p.SendTPARequest(s,t); var command=new RestoreMonarchy.Teleportation.Commands.TPACommand();

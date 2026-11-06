@@ -20,6 +20,7 @@
     <Compile Include="../../MoreHomes.MRE/Plugin/Models/VIPPermission.cs" Link="Actual/VIPPermission.cs" />
     <Compile Include="../../MoreHomes.MRE/Plugin/MoreHomesConfiguration.cs" Link="Actual/MoreHomesConfiguration.cs" />
     <Compile Include="../Plugin/Utils/TeleportationRequestHelper.cs" Link="Actual/TeleportationRequestHelper.cs" />
+    <Compile Include="../Plugin/Utils/BlockDeadline.cs" Link="Actual/BlockDeadline.cs" />
     <Compile Include="../Plugin/Utils/RaidOwnershipRules.cs" Link="Actual/RaidOwnershipRules.cs" />
     <Compile Include="../Plugin/Utils/PluginKeyEdges.cs" Link="Actual/PluginKeyEdges.cs" />
     <Compile Include="../Plugin/Components/MovementDetectorComponent.cs" Link="Actual/MovementDetectorComponent.cs" />

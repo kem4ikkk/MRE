@@ -53,6 +53,7 @@ public static class MreHudBuilder
             CreateTeleport(content);
             CreateHome(content);
             CreateBlockPanels(content);
+            CreateSpawnProtection(content);
             CreateVote(content);
             CreateBuilding(content);
             CreateDamageNumber(content);
@@ -113,6 +114,13 @@ public static class MreHudBuilder
 
     public static void RenderCheck()
     {
+        RenderCheckScenario("default");
+        RenderCheckScenario("voted");
+        RenderCheckScenario("home");
+    }
+
+    private static void RenderCheckScenario(string scenario)
+    {
         string bundlePath = Path.GetFullPath(Path.Combine(Application.dataPath, "../../../runtime/ui-builds/MreHud/Windows/MreHud/MreHud.unity3d"));
         var bundle = AssetBundle.LoadFromFile(bundlePath);
         if (bundle == null) throw new InvalidOperationException("Bundle unreadable");
@@ -131,6 +139,18 @@ public static class MreHudBuilder
             string[] targets = { "HealthValue", "FoodValue", "WaterValue", "StaminaValue", "StatsKillsValue", "StatsKdValue", "StatsDeathsValue", "StatsZombiesValue" };
             string[] values = { "92", "76", "72", "85", "41", "2.05", "20", "368" };
             for (int i = 0; i < targets.Length; i++) rects[targets[i]].GetComponent<Text>().text = values[i];
+            if (scenario == "voted")
+            {
+                rects["VoteYesSelected"].gameObject.SetActive(true);
+                rects["VoteCount"].GetComponent<Text>().text = "1 за  ·  0 против";
+            }
+            if (scenario == "home")
+            {
+                rects["TpaPanel"].gameObject.SetActive(false);
+                rects["HomePanel"].gameObject.SetActive(true);
+                rects["HomeName"].GetComponent<Text>().text = "bed1";
+                rects["HomeProgressFill60"].gameObject.SetActive(true);
+            }
             string[] damage = { "-1", "-70", "-225", "-65535", "-1", "-70", "-225", "-65535" };
             for (int i = 0; i < damage.Length; i++)
             {
@@ -150,7 +170,7 @@ public static class MreHudBuilder
             }
             RenderTexture.active = texture;
             var image = new Texture2D(1920, 1080, TextureFormat.RGB24, false); image.ReadPixels(new Rect(0, 0, 1920, 1080), 0, 0); image.Apply();
-            string output = Path.GetFullPath(Path.Combine(Application.dataPath, "../../../runtime/ui-builds/MreHud-render.png"));
+            string output = Path.GetFullPath(Path.Combine(Application.dataPath, "../../../runtime/ui-builds/MreHud-render" + (scenario == "default" ? "" : "-" + scenario) + ".png"));
             File.WriteAllBytes(output, image.EncodeToPNG()); UnityEngine.Object.DestroyImmediate(image);
             Debug.Log("MRE render: " + output);
         }
@@ -297,7 +317,10 @@ public static class MreHudBuilder
         Label("HomeCaption", card, "ДОМОЙ", 12, 49, 160, 20, 10, Muted, FontStyle.Bold);
         Label("HomeTimer", card, "5 с", 194, 45, 38, 25, 16, Lime, FontStyle.Bold);
         Label("HomeName", card, "Дом", 12, 28, 220, 23, 14, TextColor, FontStyle.Bold);
-        Label("HomeCancel", card, "Отмена: /home cancel", 12, 4, 220, 19, 10, Muted);
+        RectTransform cancel = Box("HomeCancelPanel", card, 12, 3, 220, 20, Panel);
+        Box("HomeCancelKeyBack", cancel, 0, 0, 25, 20, Hex("34413a"));
+        Label("HomeCancelKey", cancel, "Ю", 1, 0, 23, 20, 13, TextColor, FontStyle.Bold);
+        Label("HomeCancel", cancel, "ОТМЕНИТЬ", 33, 0, 175, 20, 11, TextColor, FontStyle.Bold);
         Bar("HomeProgress", card, 12, 25, 220, 2, 100, Lime);
         card.gameObject.SetActive(false);
     }
@@ -306,10 +329,12 @@ public static class MreHudBuilder
     {
         RectTransform combat = Box("CombatPanel", content, 28, -95, 156, 40, Panel, new Vector2(0, 1), new Vector2(0, 1));
         BlockEmblem("CombatLogo", combat, false);
-        Label("CombatCaption", combat, "\u0411\u041e\u0415\u0412\u041e\u0419 \u0411\u041b\u041e\u041a", 46, 9, 104, 22, 11, Lime, FontStyle.Bold);
+        Label("CombatCaption", combat, "\u0411\u041e\u0415\u0412\u041e\u0419 \u0411\u041b\u041e\u041a", 46, 17, 104, 20, 10, Lime, FontStyle.Bold);
+        Label("CombatTimer", combat, "60 с", 46, 2, 104, 18, 12, TextColor, FontStyle.Bold);
         RectTransform raid = Box("RaidPanel", content, 192, -95, 156, 40, Panel, new Vector2(0, 1), new Vector2(0, 1));
         BlockEmblem("RaidLogo", raid, true);
-        Label("RaidCaption", raid, "\u0420\u0415\u0419\u0414 \u0411\u041b\u041e\u041a", 46, 9, 104, 22, 11, Red, FontStyle.Bold);
+        Label("RaidCaption", raid, "\u0420\u0415\u0419\u0414 \u0411\u041b\u041e\u041a", 46, 17, 104, 20, 10, Red, FontStyle.Bold);
+        Label("RaidTimer", raid, "180 с", 46, 2, 104, 18, 12, TextColor, FontStyle.Bold);
     }
 
     // Original MRE emblems drawn from polygons; no runtime script or external artwork.
@@ -389,44 +414,58 @@ public static class MreHudBuilder
         Bar(name, meter, 0, 2, 266, 4, 100, color);
     }
 
+    private static void CreateSpawnProtection(RectTransform content)
+    {
+        RectTransform card = Box("SpawnProtectionPanel", content, 0, -28, 224, 38, Back,
+            new Vector2(0.5f, 1), new Vector2(0.5f, 1));
+        Box("SpawnProtectionAccent", card, 0, 36, 224, 2, Lime);
+        RectTransform shield = Rect("SpawnShield", card, 12, 7, 22, 26);
+        Box("SpawnShieldTop", shield, 3, 23, 16, 2, Lime);
+        Box("SpawnShieldLeft", shield, 3, 11, 2, 12, Lime);
+        Box("SpawnShieldRight", shield, 17, 11, 2, 12, Lime);
+        Box("SpawnShieldBottomLeft", shield, 3, 11, 12, 2, Lime).localRotation = Quaternion.Euler(0, 0, -45);
+        Box("SpawnShieldBottomRight", shield, 11, 3, 12, 2, Lime).localRotation = Quaternion.Euler(0, 0, 45);
+        Label("SpawnProtectionCaption", card, "ЗАЩИТА СПАВНА", 43, 10, 139, 23, 12, TextColor, FontStyle.Bold);
+        Label("SpawnProtectionTimer", card, "15 с", 183, 8, 34, 26, 16, Lime, FontStyle.Bold);
+        card.gameObject.SetActive(false);
+    }
+
     private static void CreateVote(RectTransform content)
     {
-        RectTransform card = Box("VotePanel", content, -28, 0, 264, 122, Back, new Vector2(1, 0.5f), new Vector2(1, 0.5f));
-        Box("VoteAccent", card, 0, 120, 264, 2, Hex("37433d"));
-        Box("VoteSuccessAccent", card, 0, 120, 264, 2, Lime).gameObject.SetActive(false);
-        Box("VoteFailureAccent", card, 0, 120, 264, 2, Red).gameObject.SetActive(false);
-        var sun = Box("VoteSunCore", card, 20, 92, 10, 10, Lime);
+        RectTransform card = Box("VotePanel", content, -28, 0, 270, 156, Back, new Vector2(1, 0.5f), new Vector2(1, 0.5f));
+        Box("VoteAccent", card, 0, 154, 270, 2, Lime);
+        Box("VoteSuccessAccent", card, 0, 154, 270, 2, Lime).gameObject.SetActive(false);
+        Box("VoteFailureAccent", card, 0, 154, 270, 2, Red).gameObject.SetActive(false);
+        var sun = Box("VoteSunCore", card, 20, 126, 10, 10, Lime);
         sun.localRotation = Quaternion.Euler(0, 0, 45);
-        Box("VoteSunTop", card, 24, 107, 2, 4, Lime);
-        Box("VoteSunBottom", card, 24, 82, 2, 4, Lime);
-        Box("VoteSunLeft", card, 10, 96, 4, 2, Lime);
-        Box("VoteSunRight", card, 35, 96, 4, 2, Lime);
-        Label("VoteDayCaption", card, "ГОЛОСОВАНИЕ ЗА ДЕНЬ", 48, 88, 156, 24, 11, TextColor, FontStyle.Bold);
-        Box("VoteTimerBack", card, 208, 88, 42, 25, Panel);
-        Label("VoteTimer", card, "30 с", 213, 89, 34, 24, 14, Lime, FontStyle.Bold);
-        Label("VoteCount", card, "0 за  ·  0 против", 14, 65, 236, 20, 11, Muted);
-        RectTransform yes = Box("VoteYesPanel", card, 14, 18, 112, 43, Panel);
-        Box("VoteYesSelected", yes, 0, 0, 112, 43, Hex("3a542e", 0.98f)).gameObject.SetActive(false);
-        Label("VoteYesLabel", yes, "ЗА", 10, 22, 92, 20, 12, Lime, FontStyle.Bold);
-        // Q/E are the in-game vote hotkeys (Plugin Hotkey #3/#4). Chat commands
-        // remain available as a fallback, but the compact card must show the
-        // keys the player should press instead of the command strings.
-        Label("VoteYesKey", yes, "Q", 10, 2, 92, 22, 14, TextColor, FontStyle.Bold);
-        RectTransform no = Box("VoteNoPanel", card, 138, 18, 112, 43, Panel);
-        Box("VoteNoSelected", no, 0, 0, 112, 43, Hex("633a34", 0.98f)).gameObject.SetActive(false);
-        Label("VoteNoLabel", no, "ПРОТИВ", 10, 22, 92, 20, 12, Red, FontStyle.Bold);
-        Label("VoteNoKey", no, "E", 10, 2, 92, 22, 14, TextColor, FontStyle.Bold);
-        Label("VoteStatus", card, "Наступил день", 14, 24, 236, 51, 16, TextColor, FontStyle.Bold);
+        Box("VoteSunTop", card, 24, 140, 2, 4, Lime);
+        Box("VoteSunBottom", card, 24, 117, 2, 4, Lime);
+        Box("VoteSunLeft", card, 10, 130, 4, 2, Lime);
+        Box("VoteSunRight", card, 35, 130, 4, 2, Lime);
+        Label("VoteDayCaption", card, "Голосование за день", 47, 119, 158, 24, 12, TextColor, FontStyle.Bold);
+        Box("VoteTimerBack", card, 211, 119, 44, 26, Panel);
+        Label("VoteTimer", card, "30 с", 215, 119, 38, 26, 15, Lime, FontStyle.Bold);
+        Label("VoteCount", card, "0 за  ·  0 против", 14, 95, 242, 20, 11, Muted);
+        RectTransform yes = Box("VoteYesPanel", card, 14, 43, 117, 43, Panel);
+        Box("VoteYesSelected", yes, 0, 0, 117, 43, Hex("3a542e", 0.98f)).gameObject.SetActive(false);
+        Box("VoteYesKeyBack", yes, 8, 9, 25, 25, Hex("111916"));
+        Label("VoteYesKey", yes, "Q", 8, 9, 25, 25, 14, TextColor, FontStyle.Bold);
+        Label("VoteYesLabel", yes, "ЗА", 42, 9, 67, 25, 12, Lime, FontStyle.Bold);
+        RectTransform no = Box("VoteNoPanel", card, 139, 43, 117, 43, Panel);
+        Box("VoteNoSelected", no, 0, 0, 117, 43, Hex("633a34", 0.98f)).gameObject.SetActive(false);
+        Box("VoteNoKeyBack", no, 8, 9, 25, 25, Hex("111916"));
+        Label("VoteNoKey", no, "E", 8, 9, 25, 25, 14, TextColor, FontStyle.Bold);
+        Label("VoteNoLabel", no, "ПРОТИВ", 42, 9, 70, 25, 12, Red, FontStyle.Bold);
+        Label("VoteStatus", card, "Наступил день", 14, 43, 242, 51, 16, TextColor, FontStyle.Bold);
         card.Find("VoteStatus").gameObject.SetActive(false);
-        Bar("VoteProgress", card, 14, 10, 236, 2, 100, Lime);
-        // Hidden text targets preserve the existing server contract.
+        Bar("VoteProgress", card, 14, 32, 242, 3, 100, Lime);
+        Label("VoteHoldCaption", card, "Удерживайте клавишу 2 секунды", 14, 8, 242, 19, 10, Muted);
         foreach (string name in new[] { "VoteInitiator", "VoteEligible", "VoteHint", "VoteTopic" })
         {
             Label(name, card, "", 0, 0, 1, 1, 9, Muted);
             card.Find(name).gameObject.SetActive(false);
         }
     }
-
     private static void Bar(string name, RectTransform parent, float x, float y, float width, float height, int count, Color color)
     {
         RectTransform bar = Box(name + "Track", parent, x, y, width, height, Hex("34413a", 0.75f));
@@ -578,8 +617,9 @@ public static class MreHudBuilder
         string[] required = { "HudContent", "HealthValue", "FoodValue", "WaterValue", "StaminaValue", "OxygenValue",
             "WeaponName", "MagazineName", "AmmoValue", "AmmoCapacity", "FireModeValue", "DurabilityValue", "VitalsLowLayout", "VitalsHighLayout", "WeaponLowLayout", "WeaponHighLayout",
             "TpaPanel", "TpaTitle", "TpaPlayerName", "TpaHint", "TpaTimer", "TpaAcceptPanel", "TpaAcceptKey", "TpaDenyKey", "TpaDenyText",
-            "OxygenPanel", "LowHealth", "BleedingPanel", "BrokenPanel", "CombatPanel", "RaidPanel", "EmptyMagazine", "WeaponPanel",
-            "HomePanel", "HomeCaption", "HomeTimer", "HomeName", "HomeCancel", "HomeProgressTrack",
+            "OxygenPanel", "LowHealth", "BleedingPanel", "BrokenPanel", "CombatPanel", "RaidPanel", "CombatTimer", "RaidTimer", "EmptyMagazine", "WeaponPanel",
+            "HomePanel", "HomeCaption", "HomeTimer", "HomeName", "HomeCancel", "HomeCancelPanel", "HomeCancelKey", "HomeProgressTrack",
+            "SpawnProtectionPanel", "SpawnProtectionTimer", "SpawnProtectionCaption", "SpawnShield",
             "VotePanel", "VoteTopic", "VoteInitiator", "VoteCount", "VoteEligible", "VoteTimer", "VoteStatus", "VoteHint", "VoteSuccessAccent", "VoteFailureAccent", "VoteYesPanel", "VoteYesSelected", "VoteYesKey", "VoteYesLabel", "VoteNoPanel", "VoteNoSelected", "VoteNoKey", "VoteNoLabel", "VoteSunCore", "VoteSunTop", "VoteSunBottom", "VoteSunLeft", "VoteSunRight", "BuildingPanel", "BuildingName", "BuildingHealth" };
         var rects = root.GetComponentsInChildren<RectTransform>(true).ToDictionary(x => x.name);
         if (rects["VitalsPanel"].anchoredPosition.y != 28 || rects["WeaponPanel"].anchoredPosition.y != 28 ||
@@ -598,7 +638,7 @@ public static class MreHudBuilder
         var vote = rects["VotePanel"];
         if (vote.anchorMin != new Vector2(1, 0.5f) || vote.anchorMax != vote.anchorMin ||
             vote.pivot != new Vector2(1, 0.5f) || vote.anchoredPosition != new Vector2(-28, 0) ||
-            vote.sizeDelta != new Vector2(264, 122) || rects["VoteYesSelected"].gameObject.activeSelf ||
+            vote.sizeDelta != new Vector2(270, 156) || rects["VoteYesSelected"].gameObject.activeSelf ||
             rects["VoteNoSelected"].gameObject.activeSelf || rects["VoteYesKey"].GetComponent<Text>().text != "Q" ||
             rects["VoteNoKey"].GetComponent<Text>().text != "E" ||
             !rects["VoteYesKey"].GetComponent<Text>().resizeTextForBestFit ||

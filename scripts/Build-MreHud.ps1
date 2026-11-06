@@ -1,5 +1,5 @@
 ﻿[CmdletBinding()]
-param([string]$ReferenceRoot)
+param([string]$ReferenceRoot, [string]$EssentialsAssembly, [string]$TeleportationAssembly)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -8,8 +8,10 @@ $ReferenceRoot = [IO.Path]::GetFullPath($ReferenceRoot)
 $managedRoot = Join-Path $ReferenceRoot 'Unturned_Data\Managed'
 $rocketRoot = Join-Path $ReferenceRoot 'Extras\Rocket.Unturned'
 $teleportationPath = Join-Path $projectRoot 'runtime\plugin-builds\Teleportation.MRE\Teleportation.dll'
+if ($TeleportationAssembly) { $teleportationPath = [IO.Path]::GetFullPath($TeleportationAssembly) }
 if (-not (Test-Path -LiteralPath $teleportationPath)) { throw 'Сначала соберите актуальный src/Teleportation.MRE/Build.ps1.' }
 $essentialsPath = Join-Path $projectRoot 'runtime\builds\MreEssentials\MreEssentials.dll'
+if ($EssentialsAssembly) { $essentialsPath = [IO.Path]::GetFullPath($EssentialsAssembly) }
 if (-not (Test-Path -LiteralPath $essentialsPath)) { throw 'Сначала соберите актуальный scripts/Build-MreEssentials.ps1.' }
 $sdkLine = @(& dotnet --list-sdks) | Where-Object { $_ -match '^\d' } | Select-Object -Last 1
 if ($sdkLine -notmatch '^(\S+)\s+\[(.+)\]$') { throw 'Для сборки MreHud нужен .NET SDK.' }

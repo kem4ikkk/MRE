@@ -15,6 +15,7 @@ namespace MreEssentials
         public bool LocalControlEnabled;
         public string LocalControlDirectory;
         public bool MaxSkillsEnabled = true;
+        public bool ProtectVehicleTires = true;
 
         public void LoadDefaults()
         {
@@ -29,6 +30,7 @@ namespace MreEssentials
             LocalControlEnabled = true;
             LocalControlDirectory = "../control/MRE";
             MaxSkillsEnabled = true;
+            ProtectVehicleTires = true;
         }
     }
 }
