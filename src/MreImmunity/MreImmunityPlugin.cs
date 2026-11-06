@@ -16,6 +16,7 @@ namespace MreImmunity
     {
         private const string Id = "mre.immunity.v1";
         private const string GameHash = "15666f1e20afc32a01a5510eb71eef2512a6eb4064ee628b806ee333ab4e4660";
+        private const string UpdatedGameHash = "dd37a145331b7d21025ac28954f8b43f77257bfc7de8f975841df13934c3c361";
         private static MreImmunityPlugin active;
         private readonly SyncGate<PlayerLife> gate = new SyncGate<PlayerLife>();
         private readonly HashSet<PlayerLife> seen = new HashSet<PlayerLife>();
@@ -35,7 +36,7 @@ namespace MreImmunity
                 string hash;
                 using (var stream = File.OpenRead(typeof(PlayerLife).Assembly.Location))
                 using (var sha = SHA256.Create()) hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-                if (hash != GameHash) throw new InvalidOperationException("Непроверенная версия Assembly-CSharp.dll.");
+                if (hash != GameHash && hash != UpdatedGameHash) throw new InvalidOperationException("Непроверенная версия Assembly-CSharp.dll.");
                 infect = Target("askInfect"); radiate = Target("askRadiate");
                 syncSeconds = c.RadiationSyncSeconds;
                 harmony = new Harmony(Id);

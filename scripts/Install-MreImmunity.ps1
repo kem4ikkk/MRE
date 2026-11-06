@@ -21,19 +21,22 @@ $targetDir = Join-Path $plugins 'MreImmunity'
 $targetConfig = Join-Path $targetDir 'MreImmunity.configuration.xml'
 $gameDll = Join-Path $server 'Unturned_Data\Managed\Assembly-CSharp.dll'
 $harmonyDll = Join-Path $server 'Servers\MRE\Rocket\Libraries\0Harmony.dll'
-$gameHash = '15666f1e20afc32a01a5510eb71eef2512a6eb4064ee628b806ee333ab4e4660'
+$gameHashes = @('15666f1e20afc32a01a5510eb71eef2512a6eb4064ee628b806ee333ab4e4660', 'dd37a145331b7d21025ac28954f8b43f77257bfc7de8f975841df13934c3c361')
 $harmonyHash = '0de0118c8f1d4408de389ca33b46d2ff7778f3a8541b430cae729ec913d899c7'
 
 function Assert-Hashes {
     foreach ($entry in @(
         @{ Path=$sourceDll; Hash=$ExpectedPluginSha256 },
-        @{ Path=$gameDll; Hash=$gameHash },
         @{ Path=$harmonyDll; Hash=$harmonyHash }
     )) {
         if (-not (Test-Path -LiteralPath $entry.Path -PathType Leaf)) { throw "Отсутствует файл: $($entry.Path)" }
         if ((Get-FileHash -LiteralPath $entry.Path -Algorithm SHA256).Hash -ine $entry.Hash) {
             throw "SHA-256 отличается от проверенной версии: $($entry.Path)"
         }
+    }
+    if (-not (Test-Path -LiteralPath $gameDll -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $gameDll -Algorithm SHA256).Hash.ToLowerInvariant() -notin $gameHashes) {
+        throw "SHA-256 игры отличается от проверенной версии: $gameDll"
     }
 }
 Assert-Hashes

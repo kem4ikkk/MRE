@@ -14,6 +14,7 @@ namespace MreHud
     {
         private const string HarmonyId = "mre.hud.punch-input.v1";
         private const string VerifiedGameHash = "15666f1e20afc32a01a5510eb71eef2512a6eb4064ee628b806ee333ab4e4660";
+        private const string UpdatedGameHash = "dd37a145331b7d21025ac28954f8b43f77257bfc7de8f975841df13934c3c361";
         private static PunchInputObserver active;
         private readonly MreHudPlugin plugin;
         private Harmony harmony;
@@ -28,7 +29,7 @@ namespace MreHud
                 string hash;
                 using (var stream = File.OpenRead(typeof(PlayerInput).Assembly.Location))
                 using (var sha = SHA256.Create()) hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-                if (hash != VerifiedGameHash) { Logger.LogWarning("[MRE UI] Версия игры не проверена для перехвата удара; доступен штатный damage-event."); return; }
+                if (hash != VerifiedGameHash && hash != UpdatedGameHash) { Logger.LogWarning("[MRE UI] Версия игры не проверена для перехвата удара; доступен штатный damage-event."); return; }
                 target = typeof(PlayerInput).GetMethod("getInput", BindingFlags.Public | BindingFlags.Instance, null,
                     new[] { typeof(bool), typeof(ERaycastInfoUsage), typeof(Vector3?) }, null);
                 if (target == null || target.ReturnType != typeof(InputInfo)) { Logger.LogWarning("[MRE UI] Сигнатура getInput изменилась; перехват удара отключен."); return; }

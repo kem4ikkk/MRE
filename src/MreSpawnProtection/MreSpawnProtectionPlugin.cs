@@ -19,10 +19,16 @@ namespace MreSpawnProtection
     {
         private const string PatchId = "mre.spawnprotection.v1";
         private const string GameHash = "15666f1e20afc32a01a5510eb71eef2512a6eb4064ee628b806ee333ab4e4660";
+        private const string UpdatedGameHash = "dd37a145331b7d21025ac28954f8b43f77257bfc7de8f975841df13934c3c361";
         private const double Duration = 15;
+        private static readonly Guid VisualGuid = new Guid("7744a548-037a-48a6-a2ec-469b54e7c2e1");
+        private const ushort VisualId = 29065;
+        private const double VisualInterval = 0.4;
         public static MreSpawnProtectionPlugin Instance { get; private set; }
         private readonly ProtectionTimer timer = new ProtectionTimer();
         private readonly Dictionary<ulong, Player> tracked = new Dictionary<ulong, Player>();
+        private readonly Dictionary<ulong, double> nextVisual = new Dictionary<ulong, double>();
+        private EffectAsset visual;
         private Harmony harmony;
         private static FieldInfo attachmentsField;
         private static double Now { get { return (double)Stopwatch.GetTimestamp() / Stopwatch.Frequency; } }
@@ -35,7 +41,7 @@ namespace MreSpawnProtection
             {
                 string hash;
                 using (var f = File.OpenRead(typeof(PlayerLife).Assembly.Location)) using (var sha = SHA256.Create()) hash = BitConverter.ToString(sha.ComputeHash(f)).Replace("-", "").ToLowerInvariant();
-                if (hash != GameHash) throw new InvalidOperationException("Непроверенная версия Assembly-CSharp.dll.");
+                if (hash != GameHash && hash != UpdatedGameHash) throw new InvalidOperationException("Непроверенная версия Assembly-CSharp.dll.");
                 var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
                 var damage = typeof(PlayerLife).GetMethod("askDamage", flags, null, new[] { typeof(byte), typeof(Vector3), typeof(EDeathCause), typeof(ELimb), typeof(CSteamID), typeof(EPlayerKill).MakeByRefType(), typeof(bool), typeof(ERagdollEffect), typeof(bool), typeof(bool) }, null);
                 var direct = typeof(PlayerLife).GetMethod("doDamage", flags, null, new[] { typeof(byte), typeof(Vector3), typeof(EDeathCause), typeof(ELimb), typeof(CSteamID), typeof(EPlayerKill).MakeByRefType(), typeof(bool), typeof(ERagdollEffect), typeof(bool) }, null);
@@ -55,6 +61,8 @@ namespace MreSpawnProtection
                 harmony.Patch(breakLegs, prefix: new HarmonyMethod(typeof(MreSpawnProtectionPlugin), "BeforeBreakLegs") { priority = Priority.First });
                 harmony.Patch(jab, prefix: new HarmonyMethod(typeof(MreSpawnProtectionPlugin), "BeforeJab") { priority = Priority.First });
                 Instance = this;
+                visual = Assets.find(VisualGuid) as EffectAsset;
+                if (visual == null || visual.id != VisualId) { visual = null; Logger.LogWarning("[MRE] Визуальный эффект защиты отсутствует; защита работает без него."); }
                 PlayerLife.OnRevived_Global += OnRevived;
                 PlayerLife.onPlayerDied += OnDeath;
                 Provider.onServerDisconnected += OnDisconnect;
@@ -110,8 +118,8 @@ namespace MreSpawnProtection
         }
         private void OnDeath(PlayerLife life, EDeathCause cause, ELimb limb, CSteamID killer) { if (life != null) Remove(Id(life.player)); }
         private void OnDisconnect(CSteamID id) { Remove(id.m_SteamID); }
-        private void Remove(ulong id) { timer.Remove(id); tracked.Remove(id); }
-        private void End(Player player, string message) { ulong id = Id(player); if (!timer.Remove(id)) return; tracked.Remove(id); Say(player, message); }
+        private void Remove(ulong id) { timer.Remove(id); tracked.Remove(id); nextVisual.Remove(id); }
+        private void End(Player player, string message) { ulong id = Id(player); if (!timer.Remove(id)) return; tracked.Remove(id); nextVisual.Remove(id); Say(player, message); }
         private static void Say(Player player, string message) { if (player != null) MreChat.SayServer(UnturnedPlayer.FromPlayer(player), message); }
         private void Update()
         {
@@ -121,6 +129,17 @@ namespace MreSpawnProtection
             foreach (var pair in tracked) {
                 if (!ProtectionPolicy.SameSession(pair.Value, PlayerTool.getPlayer(new CSteamID(pair.Key))) || pair.Value == null || pair.Value.life == null || pair.Value.life.isDead) stale.Add(pair.Key);
                 else if (timer.Remaining(pair.Key, Now) <= 0) finished.Add(pair.Value);
+                else if (visual != null) {
+                    double next;
+                    double now = Now;
+                    if (!nextVisual.TryGetValue(pair.Key, out next) || now >= next) {
+                        nextVisual[pair.Key] = now + VisualInterval;
+                        var parameters = new TriggerEffectParameters(VisualId);
+                        parameters.position = pair.Value.transform.position;
+                        parameters.relevantPlayerID = new CSteamID(pair.Key);
+                        EffectManager.triggerEffect(parameters);
+                    }
+                }
             }
             foreach (var id in stale) Remove(id);
             foreach (var player in finished) End(player, "Защита после возрождения закончилась.");
@@ -133,7 +152,7 @@ namespace MreSpawnProtection
             PlayerLife.onPlayerDied -= OnDeath;
             Provider.onServerDisconnected -= OnDisconnect;
             if (harmony != null) { try { harmony.UnpatchAll(PatchId); } catch (Exception e) { Logger.LogException(e, "[MRE] Ошибка снятия перехватов защиты."); } }
-            harmony = null; attachmentsField = null; timer.Clear(); tracked.Clear();
+            harmony = null; attachmentsField = null; visual = null; timer.Clear(); tracked.Clear(); nextVisual.Clear();
         }
     }
 }
