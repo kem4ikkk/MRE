@@ -87,13 +87,13 @@ namespace MreTrade
             if (!Configuration.Instance.ExperimentalTradeEnabled) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен временно недоступен."); return; }
             ulong id = actor.CSteamID.m_SteamID;
             if (!Allowed(actor)) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен недоступен: проверка боя, рейда, входа или журнала не пройдена."); return; }
-            if (args == null || args.Length == 0) { MreChat.Say(MreChatSection.Trade, actor, "MRE: используйте /trade <имя|SteamID>, /trade accept или /trade deny."); return; }
+            if (args == null || args.Length == 0) { MreChat.Say(MreChatSection.Trade, actor, "MRE: используйте /trade <ник>, /trade accept или /trade deny."); return; }
             string action = args[0].ToLowerInvariant(); TradeSession s;
             if (!uiReady && !String.Equals(action, "deny", StringComparison.OrdinalIgnoreCase))
             { Tell(id, "Интерфейс обмена ещё не готов. Повторите позже или используйте /trade deny для отказа от входящего запроса."); return; }
             if (!sessions.TryGetValue(id, out s))
             {
-                if (ReservedTradeWords.Contains(action)) { Tell(id, "Доступны только /trade <имя|SteamID>, /trade accept и /trade deny."); return; }
+                if (ReservedTradeWords.Contains(action)) { Tell(id, "Доступны только /trade <ник>, /trade accept и /trade deny."); return; }
                 Invite(actor, args); return;
             }
             if (s.Committing) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен обрабатывается."); return; }
@@ -188,8 +188,30 @@ namespace MreTrade
             catch (Exception error)
             {
                 Logger.LogException(error, "[MRE TRADE] Неопределённый результат обмена; нужна сверка журнала.");
-                sessions.Remove(s.A); sessions.Remove(s.B); Both(s, "Обмен прерван. Не повторяйте его; обратитесь к администрации для проверки.");
+                sessions.Remove(s.A); sessions.Remove(s.B);
+                CloseAfterCommitError(s.A); CloseAfterCommitError(s.B);
+                try { Tell(s.A, "Обмен прерван. Не повторяйте его; обратитесь к администрации для проверки."); }
+                catch (Exception notifyError) { Logger.LogException(notifyError, "[MRE TRADE] Не удалось уведомить игрока."); }
+                try { Tell(s.B, "Обмен прерван. Не повторяйте его; обратитесь к администрации для проверки."); }
+                catch (Exception notifyError) { Logger.LogException(notifyError, "[MRE TRADE] Не удалось уведомить игрока."); }
             }
+        }
+        private void CloseAfterCommitError(ulong id)
+        {
+            try { ClearTradeUi(id); }
+            catch (Exception error) { Logger.LogException(error, "[MRE TRADE] Не удалось закрыть интерфейс обмена."); }
+            // При ошибке проекция остаётся под защитой; эффект и modal закрываются отдельно.
+            try
+            {
+                var player = Online(id);
+                if (player != null && player.Player != null)
+                {
+                    try { EffectManager.ClearEffectByGuid(TradeEffectGuid, player.Player.channel.GetOwnerTransportConnection()); }
+                    finally { if (modalOwned.Remove(id)) player.Player.disablePluginWidgetFlag(EPluginWidgetFlags.Modal); }
+                }
+                else modalOwned.Remove(id);
+            }
+            catch (Exception error) { Logger.LogException(error, "[MRE TRADE] Не удалось освободить интерфейс обмена."); }
         }
         private static bool NotEquipped(UnturnedPlayer p, IList<TradeOffer> offers) { return p != null && p.Player != null && offers.All(o => !p.Player.equipment.checkSelection(o.Page, o.X, o.Y)); }
         // Во время commit собственные lock-файлы уже существуют.

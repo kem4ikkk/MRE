@@ -13,14 +13,17 @@ namespace MreTrade
     {
         private readonly string directory;
         private readonly bool recoveryRequired;
-        internal TradeJournal(string directory)
+        private bool completionFailed;
+        private readonly System.Action afterRename;
+        internal TradeJournal(string directory, System.Action afterRename = null)
         {
             this.directory = directory;
+            this.afterRename = afterRename;
             System.IO.Directory.CreateDirectory(directory);
             // .done подтверждает только выполнение в памяти, но не сохранение обоих
             // инвентарей игрой. После перезапуска даже штатно завершённый обмен
             // требует сверки; удаление файлов во время работы не снимает блокировку.
-            try { recoveryRequired = Directory.EnumerateFiles(directory, "*.done").Any() || Directory.EnumerateFiles(directory, "*.pending").Any(); }
+            try { recoveryRequired = Directory.EnumerateFiles(directory, "*.done").Any() || Directory.EnumerateFiles(directory, "*.pending").Any() || Directory.EnumerateFiles(directory, "*.lock").Any(); }
             catch (IOException) { recoveryRequired = true; }
             catch (UnauthorizedAccessException) { recoveryRequired = true; }
             catch (System.Security.SecurityException) { recoveryRequired = true; }
@@ -30,7 +33,7 @@ namespace MreTrade
         {
             // Незавершённая операция без lock может появиться после неполного восстановления копии.
             // Не разрешать новые обмены, пока журнал целиком не сверили вручную.
-            try { return recoveryRequired || File.Exists(Lock(id)) || Directory.EnumerateFiles(directory, "*.pending").Any(); }
+            try { return recoveryRequired || completionFailed || Directory.EnumerateFiles(directory, "*.lock").Any() || Directory.EnumerateFiles(directory, "*.pending").Any(); }
             catch (IOException) { return true; }
             catch (UnauthorizedAccessException) { return true; }
             catch (System.Security.SecurityException) { return true; }
@@ -78,8 +81,17 @@ namespace MreTrade
         }
         internal void Complete(string operation, ulong a, ulong b)
         {
-            File.Move(Path.Combine(directory, operation + ".pending"), Path.Combine(directory, operation + ".done"));
-            File.Delete(Lock(a)); File.Delete(Lock(b));
+            try
+            {
+                File.Move(Path.Combine(directory, operation + ".pending"), Path.Combine(directory, operation + ".done"));
+                if (afterRename != null) afterRename(); // Контролируемый сбой для проверки восстановления.
+                File.Delete(Lock(a)); File.Delete(Lock(b));
+            }
+            catch
+            {
+                completionFailed = true;
+                throw;
+            }
         }
     }
 }
