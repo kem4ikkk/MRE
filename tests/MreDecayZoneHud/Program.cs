@@ -65,6 +65,7 @@ static class Program
         int beforeRetry = faulty.HideCalls.Count;
         guarded.Clear();
         Check(faulty.HideCalls.Count == beforeRetry + 1 && faulty.HideCalls[faulty.HideCalls.Count - 1] == 7, "failed hide remains retryable");
+        EffectSinkChecks.Run();
         Console.WriteLine("PASS: decay zone hint policy");
     }
     static void Check(bool passed, string name) { if (!passed) throw new Exception(name); }

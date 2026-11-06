@@ -16,9 +16,9 @@ namespace MreAirdrop
         public List<string> Permissions { get { return new List<string> { "mre.airdrop.admin" }; } }
         public void Execute(IRocketPlayer caller, string[] args)
         {
-            if (args.Length != 0) { MreChat.Say(caller, "MRE: использование: /airdrop."); return; }
+            if (args.Length != 0) { MreChat.SayAdmin(caller, "MRE: использование: /airdrop."); return; }
             var plugin = MreAirdropPlugin.Instance;
-            if (plugin == null) { MreChat.Say(caller, "MRE: аирдропы временно недоступны."); return; }
+            if (plugin == null) { MreChat.SayAdmin(caller, "MRE: аирдропы временно недоступны."); return; }
             plugin.LaunchManual(caller);
         }
     }

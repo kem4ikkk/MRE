@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ManagedDir>$(MSBuildThisFileDirectory)../../../runtime/server/Unturned_Data/Managed</ManagedDir>
+    <SourceDir>$(MSBuildThisFileDirectory)../../../src/MreDecayZoneHud</SourceDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(SourceDir)/HintPolicy.cs" />
+    <Compile Include="$(SourceDir)/HintController.cs" />
+    <Compile Include="$(SourceDir)/EffectHintSink.cs" />
+    <Compile Include="$(SourceDir)/UnturnedEffectTransport.cs" />
+    <Compile Include="$(SourceDir)/HintSessions.cs" />
+    <Compile Include="$(SourceDir)/HeldItemClassifier.cs" />
+    <Compile Include="$(SourceDir)/GameHintAdapter.cs" />
+    <Reference Include="Assembly-CSharp"><HintPath>$(ManagedDir)/Assembly-CSharp.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)/UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="SDG.NetTransport"><HintPath>$(ManagedDir)/SDG.NetTransport.dll</HintPath></Reference>
+    <Reference Include="com.rlabrecque.steamworks.net"><HintPath>$(ManagedDir)/com.rlabrecque.steamworks.net.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

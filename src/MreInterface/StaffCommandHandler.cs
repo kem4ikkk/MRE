@@ -32,13 +32,13 @@ namespace MreInterface
                     bool enabled;
                     if (args.Length == 1) enabled = action == "freecam" || action == "workzone" || action == "stats" || !(action == "god" ? actor.GodMode : actor.VanishMode);
                     else if (args.Length == 2 && (args[1].Equals("on", StringComparison.OrdinalIgnoreCase) || args[1].Equals("off", StringComparison.OrdinalIgnoreCase))) enabled = args[1].Equals("on", StringComparison.OrdinalIgnoreCase);
-                    else { MreChat.Say(actor, "MRE: /admin " + action + " [on|off]"); return; }
+                    else { MreChat.SayAdmin(actor, "MRE: /admin " + action + " [on|off]"); return; }
                     result = action == "fly" ? RunBodyFlight(actor, enabled) : action == "freecam" ? SetFreecamPermission(actor, enabled) : action == "workzone" ? SetWorkzonePermission(actor, enabled) : action == "stats" ? SetStatsPermission(actor, enabled) : SetStaffMode(actor, action, enabled);
                 }
-                MreChat.Say(actor, "MRE: " + result);
+                MreChat.SayAdmin(actor, "MRE: " + result);
             }
-            catch (UnauthorizedAccessException) { MreChat.Say(actor, "MRE: нет прав на это действие."); }
-            catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка дополнительного действия администратора."); MreChat.Say(actor, "MRE: действие не выполнено, ошибка записана в журнал."); }
+            catch (UnauthorizedAccessException) { MreChat.SayAdmin(actor, "MRE: нет прав на это действие."); }
+            catch (Exception error) { Logger.LogException(error, "[MRE] Ошибка дополнительного действия администратора."); MreChat.SayAdmin(actor, "MRE: действие не выполнено, ошибка записана в журнал."); }
         }
     }
 }

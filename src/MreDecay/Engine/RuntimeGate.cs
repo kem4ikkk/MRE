@@ -7,8 +7,10 @@ namespace MreDecay.Engine
     {
         public bool ZonesVerified, AssetsVerified, WorldSnapshotVerified, RaidEventsVerified;
         public bool DurableStateVerified, WorldStateTransactionVerified, RecoveryVerified;
+        public bool PersistentIdentityVerified, VehicleCoverageVerified;
         public bool Ready => ZonesVerified && AssetsVerified && WorldSnapshotVerified && RaidEventsVerified &&
-            DurableStateVerified && WorldStateTransactionVerified && RecoveryVerified;
+            DurableStateVerified && WorldStateTransactionVerified && RecoveryVerified &&
+            PersistentIdentityVerified && VehicleCoverageVerified;
     }
 
     // Monotonic elapsed server time only. No wall-clock catch-up after restart.
@@ -25,6 +27,8 @@ namespace MreDecay.Engine
             { faulted = true; return false; }
             last = monotonicSeconds; started = true; return true;
         }
+
+        public bool IsOperational { get { return started && !faulted && !pending; } }
 
         // Only one step can be pending. Excess elapsed time is discarded to avoid a burst
         // of damage after a stalled server thread; a failed step fences this instance.

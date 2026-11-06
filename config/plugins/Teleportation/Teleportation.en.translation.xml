@@ -5,7 +5,7 @@
   <Translation Id="CombatExpire" Value="Боевой режим завершён" />
   <Translation Id="RaidStart" Value="Режим рейда: телепортация временно недоступна" />
   <Translation Id="RaidExpire" Value="Режим рейда завершён" />
-  <Translation Id="TPAHelp" Value="[[color=#B8D66B]][[b]]MRE · ТЕЛЕПОРТАЦИЯ[[/b]][[/color]]&#xA;[[b]]/tpa имя[[/b]] — отправить запрос&#xA;[[b]]/tpa a[[/b]] — принять входящий&#xA;[[b]]/tpa d[[/b]] — отклонить или отменить ТП&#xA;[[b]]/tpa c[[/b]] — отменить свой запрос" />
+  <Translation Id="TPAHelp" Value="[[color=#B8D66B]][[b]][MRE] · ТЕЛЕПОРТАЦИЯ[[/b]][[/color]]&#xA;[[b]]/tpa имя[[/b]] — отправить запрос&#xA;[[b]]/tpa a[[/b]] — принять входящий&#xA;[[b]]/tpa d[[/b]] — отклонить или отменить ТП&#xA;[[b]]/tpa c[[/b]] — отменить свой запрос" />
   <Translation Id="TPACooldown" Value="До следующего запроса осталось [[b]]{0}[[/b]] сек." />
   <Translation Id="TPADuplicate" Value="Вы уже отправили этому игроку запрос" />
   <Translation Id="TPABusy" Value="Один из игроков уже участвует в перемещении" />

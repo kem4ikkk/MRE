@@ -4,6 +4,7 @@
 !.env.example
 secrets/
 *.secret
+*.unlazy
 
 # Installed game, runtime state and backups
 runtime/
@@ -28,3 +29,16 @@ ui/MreHud/Library/
 ui/MreHud/Temp/
 ui/MreHud/Logs/
 ui/MreHud/UserSettings/
+
+# Локальный кэш редактора для рейтинга
+ui/MreTop/Library/
+ui/MreTop/Temp/
+ui/MreTop/Logs/
+ui/MreTop/UserSettings/
+
+# Локальный кэш и пользовательские настройки всех Unity-проектов
+ui/**/Library/
+ui/**/Temp/
+ui/**/Logs/
+ui/**/UserSettings/
+ui/**/Obj/

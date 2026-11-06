@@ -50,6 +50,14 @@ namespace MreDecayZoneHud
             if (visible.ContainsKey(playerId)) { sink.Hide(playerId); visible.Remove(playerId); }
         }
 
+        // Только после подтверждённого разрыва старого соединения: старый клиент
+        // больше не может показывать этот эффект. Для живого соединения нужен Remove.
+        public void ForgetDisconnected(ulong playerId)
+        {
+            if (playerId == 0) throw new ArgumentOutOfRangeException(nameof(playerId));
+            visible.Remove(playerId);
+        }
+
         public void Clear()
         {
             var errors = new List<Exception>();

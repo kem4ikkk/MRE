@@ -48,7 +48,7 @@ namespace MreDecay.IsolatedDiagnostic
                     { Logger.LogWarning("[MRE decay diagnostic] Отказ: неполный или неверный список ассетов сейфов."); return; }
                 }
                 ObjectObservation[] observations;
-                if (!ReadOnlyWorld.TryObserve(true, out observations)) { Logger.LogWarning("[MRE decay diagnostic] Отказ: наземное наблюдение неполно."); return; }
+                if (!ReadOnlyWorld.TryObserve(true, out observations)) { Logger.LogWarning("[MRE decay diagnostic] Отказ: наблюдение мира неполно."); return; }
                 int structures = 0, barricades = 0, safeCount = 0, generators = 0;
                 foreach (var o in observations)
                 {
@@ -61,7 +61,7 @@ namespace MreDecay.IsolatedDiagnostic
                     }
                     else { Logger.LogWarning("[MRE decay diagnostic] Отказ: неизвестный тип объекта."); return; }
                 }
-                Logger.Log("[MRE decay diagnostic] Наземные регионы: structures=" + structures + " barricades=" + barricades + " configured_safes=" + safeCount + " generators=" + generators);
+                Logger.Log("[MRE decay diagnostic] Объекты мира: structures=" + structures + " barricades=" + barricades + " configured_safes=" + safeCount + " generators=" + generators);
             }
             catch (Exception) { Logger.LogWarning("[MRE decay diagnostic] Отказ: ошибка чтения."); }
         }

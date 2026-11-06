@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1120" role="img" aria-labelledby="title description">
+  <title id="title">Эскиз оформления чата MRE и тематических иконок</title>
+  <desc id="description">Предварительный макет десяти разделов чата MRE с зелёной общей меткой, красной меткой администратора и подписью для каждой иконки.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#111a16"/><stop offset="1" stop-color="#202a22"/></linearGradient>
+    <linearGradient id="panel" x2="0" y2="1"><stop stop-color="#101713" stop-opacity=".95"/><stop offset="1" stop-color="#0b100d" stop-opacity=".97"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity=".32"/></filter>
+    <g id="i-system" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4 14.1 9l5.6 2.2-5.6 2.1-2.1 5.7-2.2-5.7L4.2 11.2 9.8 9z"/><path d="m18.8 3 .7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></g>
+    <g id="i-home" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 10.7 8.5-7 8.5 7"/><path d="M5.8 9.4v10.2h12.4V9.4M9.5 19.6v-6.2h5v6.2"/></g>
+    <g id="i-tpa" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/></g>
+    <g id="i-kit" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5 12 4l8.5 4.5V18L12 22l-8.5-4z"/><path d="M3.7 8.6 12 13l8.3-4.4M12 13v8.5M9 5.6l8.4 4.5v3.3"/></g>
+    <g id="i-trade" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h14m0 0-3-3m3 3-3 3M20 17H6m0 0 3-3m-3 3 3 3"/><path d="M8 12h8" stroke-dasharray="1 3"/></g>
+    <g id="i-vault" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M8 5V3.5h8V5m-6.5 6.8a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0Zm2.5 2.5v2.8m-8.5-6h2m13 0h2"/></g>
+    <g id="i-vote" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="m8 11 2.2 2.2L15.7 8m-7.7 7h8"/><path d="M8 3v2m8-2v2"/></g>
+    <g id="i-drop" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a9 9 0 0 1 18 0l-9 5z"/><path d="M3 10h18M12 15v3m0 0-4 3h8l-4-3Z"/><path d="m7 5 5 5 5-5"/></g>
+    <g id="i-mod" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 20 6v5.5c0 5-3.3 8.2-8 10.5-4.7-2.3-8-5.5-8-10.5V6z"/><path d="M8.5 12h7m-3.5-3.5v7"/></g>
+    <g id="i-admin" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/><circle cx="12" cy="14" r=".7" fill="currentColor"/></g>
+    <style>
+      text{font-family:Inter,"Segoe UI",Arial,sans-serif;fill:#edf1e9}
+      .muted{fill:#9aa69a}.green{fill:#b8d66b}.red{fill:#ff756a}.gold{fill:#e2bd69}.cyan{fill:#81c8c3}.purple{fill:#c0a3e2}.small{font-size:12px;letter-spacing:1.25px;font-weight:700}.body{font-size:16px}.prefix{font-size:14px;font-weight:800;letter-spacing:.25px}.icon{color:#ddd8ba}
+    </style>
+  </defs>
+  <rect width="1440" height="1120" rx="28" fill="url(#bg)"/>
+  <circle cx="1230" cy="70" r="250" fill="#657d48" opacity=".07"/>
+  <circle cx="185" cy="1040" r="300" fill="#477d75" opacity=".06"/>
+  <text x="56" y="58" class="small green">MRE  /  ЧАТ</text>
+  <text x="56" y="100" font-size="31" font-weight="750">Предварительный эскиз</text>
+  <text x="56" y="128" class="muted" font-size="14">Оформление и набор иконок для игровых сообщений · макет, не установлен на сервере</text>
+  <g filter="url(#shadow)">
+    <rect x="42" y="164" width="918" height="894" rx="16" fill="url(#panel)" stroke="#344139"/>
+    <rect x="42" y="164" width="918" height="48" rx="16" fill="#202c24"/>
+    <path d="M42 196h918v16H42z" fill="#202c24"/>
+    <circle cx="68" cy="188" r="5" fill="#b8d66b"/><text x="85" y="193" class="small">ИГРОВОЙ ЧАТ</text>
+    <text x="929" y="193" text-anchor="end" class="muted" font-size="12">PEI  ·  ПРИМЕРЫ СООБЩЕНИЙ</text>
+  </g>
+  <!-- General -->
+  <g transform="translate(64 235)"><circle cx="22" cy="22" r="21" fill="#273229" stroke="#59664d"/><use href="#i-system" x="10" y="10" width="24" height="24" class="icon"/></g>
+  <text x="120" y="248" class="small muted">СИСТЕМА</text><text x="120" y="274" class="prefix green">[MRE]</text><text x="173" y="274" class="body">Мир сохранён. Следующее сохранение через 5 минут.</text>
+  <path d="M64 294h868" stroke="#28332b"/>
+  <!-- Home -->
+  <g transform="translate(64 307)"><circle cx="22" cy="22" r="21" fill="#273229" stroke="#59664d"/><use href="#i-home" x="10" y="10" width="24" height="24" class="icon"/></g>
+  <text x="120" y="320" class="small muted">ДОМ</text><text x="120" y="346" class="prefix green">[MRE]</text><text x="173" y="346" class="small cyan">HOME</text><text x="226" y="346" class="body">Дом «Станция» сохранён.</text>
+  <path d="M64 366h868" stroke="#28332b"/>
+  <!-- TPA -->
+  <g transform="translate(64 379)"><circle cx="22" cy="22" r="21" fill="#273229" stroke="#59664d"/><use href="#i-tpa" x="10" y="10" width="24" height="24" class="icon"/></g>
+  <text x="120" y="392" class="small muted">ТЕЛЕПОРТАЦИЯ</text><text x="120" y="418" class="prefix green">[MRE]</text><text x="173" y="418" class="small cyan">TPA</text><text x="211" y="418" class="body">Запрос отправлен игроку Kemal.</text>
+  <path d="M64 438h868" stroke="#28332b"/>
+  <!-- Kits -->
+  <g transform="translate(64 451)"><circle cx="22" cy="22" r="21" fill="#273229" stroke="#59664d"/><use href="#i-kit" x="10" y="10" width="24" height="24" class="icon"/></g>
+  <text x="120" y="464" class="small muted">НАБОРЫ</text><text x="120" y="490" class="prefix green">[MRE]</text><text x="173" y="490" class="small gold">KIT</text><text x="207" y="490" class="body">Набор start получен: 6 предметов.</text>
+  <path d="M64 510h868" stroke="#28332b"/>
+  <!-- Trade error -->
+  <g transform="translate(64 523)"><circle cx="22" cy="22" r="21" fill="#332e20" stroke="#807044"/><use href="#i-trade" x="10" y="10" width="24" height="24" class="icon"/></g>
+  <text x="120" y="536" class="small muted">ОБМЕН</text><text x="120" y="562" class="prefix green">[MRE]</text><text x="173" y="562" class="small gold">TRADE</text><text x="226" y="562" class="body">Обмен недоступен во время боя. Выйдите из боя и повторите.</text>
+  <path d="M64 582h868" stroke="#28332b"/>
+  <!-- Vault -->
+  <g transform="translate(64 595)"><circle cx="22" cy="22" r="21" fill="#302a36" stroke="#665378"/><use href="#i-vault" x="10" y="10" width="24" height="24" class="icon"/></g>
+  <text x="120" y="608" class="small muted">ХРАНИЛИЩЕ</text><text x="120" y="634" class="prefix green">[MRE]</text><text x="173" y="634" class="small purple">VAULT</text><text x="226" y="634" class="body">Хранилище временно закрыто. Обратитесь к администрации.</text>
+  <path d="M64 654h868" stroke="#28332b"/>
+  <!-- Vote -->
+  <g transform="translate(64 667)"><circle cx="22" cy="22" r="21" fill="#332e20" stroke="#807044"/><use href="#i-vote" x="10" y="10" width="24" height="24" class="icon"/></g>
+  <text x="120" y="680" class="small muted">ГОЛОСОВАНИЕ</text><text x="120" y="706" class="prefix green">[MRE]</text><text x="173" y="706" class="small gold">VOTE</text><text x="218" y="706" class="body">За день: 5 из 7 голосов. Осталось 24 секунды.</text>
+  <path d="M64 726h868" stroke="#28332b"/>
+  <!-- Airdrop -->
+  <g transform="translate(64 739)"><circle cx="22" cy="22" r="21" fill="#332820" stroke="#805d3d"/><use href="#i-drop" x="10" y="10" width="24" height="24" class="icon"/></g>
+  <text x="120" y="752" class="small muted">АИРДРОП</text><text x="120" y="778" class="prefix green">[MRE]</text><text x="173" y="778" class="small gold">DROP</text><text x="218" y="778" class="body">Самолёт с грузом прибудет через 01:24.</text>
+  <path d="M64 798h868" stroke="#28332b"/>
+  <!-- Moderation -->
+  <g transform="translate(64 811)"><circle cx="22" cy="22" r="21" fill="#332421" stroke="#804942"/><use href="#i-mod" x="10" y="10" width="24" height="24" style="color:#ff9b81"/></g>
+  <text x="120" y="824" class="small muted">МОДЕРАЦИЯ</text><text x="120" y="850" class="prefix green">[MRE]</text><text x="173" y="850" class="small" fill="#ff9b81">STAFF</text><text x="218" y="850" class="body">Предупреждение выдано. Причина: спам в общем чате.</text>
+  <path d="M64 870h868" stroke="#28332b"/>
+  <!-- Admin multiline -->
+  <g transform="translate(64 883)"><circle cx="22" cy="22" r="21" fill="#382320" stroke="#a34f43"/><use href="#i-admin" x="10" y="10" width="24" height="24" style="color:#ff8a7d"/></g>
+  <text x="120" y="896" class="small muted">АДМИН-КОМАНДЫ</text><text x="120" y="922" class="prefix red">[MRE-ADMIN]</text><text x="226" y="922" class="small" fill="#ff9b81">/staff profile</text>
+  <text x="120" y="948" font-size="15">Игрок Kira · trust 72 · 18,4 ч · предупреждений: 1</text>
+  <text x="120" y="972" font-size="15" class="muted">Следующий шаг: /staff history 7656119…</text>
+  <rect x="64" y="1003" width="868" height="36" rx="8" fill="#18211b"/>
+  <text x="82" y="1026" font-size="12" class="muted">Метка + короткое название раздела + сообщение. Цвет дублируется текстом и значком.</text>
+  <!-- Icon key -->
+  <g filter="url(#shadow)">
+    <rect x="986" y="164" width="410" height="894" rx="16" fill="url(#panel)" stroke="#344139"/>
+    <rect x="986" y="164" width="410" height="48" rx="16" fill="#202c24"/><path d="M986 196h410v16H986z" fill="#202c24"/>
+  </g>
+  <text x="1012" y="193" class="small">НАБОР ИКОНОК</text>
+  <text x="1012" y="239" font-size="14" class="muted">Один знак на раздел. Без эмодзи в тексте.</text>
+  <g transform="translate(1012 274)">
+    <g transform="translate(0 0)"><circle cx="22" cy="22" r="21" fill="#273229" stroke="#59664d"/><use href="#i-system" x="10" y="10" width="24" height="24" class="icon"/><text x="54" y="27" font-size="14">Система</text></g>
+    <g transform="translate(188 0)"><circle cx="22" cy="22" r="21" fill="#273229" stroke="#59664d"/><use href="#i-home" x="10" y="10" width="24" height="24" class="icon"/><text x="54" y="27" font-size="14">HOME</text></g>
+    <g transform="translate(0 88)"><circle cx="22" cy="22" r="21" fill="#273229" stroke="#59664d"/><use href="#i-tpa" x="10" y="10" width="24" height="24" class="icon"/><text x="54" y="27" font-size="14">TPA</text></g>
+    <g transform="translate(188 88)"><circle cx="22" cy="22" r="21" fill="#273229" stroke="#59664d"/><use href="#i-kit" x="10" y="10" width="24" height="24" class="icon"/><text x="54" y="27" font-size="14">Наборы</text></g>
+    <g transform="translate(0 176)"><circle cx="22" cy="22" r="21" fill="#332e20" stroke="#807044"/><use href="#i-trade" x="10" y="10" width="24" height="24" class="icon"/><text x="54" y="27" font-size="14">Обмен</text></g>
+    <g transform="translate(188 176)"><circle cx="22" cy="22" r="21" fill="#302a36" stroke="#665378"/><use href="#i-vault" x="10" y="10" width="24" height="24" class="icon"/><text x="54" y="27" font-size="14">Хранилище</text></g>
+    <g transform="translate(0 264)"><circle cx="22" cy="22" r="21" fill="#332e20" stroke="#807044"/><use href="#i-vote" x="10" y="10" width="24" height="24" class="icon"/><text x="54" y="27" font-size="14">Голосование</text></g>
+    <g transform="translate(188 264)"><circle cx="22" cy="22" r="21" fill="#332820" stroke="#805d3d"/><use href="#i-drop" x="10" y="10" width="24" height="24" class="icon"/><text x="54" y="27" font-size="14">Аирдроп</text></g>
+    <g transform="translate(0 352)"><circle cx="22" cy="22" r="21" fill="#332421" stroke="#804942"/><use href="#i-mod" x="10" y="10" width="24" height="24" style="color:#ff9b81"/><text x="54" y="27" font-size="14">Модерация</text></g>
+    <g transform="translate(188 352)"><circle cx="22" cy="22" r="21" fill="#382320" stroke="#a34f43"/><use href="#i-admin" x="10" y="10" width="24" height="24" style="color:#ff8a7d"/><text x="54" y="27" font-size="14">Админ</text></g>
+  </g>
+  <path d="M1012 698h358" stroke="#344139"/>
+  <text x="1012" y="731" class="small green">ПРИНЦИПЫ</text>
+  <text x="1012" y="770" font-size="14">01  Иконка не заменяет название раздела.</text>
+  <text x="1012" y="807" font-size="14">02  Админская метка красная, тело читаемое.</text>
+  <text x="1012" y="844" font-size="14">03  Длинный текст делится на короткие строки.</text>
+  <text x="1012" y="881" font-size="14">04  Ошибки говорят, что делать дальше.</text>
+  <rect x="1012" y="922" width="358" height="104" rx="10" fill="#202820" stroke="#3c4b3d"/>
+  <text x="1032" y="953" class="small gold">ДЛЯ ИГРОВОГО КЛИЕНТА</text>
+  <text x="1032" y="979" font-size="13" class="muted">Иконкам нужны отдельные общедоступные</text>
+  <text x="1032" y="999" font-size="13" class="muted">PNG URL. В этом макете показаны SVG-эскизы.</text>
+  <text x="56" y="1090" font-size="12" class="muted">КОНЦЕПТ ДЛЯ СОГЛАСОВАНИЯ  ·  ИГРОВОЙ КОД НЕ МЕНЯЛСЯ</text>
+</svg>

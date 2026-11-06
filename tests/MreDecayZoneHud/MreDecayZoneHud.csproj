@@ -8,6 +8,11 @@
     <Compile Include="../../src/MreDecayZoneHud/HintPolicy.cs" Link="HintPolicy.cs" />
     <Compile Include="../../src/MreDecayZoneHud/HeldItemClassifier.cs" Link="HeldItemClassifier.cs" />
     <Compile Include="../../src/MreDecayZoneHud/HintController.cs" Link="HintController.cs" />
+    <Compile Include="../../src/MreDecayZoneHud/EffectHintSink.cs" Link="EffectHintSink.cs" />
+    <Compile Include="../../src/MreDecayZoneHud/UnturnedEffectTransport.cs" Link="UnturnedEffectTransport.cs" />
+    <Compile Include="../../src/MreDecayZoneHud/HintSessions.cs" Link="HintSessions.cs" />
+    <Compile Include="../../src/MreDecayZoneHud/GameHintAdapter.cs" Link="GameHintAdapter.cs" />
+    <Compile Include="EffectSinkChecks.cs" />
     <Compile Include="FakeAssets.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>

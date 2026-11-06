@@ -71,15 +71,51 @@ namespace MreDecay.Zones
         }
     }
 
+    // One named location may contain disjoint polygons. Names of individual contours
+    // are internal identifiers; a match is reported once under the location name.
+    public sealed class NamedZone
+    {
+        private readonly PolygonZone[] contours;
+        public string Name { get; private set; }
+        public NamedZone(string name, IEnumerable<PolygonZone> values) {
+            if (String.IsNullOrWhiteSpace(name)) throw new ArgumentException("Zone name is required.");
+            if (values == null) throw new ArgumentNullException("values");
+            Name = name;
+            contours = new List<PolygonZone>(values).ToArray();
+            if (contours.Length == 0) throw new ArgumentException("At least one contour is required.");
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var contour in contours)
+                if (contour == null || !names.Add(contour.Name)) throw new ArgumentException("Contours must have unique names.");
+        }
+        public bool Contains(double x, double z) {
+            // Validate even when the first contour matches.
+            if (Double.IsNaN(x) || Double.IsInfinity(x) || Math.Abs(x) > PolygonZone.MaxCoordinate ||
+                Double.IsNaN(z) || Double.IsInfinity(z) || Math.Abs(z) > PolygonZone.MaxCoordinate)
+                throw new ArgumentOutOfRangeException("x");
+            foreach (var contour in contours) if (contour.Contains(x, z)) return true;
+            return false;
+        }
+    }
+
     public sealed class ZoneSet
     {
-        private readonly PolygonZone[] zones;
-        public ZoneSet(IEnumerable<PolygonZone> values) {
+        private readonly NamedZone[] zones;
+        public ZoneSet(IEnumerable<PolygonZone> values) : this(Wrap(values)) { }
+        private static IEnumerable<NamedZone> Wrap(IEnumerable<PolygonZone> values) {
             if (values == null) throw new ArgumentNullException("values");
-            zones = new List<PolygonZone>(values).ToArray();
+            var result = new List<NamedZone>();
+            foreach (var value in values) {
+                if (value == null) throw new ArgumentException("Zones must be non-null.");
+                result.Add(new NamedZone(value.Name, new[] { value }));
+            }
+            return result;
+        }
+        public ZoneSet(IEnumerable<NamedZone> values) {
+            if (values == null) throw new ArgumentNullException("values");
+            zones = new List<NamedZone>(values).ToArray();
             if (zones.Length == 0) throw new ArgumentException("At least one configured zone is required; an empty set is unknown, not outside.");
             var names = new HashSet<string>(StringComparer.Ordinal);
-            foreach (PolygonZone zone in zones)
+            foreach (NamedZone zone in zones)
                 if (zone == null || !names.Add(zone.Name)) throw new ArgumentException("Zones must be non-null with unique names.");
             Array.Sort(zones, (a, b) => StringComparer.Ordinal.Compare(a.Name, b.Name));
         }
@@ -88,7 +124,7 @@ namespace MreDecay.Zones
                 Double.IsNaN(z) || Double.IsInfinity(z) || Math.Abs(z) > PolygonZone.MaxCoordinate)
                 throw new ArgumentOutOfRangeException("x", "Query coordinates must be finite and within supported bounds.");
             var result = new List<string>();
-            foreach (PolygonZone zone in zones) if (zone.Contains(x, z)) result.Add(zone.Name);
+            foreach (NamedZone zone in zones) if (zone.Contains(x, z)) result.Add(zone.Name);
             return result.ToArray();
         }
     }

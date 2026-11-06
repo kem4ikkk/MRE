@@ -14,7 +14,7 @@ EXPECTED_CHART = "757c5a947a3e36a0f17b10a0f1c18013d3e096a7f3dd9675e99b36a0af1623
 # Примерные пиксельные границы по виду карты; не игровая или пользовательская приёмка.
 # Координаты намеренно не являются игровым конфигом и требуют визуальной проверки.
 PIXELS = {
-    "Summerside Military Base": [(430, 155), (585, 155), (585, 380), (430, 380)],
+    "Summerside Military Base": [(407, 155), (608, 155), (608, 380), (407, 380)],
     "Belfast Airport": [(1560, 160), (1825, 160), (1825, 480), (1560, 480)],
     "Stratford": [(785, 230), (1015, 230), (1015, 480), (785, 480)],
     "Alberton": [(320, 705), (565, 705), (565, 930), (320, 930)],
@@ -28,7 +28,8 @@ PIXELS = {
     "O'Leary Prison": [(615, 815), (810, 815), (810, 1085), (615, 1085)],
     "Souris Campground": [(1410, 715), (1550, 715), (1550, 915), (1410, 915)],
     "Cape Rock": [(1010, 35), (1300, 35), (1300, 220), (1010, 220)],
-    "Holman Isle": [(85, 1300), (380, 1300), (380, 1890), (85, 1890)],
+    "Holman Isle": [[(100, 1400), (160, 1400), (160, 1478), (100, 1478)],
+                    [(110, 1630), (365, 1630), (365, 1855), (110, 1855)]],
     "Oulton's Isle": [(1050, 1670), (1270, 1670), (1270, 1890), (1050, 1890)],
     "Courtin Isle": [(1670, 710), (1880, 710), (1880, 980), (1670, 980)],
     "Liberation Bridge": [(1560, 1130), (1700, 1130), (1700, 1320), (1560, 1320)],
@@ -62,16 +63,22 @@ def main():
     for loc in locations:
         if not loc["visible_on_map"]:
             continue
-        vertices = []
-        for px, py in PIXELS[loc["name"]]:
-            if not (0 <= px <= width and 0 <= py <= height):
-                raise ValueError("draft pixel outside chart")
-            vertices.append({"x": round((px / width - 0.5) * float(scale["x"]) + float(position["x"]), 3),
-                             "z": round((0.5 - py / height) * float(scale["z"]) + float(position["z"]), 3)})
-        zones.append({"instance_id": loc["instance_id"], "name": loc["name"], "vertices": vertices})
+        points = PIXELS[loc["name"]]
+        # Single-polygon entries retain their existing PIXELS representation.
+        polygons = points if isinstance(points[0], list) else [points]
+        converted = []
+        for polygon in polygons:
+            vertices = []
+            for px, py in polygon:
+                if not (0 <= px <= width and 0 <= py <= height):
+                    raise ValueError("draft pixel outside chart")
+                vertices.append({"x": round((px / width - 0.5) * float(scale["x"]) + float(position["x"]), 3),
+                                 "z": round((0.5 - py / height) * float(scale["z"]) + float(position["z"]), 3)})
+            converted.append(vertices)
+        zones.append({"instance_id": loc["instance_id"], "name": loc["name"], "polygons": converted})
     print(json.dumps({"status": "DRAFT_NOT_FOR_AUTOMATIC_APPLICATION", "source_sha256": hierarchy_hash,
                       "chart_sha256": chart_hash, "cartography": volume,
-                      "note": "Примерные прямоугольники по изображению, НЕ игровые границы; нужна полная ручная проверка.",
+                      "note": "Примерные полигоны по изображению, НЕ игровые границы; нужна полная ручная проверка.",
                       "zones": zones}, ensure_ascii=False, indent=2, allow_nan=False))
 
 

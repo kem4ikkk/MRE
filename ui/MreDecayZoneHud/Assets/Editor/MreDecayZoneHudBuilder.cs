@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,6 +10,9 @@ using UnityEngine.UI;
 public static class MreDecayZoneHudBuilder
 {
     private const string PrefabPath = "Assets/MreDecayZone/Effect.prefab";
+    // Временный тестовый контракт: уникальность среди всех Workshop-ресурсов
+    // и клиентская доставка должны быть проверены до установки на сервер.
+    private const string EffectGuid = "5d4628c25c73441a89ef5aed4db47713";
 
     [MenuItem("MRE/Создать подсказку зоны гниения")]
     public static void Generate()
@@ -93,6 +98,18 @@ public static class MreDecayZoneHudBuilder
                 throw new InvalidOperationException("Контракт Effect отсутствует.");
         }
         finally { bundle.Unload(true); }
+        File.WriteAllText(Path.Combine(output, "mre-decay-zone-visual.dat"),
+            "GUID " + EffectGuid + "\nType Effect\nID 48623\nAsset_Bundle_Version 6\nExclude_From_Master_Bundle\n",
+            new UTF8Encoding(false));
+        string hash;
+        using (var sha = SHA256.Create())
+        using (var stream = File.OpenRead(Path.Combine(output, build.assetBundleName)))
+            hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+        File.WriteAllText(Path.Combine(output, "bundle-build.json"),
+            "{\n  \"status\":\"TEST_ONLY_NOT_INSTALLED\",\n  \"effect_id\":48623,\n  \"effect_key\":14823,\n" +
+            "  \"effect_guid\":\"" + EffectGuid + "\",\n  \"bundle_sha256\":\"" + hash +
+            "\",\n  \"prefab_address\":\"Effect\",\n  \"unity_version\":\"" + Application.unityVersion + "\"\n}\n",
+            new UTF8Encoding(false));
         Debug.Log("MRE_DECAY_ZONE_BUNDLE_OK");
     }
 }

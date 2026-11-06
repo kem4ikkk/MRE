@@ -19,10 +19,12 @@ overlay = Image.new('RGBA', chart.size)
 draw = ImageDraw.Draw(overlay)
 font = ImageFont.truetype('arial.ttf', 22)
 for number, (name, points) in enumerate(draft.PIXELS.items(), 1):
-    draw.polygon(points, fill=(240, 46, 39, 73), outline=(255, 50, 40, 235), width=4)
-    x, y = points[0]
-    draw.rounded_rectangle((x+4, y+4, x+43, y+35), radius=5, fill=(40, 18, 18, 225))
-    draw.text((x+9, y+5), str(number), font=font, fill='white')
+    polygons = points if isinstance(points[0], list) else [points]
+    for polygon in polygons:
+        draw.polygon(polygon, fill=(240, 46, 39, 73), outline=(255, 50, 40, 235), width=4)
+        x, y = polygon[0]
+        draw.rounded_rectangle((x+4, y+4, x+43, y+35), radius=5, fill=(40, 18, 18, 225))
+        draw.text((x+9, y+5), str(number), font=font, fill='white')
 chart = Image.alpha_composite(chart, overlay).convert('RGB')
 result = Image.new('RGB', (2423, 1927), '#172328')
 result.paste(chart, (0, 0))
