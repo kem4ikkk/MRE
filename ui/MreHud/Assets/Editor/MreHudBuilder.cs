@@ -51,6 +51,7 @@ public static class MreHudBuilder
             CreateVitals(content);
             CreateWeapon(content);
             CreateTeleport(content);
+            CreateHome(content);
             CreateBlockPanels(content);
             CreateVote(content);
             CreateBuilding(content);
@@ -239,7 +240,7 @@ public static class MreHudBuilder
             damageText.supportRichText = true;
             var outline = damageText.gameObject.AddComponent<Outline>();
             outline.effectColor = Color.black;
-            outline.effectDistance = new Vector2(1, -1);
+            outline.effectDistance = new Vector2(1.25f, -1.25f);
             outline.useGraphicAlpha = true;
             card.gameObject.AddComponent<CanvasGroup>().alpha = 0.2f;
             var animation = card.gameObject.AddComponent<Animation>();
@@ -287,6 +288,18 @@ public static class MreHudBuilder
         RectTransform deny = Box("TpaDenyPanel", card, 190, 16, 164, 37, Panel);
         Label("TpaDenyKey", deny, "Ю по умолчанию", 6, 3, 152, 15, 11, Muted);
         Label("TpaDenyText", deny, "\u041e\u0422\u041a\u041b\u041e\u041d\u0418\u0422\u042c", 6, 19, 152, 15, 11, TextColor);
+    }
+
+    private static void CreateHome(RectTransform content)
+    {
+        RectTransform card = Box("HomePanel", content, -28, 174, 244, 76, Back, new Vector2(1, 0), new Vector2(1, 0));
+        Box("HomeAccent", card, 0, 74, 244, 2, Lime);
+        Label("HomeCaption", card, "ДОМОЙ", 12, 49, 160, 20, 10, Muted, FontStyle.Bold);
+        Label("HomeTimer", card, "5 с", 194, 45, 38, 25, 16, Lime, FontStyle.Bold);
+        Label("HomeName", card, "Дом", 12, 28, 220, 23, 14, TextColor, FontStyle.Bold);
+        Label("HomeCancel", card, "Отмена: /home cancel", 12, 4, 220, 19, 10, Muted);
+        Bar("HomeProgress", card, 12, 25, 220, 2, 100, Lime);
+        card.gameObject.SetActive(false);
     }
 
     private static void CreateBlockPanels(RectTransform content)
@@ -378,32 +391,36 @@ public static class MreHudBuilder
 
     private static void CreateVote(RectTransform content)
     {
-        RectTransform card = Box("VotePanel", content, -28, 0, 264, 108, Back, new Vector2(1, 0.5f), new Vector2(1, 0.5f));
-        Box("VoteAccent", card, 0, 106, 264, 2, Hex("37433d"));
-        Box("VoteSuccessAccent", card, 0, 106, 264, 2, Lime).gameObject.SetActive(false);
-        Box("VoteFailureAccent", card, 0, 106, 264, 2, Red).gameObject.SetActive(false);
-        var sun = Box("VoteSunCore", card, 20, 78, 10, 10, Lime);
+        RectTransform card = Box("VotePanel", content, -28, 0, 264, 122, Back, new Vector2(1, 0.5f), new Vector2(1, 0.5f));
+        Box("VoteAccent", card, 0, 120, 264, 2, Hex("37433d"));
+        Box("VoteSuccessAccent", card, 0, 120, 264, 2, Lime).gameObject.SetActive(false);
+        Box("VoteFailureAccent", card, 0, 120, 264, 2, Red).gameObject.SetActive(false);
+        var sun = Box("VoteSunCore", card, 20, 92, 10, 10, Lime);
         sun.localRotation = Quaternion.Euler(0, 0, 45);
-        Box("VoteSunTop", card, 24, 93, 2, 4, Lime);
-        Box("VoteSunBottom", card, 24, 68, 2, 4, Lime);
-        Box("VoteSunLeft", card, 10, 82, 4, 2, Lime);
-        Box("VoteSunRight", card, 35, 82, 4, 2, Lime);
-        Label("VoteDayCaption", card, "\u0421\u041c\u0415\u041d\u0410 \u0414\u041d\u042f", 48, 72, 142, 25, 12, TextColor, FontStyle.Bold);
-        Box("VoteTimerBack", card, 208, 72, 42, 25, Panel);
-        Label("VoteTimer", card, "30 \u0441", 213, 73, 34, 24, 14, Lime, FontStyle.Bold);
-        RectTransform yes = Box("VoteYesPanel", card, 14, 21, 112, 38, Panel);
-        Box("VoteYesSelected", yes, 0, 0, 112, 38, Hex("3a542e", 0.98f)).gameObject.SetActive(false);
-        Box("VoteYesKeyBack", yes, 6, 5, 28, 28, Hex("29352c"));
-        Label("VoteYesKey", yes, "Q", 8, 6, 24, 26, 16, TextColor, FontStyle.Bold);
-        Label("VoteYesLabel", yes, "\u0417\u0410", 43, 8, 61, 24, 11, Lime, FontStyle.Bold);
-        RectTransform no = Box("VoteNoPanel", card, 138, 21, 112, 38, Panel);
-        Box("VoteNoSelected", no, 0, 0, 112, 38, Hex("633a34", 0.98f)).gameObject.SetActive(false);
-        Box("VoteNoKeyBack", no, 6, 5, 28, 28, Hex("342c2a"));
-        Label("VoteNoKey", no, "E", 8, 6, 24, 26, 16, TextColor, FontStyle.Bold);
-        Label("VoteNoLabel", no, "\u041f\u0420\u041e\u0422\u0418\u0412", 43, 8, 64, 24, 11, Red, FontStyle.Bold);
+        Box("VoteSunTop", card, 24, 107, 2, 4, Lime);
+        Box("VoteSunBottom", card, 24, 82, 2, 4, Lime);
+        Box("VoteSunLeft", card, 10, 96, 4, 2, Lime);
+        Box("VoteSunRight", card, 35, 96, 4, 2, Lime);
+        Label("VoteDayCaption", card, "ГОЛОСОВАНИЕ ЗА ДЕНЬ", 48, 88, 156, 24, 11, TextColor, FontStyle.Bold);
+        Box("VoteTimerBack", card, 208, 88, 42, 25, Panel);
+        Label("VoteTimer", card, "30 с", 213, 89, 34, 24, 14, Lime, FontStyle.Bold);
+        Label("VoteCount", card, "0 за  ·  0 против", 14, 65, 236, 20, 11, Muted);
+        RectTransform yes = Box("VoteYesPanel", card, 14, 18, 112, 43, Panel);
+        Box("VoteYesSelected", yes, 0, 0, 112, 43, Hex("3a542e", 0.98f)).gameObject.SetActive(false);
+        Label("VoteYesLabel", yes, "ЗА", 10, 22, 92, 20, 12, Lime, FontStyle.Bold);
+        // Q/E are the in-game vote hotkeys (Plugin Hotkey #3/#4). Chat commands
+        // remain available as a fallback, but the compact card must show the
+        // keys the player should press instead of the command strings.
+        Label("VoteYesKey", yes, "Q", 10, 2, 92, 22, 14, TextColor, FontStyle.Bold);
+        RectTransform no = Box("VoteNoPanel", card, 138, 18, 112, 43, Panel);
+        Box("VoteNoSelected", no, 0, 0, 112, 43, Hex("633a34", 0.98f)).gameObject.SetActive(false);
+        Label("VoteNoLabel", no, "ПРОТИВ", 10, 22, 92, 20, 12, Red, FontStyle.Bold);
+        Label("VoteNoKey", no, "E", 10, 2, 92, 22, 14, TextColor, FontStyle.Bold);
+        Label("VoteStatus", card, "Наступил день", 14, 24, 236, 51, 16, TextColor, FontStyle.Bold);
+        card.Find("VoteStatus").gameObject.SetActive(false);
         Bar("VoteProgress", card, 14, 10, 236, 2, 100, Lime);
         // Hidden text targets preserve the existing server contract.
-        foreach (string name in new[] { "VoteStatus", "VoteInitiator", "VoteEligible", "VoteHint", "VoteTopic", "VoteCount" })
+        foreach (string name in new[] { "VoteInitiator", "VoteEligible", "VoteHint", "VoteTopic" })
         {
             Label(name, card, "", 0, 0, 1, 1, 9, Muted);
             card.Find(name).gameObject.SetActive(false);
@@ -480,12 +497,17 @@ public static class MreHudBuilder
             text.resizeTextMinSize = 7;
             text.resizeTextMaxSize = size;
         }
-        if (name == "TpaPlayerName" || name == "WeaponName" || name == "MagazineName" || name == "VoteTopic" || name == "VoteInitiator" || name == "VoteHint" || name == "BuildingName")
+        if (name == "TpaPlayerName" || name == "WeaponName" || name == "MagazineName" || name == "VoteTopic" || name == "VoteInitiator" || name == "VoteHint" || name == "BuildingName" || name == "HomeName" || name == "VoteStatus")
         {
             text.resizeTextForBestFit = true;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.resizeTextMinSize = Math.Min(7, size);
             text.resizeTextMaxSize = size;
+        }
+        if (name == "MagazineName" || name == "WeaponName" || name == "HomeName")
+        {
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
         }
     }
 
@@ -557,6 +579,7 @@ public static class MreHudBuilder
             "WeaponName", "MagazineName", "AmmoValue", "AmmoCapacity", "FireModeValue", "DurabilityValue", "VitalsLowLayout", "VitalsHighLayout", "WeaponLowLayout", "WeaponHighLayout",
             "TpaPanel", "TpaTitle", "TpaPlayerName", "TpaHint", "TpaTimer", "TpaAcceptPanel", "TpaAcceptKey", "TpaDenyKey", "TpaDenyText",
             "OxygenPanel", "LowHealth", "BleedingPanel", "BrokenPanel", "CombatPanel", "RaidPanel", "EmptyMagazine", "WeaponPanel",
+            "HomePanel", "HomeCaption", "HomeTimer", "HomeName", "HomeCancel", "HomeProgressTrack",
             "VotePanel", "VoteTopic", "VoteInitiator", "VoteCount", "VoteEligible", "VoteTimer", "VoteStatus", "VoteHint", "VoteSuccessAccent", "VoteFailureAccent", "VoteYesPanel", "VoteYesSelected", "VoteYesKey", "VoteYesLabel", "VoteNoPanel", "VoteNoSelected", "VoteNoKey", "VoteNoLabel", "VoteSunCore", "VoteSunTop", "VoteSunBottom", "VoteSunLeft", "VoteSunRight", "BuildingPanel", "BuildingName", "BuildingHealth" };
         var rects = root.GetComponentsInChildren<RectTransform>(true).ToDictionary(x => x.name);
         if (rects["VitalsPanel"].anchoredPosition.y != 28 || rects["WeaponPanel"].anchoredPosition.y != 28 ||
@@ -575,7 +598,7 @@ public static class MreHudBuilder
         var vote = rects["VotePanel"];
         if (vote.anchorMin != new Vector2(1, 0.5f) || vote.anchorMax != vote.anchorMin ||
             vote.pivot != new Vector2(1, 0.5f) || vote.anchoredPosition != new Vector2(-28, 0) ||
-            vote.sizeDelta != new Vector2(264, 108) || rects["VoteYesSelected"].gameObject.activeSelf ||
+            vote.sizeDelta != new Vector2(264, 122) || rects["VoteYesSelected"].gameObject.activeSelf ||
             rects["VoteNoSelected"].gameObject.activeSelf || rects["VoteYesKey"].GetComponent<Text>().text != "Q" ||
             rects["VoteNoKey"].GetComponent<Text>().text != "E" ||
             !rects["VoteYesKey"].GetComponent<Text>().resizeTextForBestFit ||
@@ -586,7 +609,7 @@ public static class MreHudBuilder
             var damagePanel = rects["DamageNumberPanel" + i];
             var damageLabel = rects["DamageNumberText" + i].GetComponent<Text>();
             var outline = damageLabel.GetComponent<Outline>();
-            if (outline == null || outline.effectColor != Color.black || outline.effectDistance != new Vector2(1, -1) || !outline.useGraphicAlpha)
+            if (outline == null || outline.effectColor != Color.black || outline.effectDistance != new Vector2(1.25f, -1.25f) || !outline.useGraphicAlpha)
                 throw new InvalidOperationException("Invalid damage number outline " + i);
             var damageAnimation = damagePanel.GetComponent<Animation>();
             var damageGroup = damagePanel.GetComponent<CanvasGroup>();
@@ -620,7 +643,7 @@ public static class MreHudBuilder
             if (!names.Contains(name)) throw new InvalidOperationException("Отсутствует UI-элемент: " + name);
         foreach (string name in new[] { "HealthValue", "FoodValue", "WaterValue", "StaminaValue", "OxygenValue", "OxygenPanel", "LowHealth", "BleedingPanel", "BrokenPanel", "WeaponName", "MagazineName", "AmmoValue", "AmmoCapacity", "FireModeValue", "DurabilityValue", "EmptyMagazine", "WeaponPanel" })
             if (!names.Contains(name + "High")) throw new InvalidOperationException("Отсутствует запасной UI-элемент: " + name);
-        foreach (string bar in new[] { "Health", "Food", "Water", "Stamina", "Oxygen", "TpaProgress", "VoteProgress", "Building" })
+        foreach (string bar in new[] { "Health", "Food", "Water", "Stamina", "Oxygen", "TpaProgress", "HomeProgress", "VoteProgress", "Building" })
         {
             int count = 100;
             for (int i = 1; i <= count; i++)

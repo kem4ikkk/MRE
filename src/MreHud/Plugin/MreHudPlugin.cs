@@ -373,7 +373,8 @@ namespace MreHud
             int magazineId = HudFormatting.MagazineId(equipment.state);
             Text(view, "AmmoValue", ammo < 0 || magazineId == 0 ? "—" : ammo.ToString(CultureInfo.InvariantCulture));
             var magazine = magazineId <= 0 ? null : Assets.find(EAssetType.ITEM, (ushort)magazineId) as ItemMagazineAsset;
-            Text(view, "MagazineName", HudFormatting.MagazineName(magazineId, magazine == null ? null : magazine.itemName));
+            Text(view, "MagazineName", magazineId == 0 ? "Без магазина" : magazineId < 0 ? "Магазин: —" :
+                HudFormatting.MagazineName(magazineId, magazine == null ? null : magazine.itemName));
             Text(view, "AmmoCapacity", "/ " + (magazine == null ? "—" : magazine.amount.ToString(CultureInfo.InvariantCulture)));
             Text(view, "DurabilityValue", equipment.quality + "%");
             string firemode = "—";
@@ -396,19 +397,16 @@ namespace MreHud
             var home = available ? teleportation.GetHomeUiRequest(id) : null;
             if (home != null && !home.IsCanceled)
             {
-                Visible(view, "TpaPanel", true);
-                Visible(view, "TpaAcceptPanel", false);
-                Text(view, "TpaTitle", "ПЕРЕМЕЩЕНИЕ ДОМОЙ");
-                Text(view, "TpaPlayerName", String.IsNullOrWhiteSpace(home.HomeName) ? "Дом" : HudFormatting.PlayerName(home.HomeName));
-                Text(view, "TpaTimer", ((int)Math.Ceiling(Math.Max(0, home.RemainingSeconds))).ToString(CultureInfo.InvariantCulture) + " с");
-                Text(view, "TpaHint", "Можно двигаться");
-                Text(view, "TpaDenyKey", Configuration.Instance.DenyKeyLabel);
-                Text(view, "TpaDenyText", "ОТМЕНИТЬ");
+                Visible(view, "TpaPanel", false);
+                Text(view, "HomeName", String.IsNullOrWhiteSpace(home.HomeName) ? "Дом" : HudFormatting.PlayerName(home.HomeName));
+                Text(view, "HomeTimer", ((int)Math.Ceiling(Math.Max(0, home.RemainingSeconds))).ToString(CultureInfo.InvariantCulture) + " с");
                 double duration = Math.Max(0.001, home.DelaySeconds);
                 int progress = (int)Math.Round(Math.Max(0, Math.Min(1, 1 - home.RemainingSeconds / duration)) * 100);
-                Segments(view, "TpaProgress", progress, 100);
+                Segments(view, "HomeProgress", progress, 100);
+                Visible(view, "HomePanel", true);
                 return;
             }
+            Visible(view, "HomePanel", false);
             var request = available ? teleportation.GetUiRequest(id) : null;
             Visible(view, "TpaPanel", request != null);
             if (request == null) return;
@@ -450,16 +448,29 @@ namespace MreHud
             bool passed = vote.Phase == "passed";
             Text(view, "VoteTopic", String.IsNullOrWhiteSpace(vote.Topic) ? "Наступление дня" : vote.Topic);
             Text(view, "VoteInitiator", "Инициатор: " + HudFormatting.PlayerName(vote.InitiatorName));
-            Text(view, "VoteCount", vote.YesVotes.ToString(CultureInfo.InvariantCulture) + " / " + vote.RequiredVotes.ToString(CultureInfo.InvariantCulture));
+            Text(view, "VoteCount", vote.YesVotes.ToString(CultureInfo.InvariantCulture) + " за  ·  " + vote.NoVotes.ToString(CultureInfo.InvariantCulture) + " против");
             Text(view, "VoteEligible", "голосов за · участников " + vote.EligibleCount.ToString(CultureInfo.InvariantCulture));
             int seconds = active ? (int)Math.Ceiling(Math.Max(0, vote.RemainingSeconds)) : 0;
             Text(view, "VoteTimer", active ? seconds.ToString(CultureInfo.InvariantCulture) + " с" : "");
-            Text(view, "VoteYesKey", "<plugin_2/>");
-            Text(view, "VoteNoKey", "<plugin_3/>");
+            // Plugin Key #3/#4 can be assigned to physical Q/E in the client controls.
+            // The server receives only those plugin-key events, so the HUD deliberately
+            // shows the requested Q/E labels instead of pretending to read raw keyboard input.
+            bool showChoices = active && vote.CanVote;
+            Visible(view, "VoteYesPanel", showChoices);
+            Visible(view, "VoteNoPanel", showChoices);
+            Visible(view, "VoteCount", active);
+            Visible(view, "VoteTimerBack", active);
+            Visible(view, "VoteProgressTrack", active);
+            Visible(view, "VoteStatus", !showChoices);
+            Text(view, "VoteYesKey", showChoices ? "Q" : "");
+            Text(view, "VoteNoKey", showChoices ? "E" : "");
             Visible(view, "VoteYesSelected", vote.VotedYes);
             Visible(view, "VoteNoSelected", vote.VotedNo);
-            Text(view, "VoteStatus", active ? "ГОЛОСОВАНИЕ" : passed ? "ПРИНЯТО — НАСТУПИЛ ДЕНЬ" :
-                vote.Phase == "expired" ? "ВРЕМЯ ИСТЕКЛО — ГОЛОСОВ НЕДОСТАТОЧНО" : "ГОЛОСОВАНИЕ ОТМЕНЕНО");
+            string status = active && vote.HasVoted
+                ? (vote.VotedYes ? "Голос принят: ЗА" : vote.VotedNo ? "Голос принят: ПРОТИВ" : "Голос принят")
+                : active ? "Участие со следующего голосования" : passed ? "Наступил день" :
+                vote.Phase == "expired" ? "Голосование не принято" : "Голосование отменено";
+            Text(view, "VoteStatus", status);
             Text(view, "VoteHint", !active ? (passed ? "Спасибо за участие" : "Новый запуск: /vote day после перерыва") :
                 vote.HasVoted ? "Ваш голос принят" : vote.CanVote ? "За день: /vote yes  ·  /cv" : "Участие доступно со следующего голосования");
             Visible(view, "VoteSuccessAccent", !active && passed);
