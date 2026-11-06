@@ -28,3 +28,9 @@ ui/MreHud/Library/
 ui/MreHud/Temp/
 ui/MreHud/Logs/
 ui/MreHud/UserSettings/
+
+# Локальный кэш Unity Editor для проекта MreTrade
+ui/MreTrade/Library/
+ui/MreTrade/Temp/
+ui/MreTrade/Logs/
+ui/MreTrade/UserSettings/
