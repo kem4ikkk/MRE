@@ -32,7 +32,7 @@
 
 ## Настройки
 
-- HOME: одна привязанная кровать обычному игроку, две с `morehomes.vip`, три с `morehomes.elite`.
+- HOME: две привязанные кровати обычному игроку, три с `morehomes.vip`, четыре с `morehomes.premium`, пять с `morehomes.elite`.
 - HOME и TPA: ожидание 15 секунд, cooldown 300 секунд, отмена перемещения при движении отправителя.
 - Оба уровня доната используют те же ожидания и блокировки, что и обычный игрок.
 - CombatDuration — 60 секунд, RaidDuration — 180 секунд; AllowCombat/AllowRaid выключены.

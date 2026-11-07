@@ -20,6 +20,7 @@ namespace MreInterface
             public Vector3 ReturnPosition;
             public float ReturnYaw;
             public StaffModeRestoreState Original;
+            public bool NotifyChatOnStop;
         }
         private readonly Dictionary<ulong, Observation> observations = new Dictionary<ulong, Observation>();
         private readonly Dictionary<ulong, UnturnedPlayer> freecamGrants = new Dictionary<ulong, UnturnedPlayer>();
@@ -68,13 +69,18 @@ namespace MreInterface
 
         public string StartObservation(UnturnedPlayer actor, ulong targetId)
         {
+            return StartObservation(actor, targetId, true);
+        }
+
+        public string StartObservation(UnturnedPlayer actor, ulong targetId, bool notifyChatOnStop)
+        {
             RequireGameThread();
             if (!CanExecuteAdmin(actor, "spectate")) return "Нет права mre.admin.spectate.";
             var target = Provider.clients.FirstOrDefault(p => p != null && p.player != null && p.playerID.steamID.m_SteamID == targetId);
             if (target == null || target.player.life.isDead || actor.Player.life.isDead) return "Для наблюдения нужны два живых подключённых игрока.";
             if (actor.CSteamID.m_SteamID == targetId) return "Нельзя наблюдать за собой.";
             StopObservationInternal(actor.CSteamID.m_SteamID, true);
-            var state = new Observation { Actor = actor, Target = targetId, TargetPlayer = target.player, ReturnPosition = actor.Position, ReturnYaw = actor.Player.look.yaw, Original = new StaffModeRestoreState(actor.GodMode, actor.VanishMode) };
+            var state = new Observation { Actor = actor, Target = targetId, TargetPlayer = target.player, ReturnPosition = actor.Position, ReturnYaw = actor.Player.look.yaw, Original = new StaffModeRestoreState(actor.GodMode, actor.VanishMode), NotifyChatOnStop = notifyChatOnStop };
             observations[actor.CSteamID.m_SteamID] = state;
             try
             {
@@ -93,10 +99,15 @@ namespace MreInterface
         // Cleanup всегда разрешён для самого actor, даже после отзыва права.
         public string StopObservation(UnturnedPlayer actor)
         {
+            return StopObservation(actor, true);
+        }
+
+        public string StopObservation(UnturnedPlayer actor, bool notifyChat)
+        {
             RequireGameThread();
             if (!IsOnline(actor)) return "Игрок уже вышел.";
             bool existed = observations.ContainsKey(actor.CSteamID.m_SteamID);
-            StopObservationInternal(actor.CSteamID.m_SteamID, true);
+            StopObservationInternal(actor.CSteamID.m_SteamID, true, notifyChat);
             return existed ? "Наблюдение завершено; прежние режимы восстановлены." : "Наблюдение не включено.";
         }
 
@@ -109,18 +120,19 @@ namespace MreInterface
             return false;
         }
 
-        private void StopObservationInternal(ulong id, bool returnPosition)
+        private void StopObservationInternal(ulong id, bool returnPosition, bool notifyChat = true)
         {
             Observation state;
             if (!observations.TryGetValue(id, out state)) return;
             observations.Remove(id);
+            notifyChat = notifyChat && state.NotifyChatOnStop;
             try
             {
                 if (state.Actor.Player != null)
                 {
                     if (state.Actor.GodMode != state.Original.God) state.Actor.GodMode = state.Original.God;
                     if (state.Actor.VanishMode != state.Original.Vanish) state.Actor.VanishMode = state.Original.Vanish;
-                    if (returnPosition && IsOnline(state.Actor) && !state.Actor.Player.life.isDead && !state.Actor.Player.teleportToLocation(state.ReturnPosition, state.ReturnYaw))
+                    if (returnPosition && IsOnline(state.Actor) && !state.Actor.Player.life.isDead && !state.Actor.Player.teleportToLocation(state.ReturnPosition, state.ReturnYaw) && notifyChat)
                         MreChat.SayAdmin(state.Actor, "MRE: наблюдение выключено; возврат заблокирован препятствием. Используй /home или /admin tp.");
                 }
             }
@@ -141,7 +153,11 @@ namespace MreInterface
                 {
                     if (!state.Actor.GodMode) state.Actor.GodMode = true;
                     if (!state.Actor.VanishMode) state.Actor.VanishMode = true;
-                    if (!TryFollow(state.Actor, target.player)) { StopObservationInternal(pair.Key, true); MreChat.SayAdmin(state.Actor, "MRE: наблюдение остановлено, безопасная точка недоступна."); }
+                    if (!TryFollow(state.Actor, target.player))
+                    {
+                        StopObservationInternal(pair.Key, true, false);
+                        Logger.Log("[MRE] Наблюдение остановлено: безопасная точка недоступна. actor=" + pair.Key);
+                    }
                 }
                 catch (Exception error) { StopObservationInternal(pair.Key, true); Logger.LogException(error, "[MRE] Наблюдение остановлено из-за ошибки."); }
             }

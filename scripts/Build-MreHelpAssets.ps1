@@ -49,7 +49,7 @@ foreach ($path in @($manifestPath,$bundlePath,$datPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).LastWriteTimeUtc -lt $started.AddSeconds(-2)) { throw "Не создан свежий результат: $path" }
 }
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($manifest.effect_id -ne 48625 -or $manifest.effect_guid -ne '6e4a31b49c874f428a622e1a68e4d203' -or $manifest.effect_key -ne 14825 -or $manifest.unity_version -ne $requiredVersion -or $manifest.prefab_address -ne 'Effect' -or $manifest.prefab_address_verified -ne $true -or $manifest.in_game_verified -ne $false -or $manifest.workshop_published -ne $false) { throw 'Манифест не соответствует контракту MRE Help.' }
+if ($manifest.effect_id -ne 48625 -or $manifest.effect_guid -ne '6e4a31b49c874f428a622e1a68e4d203' -or $manifest.effect_key -ne 14825 -or $manifest.unity_version -ne $requiredVersion -or $manifest.prefab_address -ne 'Effect' -or $manifest.prefab_address_verified -ne $true -or $manifest.in_game_verified -ne $false) { throw 'Манифест не соответствует контракту MRE Help.' }
 $hash = (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($hash -ne $manifest.bundle_sha256) { throw 'Хэш bundle не совпадает с манифестом.' }
 $stream = [IO.File]::OpenRead($bundlePath)

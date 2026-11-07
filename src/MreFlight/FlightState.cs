@@ -31,7 +31,7 @@ namespace MreFlight
         public MovementValues Tick(bool jump,bool sprint,bool lookingDown,bool authorized,bool sameLiveSession)
         {
             if(!Active||!authorized||!sameLiveSession)return Stop();
-            // Upstream controls: Jump reverses gravity, Sprint while looking down descends.
+            // Jump rises; Sprint while looking down descends. Speed is controlled by the session settings.
             // No plugin hotkeys are used: Plugin0/1 remain reserved for TPA.
             return new MovementValues {Gravity=jump?-VerticalSpeed:(sprint&&lookingDown?VerticalSpeed:0),Speed=HorizontalSpeed,Jump=previous.Jump};
         }

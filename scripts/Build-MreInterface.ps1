@@ -27,6 +27,7 @@ $referencePaths = @(
     (Join-Path $managedRoot 'Assembly-CSharp.dll'),
     (Join-Path $managedRoot 'UnityEngine.dll'),
     (Join-Path $managedRoot 'UnityEngine.CoreModule.dll'),
+    (Join-Path $managedRoot 'UnityEngine.PhysicsModule.dll'),
     (Join-Path $managedRoot 'com.rlabrecque.steamworks.net.dll'),
     (Join-Path $GameDirectory 'Servers\MRE\Rocket\Libraries\0Harmony.dll'),
     (Join-Path $rocketRoot 'Rocket.API.dll'),
@@ -49,11 +50,15 @@ if ($LASTEXITCODE -ne 0) { throw "Ошибка компиляции MreInterface
 $referenceManifest = @($referencePaths | ForEach-Object {
     [ordered]@{ name = [IO.Path]::GetFileName($_); sha256 = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant() }
 })
+$sourceManifest = @($sourcePaths | Sort-Object | ForEach-Object {
+    [ordered]@{ name = [IO.Path]::GetFileName($_); sha256 = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant() }
+})
 $manifest = [ordered]@{
     plugin = 'MreInterface'
     built_at_utc = [DateTime]::UtcNow.ToString('o')
     sha256 = (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash.ToLowerInvariant()
     references = $referenceManifest
+    sources = $sourceManifest
 }
 [IO.File]::WriteAllText((Join-Path $outputRoot 'build-manifest.json'), ($manifest | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding($false)))
 Write-Host "MreInterface собран: $outputPath"

@@ -1,22 +1,23 @@
 using System;
 using System.Collections.Generic;
 using SDG.Unturned;
+using UnityEngine;
 
 namespace MreDecayZoneHud
 {
-    // Не самостоятельный плагин: будущий владелец вызывает Tick на Unity-потоке,
-    // а TryAcceleratedZone должен отражать действительную готовность decay.
+    // Не самостоятельный плагин: будущий владелец вызывает Tick на Unity-потоке.
+    // Доступность decay и подтверждённость зон обязательны в provider.
     public sealed class GameHintAdapter
     {
         private readonly Dictionary<ulong, SteamPlayer> active = new Dictionary<ulong, SteamPlayer>();
         private readonly HintSessions sessions;
         private readonly Action<Exception> onError;
 
-        public GameHintAdapter(TryAcceleratedZone zone, ushort effectId, Guid effectGuid, short effectKey, Action<Exception> onError)
+        public GameHintAdapter(IDecayZoneStatusSource zoneStatus, ushort effectId, Guid effectGuid, short effectKey, Action<Exception> onError)
         {
             this.onError = onError ?? throw new ArgumentNullException(nameof(onError));
             var transport = new UnturnedEffectTransport(ResolvePlayer, effectId, effectGuid, effectKey);
-            sessions = new HintSessions(new EffectHintSink(transport), zone);
+            sessions = new HintSessions(new EffectHintSink(transport), zoneStatus ?? new UnavailableDecayZoneStatusSource());
         }
 
         private Player ResolvePlayer(ulong id)
@@ -42,7 +43,7 @@ namespace MreDecayZoneHud
             foreach (var old in new List<KeyValuePair<ulong, SteamPlayer>>(active))
             {
                 SteamPlayer fresh;
-                if (!current.TryGetValue(old.Key, out fresh) || !Object.ReferenceEquals(old.Value, fresh))
+                if (!current.TryGetValue(old.Key, out fresh) || !System.Object.ReferenceEquals(old.Value, fresh))
                 {
                     if (listed.Contains(old.Value))
                     {
@@ -59,7 +60,7 @@ namespace MreDecayZoneHud
             foreach (var entry in current)
             {
                 SteamPlayer previous;
-                if (active.TryGetValue(entry.Key, out previous) && !Object.ReferenceEquals(previous, entry.Value))
+                if (active.TryGetValue(entry.Key, out previous) && !System.Object.ReferenceEquals(previous, entry.Value))
                 {
                     onError(new InvalidOperationException("Previous player session is still listed."));
                     continue;
@@ -69,9 +70,19 @@ namespace MreDecayZoneHud
                 try
                 {
                     var player = entry.Value.player;
-                    var position = player.transform.position;
                     var item = player.equipment == null ? HeldItem.Unknown : HeldItemClassifier.Classify(player.equipment.asset);
-                    sessions.Update(entry.Key, entry.Value, item, position.x, position.z);
+                    if (item != HeldItem.HousingPlanner && item != HeldItem.BuildingPart)
+                    {
+                        sessions.Update(entry.Key, entry.Value, item, 0, 0);
+                        continue;
+                    }
+                    Vector3 point;
+                    if (!AimPointQuery.TryGetTargetPoint(player, out point))
+                    {
+                        sessions.Suspend(entry.Key, entry.Value);
+                        continue;
+                    }
+                    sessions.Update(entry.Key, entry.Value, item, point.x, point.z);
                 }
                 catch (Exception error)
                 {

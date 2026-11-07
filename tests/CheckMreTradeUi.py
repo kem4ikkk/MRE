@@ -7,14 +7,20 @@ root = pathlib.Path(__file__).resolve().parents[1]
 manifest = json.loads((root / 'ui/MreTrade/effect-manifest.json').read_text(encoding='utf-8'))
 builder = (root / 'ui/MreTrade/Assets/Editor/MreTradeBuilder.cs').read_text(encoding='utf-8')
 script = (root / 'scripts/Build-MreTradeAssets.ps1').read_text(encoding='utf-8')
+package_builder = (root / 'tools/trade-workshop/Build-MreTradeWorkshopPackage.ps1').read_text(encoding='utf-8')
 assert manifest['effect_guid'] != json.loads((root / 'ui/MreHud/effect-manifest.json').read_text(encoding='utf-8'))['effect_guid']
 assert manifest['effect_id'] == 48622 and manifest['effect_key'] == 14822
+assert manifest['schema_version'] == 2 and manifest['confirmation_protocol'] == 'nonce-input-v1'
+assert manifest['input_fields'] == ['TradeConfirmToken']
+assert manifest['workshop_file_id'] == 3834982706
 assert re.fullmatch('[0-9a-f]{32}', manifest['effect_guid'])
 for value in (str(manifest['effect_id']), str(manifest['effect_key']), manifest['effect_guid']):
     assert value in builder and value in script, value
 assert manifest['unity_version'] in builder and manifest['unity_version'] in (root / 'ui/MreTrade/ProjectSettings/ProjectVersion.txt').read_text(encoding='utf-8')
 for name in manifest['text_fields'] + manifest['button_names'] + [manifest['visibility_root']]:
     assert f'"{name}"' in builder, name
+for name in manifest['input_fields']:
+    assert f'"{name}"' in builder and f'"{name}"' in (root / 'src/MreTrade/TradeUi.cs').read_text(encoding='utf-8'), name
 for pattern in ['"TradeOwnSlot" + i', '"TradeOwn" + i', '"TradeOther" + i', 'i < 10']:
     assert pattern in builder, pattern
 assert 'TradeOtherSlot" + i, content' in builder and 'Button("TradeOtherSlot' not in builder
@@ -22,13 +28,29 @@ assert 'text.supportRichText = false' in builder and 'text.raycastTarget = false
 assert 'GraphicRaycaster' in builder and 'mode = Navigation.Mode.None' in builder
 assert 'in_game_verified\\\":false' in builder
 assert 'LastWriteTimeUtc' in script and 'UnityFS' in script and 'SHA256' in script
+assert "$effectManifestPath = Join-Path $unityProject 'effect-manifest.json'" in script
+assert '$effect = Get-Content -LiteralPath $effectManifestPath' in script
 assert 'Master_Bundle_Override' in script and 'Exclude_From_Master_Bundle' in builder
 assert 'MreHud' not in script and 'MreHud' not in builder
 assert manifest['bundle_built'] is False and manifest['in_game_verified'] is False
 trade_ui = (root / 'src/MreTrade/TradeUi.cs').read_text(encoding='utf-8')
-confirm_handler = re.search(r'if \(name == "TradeConfirm"\)\s*\{(?P<body>.*?)\n\s*\}', trade_ui, re.S)
-assert confirm_handler and 's.Acknowledge(id, s.Revision)' in confirm_handler.group('body')
-assert 'Confirm(actor, s); return;' in confirm_handler.group('body')
+assert 'EffectManager.onEffectTextCommitted += TradeTextCommitted' in trade_ui
+assert 'EffectManager.onEffectTextCommitted -= TradeTextCommitted' in trade_ui
+assert 'if (name == "TradeConfirm") return;' in trade_ui
+assert 's.Acknowledge(id, s.Revision)' not in trade_ui
+assert 'Confirm(actor, s, text ?? String.Empty);' in trade_ui
+assert 'TradeConfirmToken' in trade_ui and 'GetOrIssueConfirmationTicket(id)' in trade_ui
+assert 'SendOnEndEdit' in builder and 'UnityEventTools.AddPersistentListener' in builder
+for text in (builder, script, package_builder):
+    assert 'nonce-input-v1' in text
+    assert 'TradeConfirmToken' in text
+assert 'confirmation_protocol' in builder and 'schema_version' in builder
+assert 'confirmation_protocol' in package_builder and 'schema_version' in package_builder
+assert 'GetPersistentEventCount() != 1' in builder and 'confirmButton.onClick.Invoke()' in builder
+assert 'SetPersistentListenerState(0, UnityEventCallState.EditorAndRuntime)' in builder
+assert 'SetTextWithoutNotify(probe)' in builder
+render_ui = trade_ui.split('private void RenderTradeUi', 1)[1].split('private static string SafeLabel', 1)[0]
+assert render_ui.index('for (int i = 0; i < 10; i++)') < render_ui.index('"TradeConfirmToken"'), 'nonce must be sent after offer rows'
 assert '/trade list' not in trade_ui
 assert 'RefreshTradeUi(s);' in trade_ui
 projection_drag = trade_ui.split('internal void ProjectionDrag', 1)[1]
@@ -49,8 +71,10 @@ assert 'UInt64.TryParse(query' in trade_plugin and 'уникальное точ�
 cancel_handler = re.search(r'private void Cancel\(TradeSession s, string text\)\s*\{(?P<body>.*?)\n\s*\}', trade_plugin, re.S)
 assert cancel_handler and 'Both(s, text)' not in cancel_handler.group('body')
 session = (root / 'src/MreTrade/TradeSession.cs').read_text(encoding='utf-8')
-assert 'AcknowledgedRevisionA = 0' in session and 'AcknowledgedRevisionB = 0' in session
-assert 'AcknowledgedRevision(id) != Revision' in session
+assert 'internal readonly Guid SessionId' in session
+assert 'internal bool TryConfirm(ulong id, string nonce, out bool complete)' in session
+assert 'ticket.SessionId != SessionId' in session and 'ticket.Revision != Revision' in session
+assert 'ticket.Generation != Generation(id)' in session and 'StringComparison.Ordinal' in session
 assert 'ПОДТВЕРДИТЬ ОБМЕН' in builder
 prefab_path = root / 'ui/MreTrade/Assets/MreTrade/Effect.prefab'
 assert prefab_path.is_file(), 'generated prefab must be tracked as build input'

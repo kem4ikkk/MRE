@@ -1,22 +1,51 @@
 {
-  "note": "Справочник прав для слияния с Rocket.permissions.xml текущего LDM; этот JSON не загружается игровым сервером автоматически.",
+  "note": "Справочник прав групп проекта для сверки с config/RocketPermissions.xml; этот JSON не загружается игровым сервером автоматически.",
   "groups": {
     "default": {
-      "permissions": ["home", "homes", "destroyhome", "renamehome", "tpa"]
+      "permissions": ["compass", "home", "homes", "destroyhome", "renamehome", "tpa", "mre.vote", "mre.kit", "mre.trade", "mre.whenairdrop", "mre.vault", "mre.trustscore"]
     },
     "supporter": {
       "inherits": "default",
       "permissions": []
     },
     "vip": {
-      "inherits": "supporter",
+      "inherits": "default",
       "permissions": ["morehomes.vip"]
     },
+    "premium": {
+      "inherits": "vip",
+      "permissions": ["morehomes.premium"]
+    },
     "elite": {
-      "inherits": "supporter",
+      "inherits": "premium",
       "permissions": ["morehomes.elite"]
+    },
+    "helper": {
+      "inherits": "default",
+      "permissions": ["mre.admin", "mre.admin.players", "mre.staff", "mre.staff.list", "mre.staff.profile", "mre.staff.history", "mre.staff.note", "mre.staff.warn", "mre.staff.commend"]
+    },
+    "moderator": {
+      "inherits": "helper",
+      "permissions": ["mre.staff.kick", "mre.staff.mute"]
+    },
+    "senior_moderator": {
+      "inherits": "moderator",
+      "permissions": ["mre.staff.logs", "mre.staff.ban", "mre.staff.unban", "mre.staff.unmute", "mre.staff.revoke"]
+    },
+    "mre_admin": {
+      "inherits": "senior_moderator",
+      "permissions": ["mre.admin.kick", "mre.admin.tp", "mre.admin.bring", "mre.admin.heal", "mre.admin.save", "mre.admin.day", "mre.admin.night", "mre.admin.fly", "mre.admin.spectate", "mre.admin.god", "mre.admin.vanish", "mre.admin.stats", "mre.admin.owner", "mre.admin.freeze", "mre.admin.announce", "mre.inventory.inspect", "mre.inventory.deaths"]
+    },
+    "head_admin": {
+      "inherits": "mre_admin",
+      "permissions": ["mre.admin.workzone", "mre.admin.door", "mre.admin.storage", "mre.admin.give", "mre.admin.veh", "mre.admin.kill", "mre.admin.remove", "mre.airdrop.admin", "mre.inventory.restore"]
+    },
+    "mre_owner": {
+      "inherits": "head_admin",
+      "permissions": []
     }
   },
   "not_granted": ["restorehomes", "*", "admin", "combat bypass", "raid bypass"],
-  "expiry": "Не реализован этими плагинами. Автоматическая выдача платных групп и продажи пока выключены."
+  "expiry": "Не реализован этими плагинами. Автоматическая выдача платных групп и продажи пока выключены.",
+  "staff_assignment": "Группы персонала назначаются вручную. Не добавлять персонал в native Admin: LDM Rocket и несколько плагинов пропускают Rocket permission checks для actor.IsAdmin."
 }

@@ -21,7 +21,7 @@ namespace MreHelp
             var player = caller as UnturnedPlayer;
             if (player == null) return;
 
-            if (HelpUi.Open(player)) return;
+            if (HelpUi.Open(player, MenuPrimary.Main, MenuSection.Commands)) return;
             SendChatHelp(player);
         }
 

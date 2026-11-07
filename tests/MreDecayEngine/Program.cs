@@ -142,6 +142,79 @@ static class Program
         if (args.Length == 2 && args[0] == "--check-lock") { long n; byte[] data; using (var competing = new DurableJournal(args[1])) Environment.Exit(competing.Load(out n, out data) ? 1 : 0); }
         var sourceBytes = System.Text.Encoding.UTF8.GetBytes("synthetic PEI"); var chartBytes = System.Text.Encoding.UTF8.GetBytes("synthetic chart");
         Func<byte[],string> digest = bytes => { using (var sha=System.Security.Cryptography.SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", ""); };
+        Func<byte[],byte[]> hash = bytes => { using (var sha=System.Security.Cryptography.SHA256.Create()) return sha.ComputeHash(bytes); };
+        var recoveryId1 = new RecoveryIdentity { Kind=1, InstanceId=10, AssetGuid=Guid.NewGuid(), Owner=7, Group=8, X=1, Y=2, Z=3 };
+        var recoveryId2 = new RecoveryIdentity { Kind=2, InstanceId=11, AssetGuid=Guid.NewGuid(), Owner=7, Group=8, X=4, Y=5, Z=6 };
+        var recoveryManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=hash(new byte[]{1}), NewStateSha256=hash(new byte[]{2}),
+            Targets=new System.Collections.Generic.List<RecoveryTarget> {
+                new RecoveryTarget { Identity=recoveryId1, MaxHealth=100, OldHealth=90, NewHealth=89 },
+                new RecoveryTarget { Identity=recoveryId2, MaxHealth=200, OldHealth=150, NewHealth=149 }
+            } };
+        Func<long,byte[],ushort,ushort,RecoverySnapshot> recoverySnapshot = (generation,stateHash,h1,h2) => new RecoverySnapshot { IsComplete=true, WorldKey="pei/save-1", BuildKey="build-26491864", Generation=generation, StateSha256=stateHash,
+            Observations=new System.Collections.Generic.List<RecoveryObservation> {
+                new RecoveryObservation { Identity=recoveryId1, MaxHealth=100, Health=h1 },
+                new RecoveryObservation { Identity=recoveryId2, MaxHealth=200, Health=h2 }
+            } };
+        Check(RecoveryClassifier.Classify(recoveryManifest,recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150))==RecoveryClassification.AllOld, "recovery all-old endpoint");
+        Check(RecoveryClassifier.Classify(recoveryManifest,recoverySnapshot(5,recoveryManifest.NewStateSha256,89,149))==RecoveryClassification.AllNew, "recovery all-new endpoint");
+        Check(RecoveryClassifier.Classify(recoveryManifest,recoverySnapshot(5,recoveryManifest.NewStateSha256,90,149))==RecoveryClassification.Mixed, "recovery mixed object state");
+        Check(RecoveryClassifier.Classify(recoveryManifest,recoverySnapshot(4,recoveryManifest.OldStateSha256,89,149))==RecoveryClassification.Mixed, "recovery object state disagrees with endpoint");
+        var unchangedManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=hash(new byte[]{3}), NewStateSha256=hash(new byte[]{4}),
+            Targets=new System.Collections.Generic.List<RecoveryTarget> { new RecoveryTarget { Identity=recoveryId1, MaxHealth=100, OldHealth=80, NewHealth=80 } } };
+        Func<long,byte[],RecoverySnapshot> unchangedSnapshot = (generation,stateHash) => new RecoverySnapshot { IsComplete=true, WorldKey="pei/save-1", BuildKey="build-26491864", Generation=generation, StateSha256=stateHash,
+            Observations=new System.Collections.Generic.List<RecoveryObservation> { new RecoveryObservation { Identity=recoveryId1, MaxHealth=100, Health=80 } } };
+        Check(RecoveryClassifier.Classify(unchangedManifest,unchangedSnapshot(4,unchangedManifest.OldStateSha256))==RecoveryClassification.AllOld && RecoveryClassifier.Classify(unchangedManifest,unchangedSnapshot(5,unchangedManifest.NewStateSha256))==RecoveryClassification.AllNew, "unchanged health disambiguated by generation and hash");
+        var incompleteRecovery = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); incompleteRecovery.IsComplete=false;
+        Check(RecoveryClassifier.Classify(recoveryManifest,incompleteRecovery)==RecoveryClassification.Unknown, "recovery incomplete snapshot unknown");
+        var missingRecovery = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); missingRecovery.Observations.RemoveAt(1);
+        Check(RecoveryClassifier.Classify(recoveryManifest,missingRecovery)==RecoveryClassification.Unknown, "recovery missing object unknown");
+        var extraRecovery = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); extraRecovery.Observations.Add(new RecoveryObservation { Identity=new RecoveryIdentity { Kind=2, InstanceId=99, AssetGuid=Guid.NewGuid() }, MaxHealth=10, Health=10 });
+        Check(RecoveryClassifier.Classify(recoveryManifest,extraRecovery)==RecoveryClassification.Unknown, "recovery extra object unknown");
+        var duplicateRecovery = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); duplicateRecovery.Observations.Add(duplicateRecovery.Observations[0]);
+        Check(RecoveryClassifier.Classify(recoveryManifest,duplicateRecovery)==RecoveryClassification.Unknown, "recovery duplicate object unknown");
+        var badIdentityRecovery = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); badIdentityRecovery.Observations[0].Identity=new RecoveryIdentity { Kind=1, InstanceId=10, AssetGuid=Guid.NewGuid(), Owner=7, Group=8, X=1, Y=2, Z=3 };
+        Check(RecoveryClassifier.Classify(recoveryManifest,badIdentityRecovery)==RecoveryClassification.Unknown, "recovery identity mismatch unknown");
+        var badWorldRecovery = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); badWorldRecovery.WorldKey="other-world";
+        var badBuildRecovery = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); badBuildRecovery.BuildKey="other-build";
+        var badHashRecovery = recoverySnapshot(4,hash(new byte[]{9}),90,150);
+        var badGenerationRecovery = recoverySnapshot(6,recoveryManifest.NewStateSha256,89,149);
+        Check(RecoveryClassifier.Classify(recoveryManifest,badWorldRecovery)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,badBuildRecovery)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,badHashRecovery)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,badGenerationRecovery)==RecoveryClassification.Unknown, "recovery world build hash and generation mismatch unknown");
+        var badSchemaManifest = new PendingRecoveryManifest { SchemaVersion=2, TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=recoveryManifest.NewStateSha256, Targets=recoveryManifest.Targets };
+        var badGenerationManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=6, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=recoveryManifest.NewStateSha256, Targets=recoveryManifest.Targets };
+        var badTransactionManifest = new PendingRecoveryManifest { TransactionId=Guid.Empty, WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=recoveryManifest.NewStateSha256, Targets=recoveryManifest.Targets };
+        var invalidManifestSnapshot = new RecoverySnapshot { IsComplete=true, WorldKey="pei/save-1", BuildKey="build-26491864", Generation=4, StateSha256=recoveryManifest.OldStateSha256, Observations=new System.Collections.Generic.List<RecoveryObservation> {
+            new RecoveryObservation { Identity=recoveryId1, MaxHealth=100, Health=90 }, new RecoveryObservation { Identity=recoveryId2, MaxHealth=200, Health=150 } } };
+        var badHealthRecovery = recoverySnapshot(4,recoveryManifest.OldStateSha256,101,150);
+        Check(RecoveryClassifier.Classify(badSchemaManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(badGenerationManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(badTransactionManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,badHealthRecovery)==RecoveryClassification.Unknown, "recovery invalid schema transaction generation and health unknown");
+        var equalHashManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=hash(new byte[]{5}), NewStateSha256=hash(new byte[]{5}), Targets=new System.Collections.Generic.List<RecoveryTarget> { new RecoveryTarget { Identity=recoveryId1, MaxHealth=100, OldHealth=80, NewHealth=79 } } };
+        var equalHashOld = new RecoverySnapshot { IsComplete=true, WorldKey="pei/save-1", BuildKey="build-26491864", Generation=4, StateSha256=equalHashManifest.OldStateSha256, Observations=new System.Collections.Generic.List<RecoveryObservation> { new RecoveryObservation { Identity=recoveryId1, MaxHealth=100, Health=80 } } };
+        var equalHashNew = new RecoverySnapshot { IsComplete=true, WorldKey="pei/save-1", BuildKey="build-26491864", Generation=5, StateSha256=equalHashManifest.NewStateSha256, Observations=new System.Collections.Generic.List<RecoveryObservation> { new RecoveryObservation { Identity=recoveryId1, MaxHealth=100, Health=79 } } };
+        Check(RecoveryClassifier.Classify(equalHashManifest,equalHashOld)==RecoveryClassification.AllOld && RecoveryClassifier.Classify(equalHashManifest,equalHashNew)==RecoveryClassification.AllNew, "equal endpoint hashes remain generation-disambiguated");
+        var crossedEndpoint = recoverySnapshot(4,recoveryManifest.NewStateSha256,90,150);
+        Check(RecoveryClassifier.Classify(recoveryManifest,crossedEndpoint)==RecoveryClassification.Unknown, "crossed generation and state hash unknown");
+        var changedAndUnchangedManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=recoveryManifest.NewStateSha256,
+            Targets=new System.Collections.Generic.List<RecoveryTarget> { recoveryManifest.Targets[0], new RecoveryTarget { Identity=recoveryId2, MaxHealth=200, OldHealth=150, NewHealth=150 } } };
+        var changedAndUnchangedSnapshot = recoverySnapshot(5,recoveryManifest.NewStateSha256,90,150);
+        Check(RecoveryClassifier.Classify(changedAndUnchangedManifest,changedAndUnchangedSnapshot)==RecoveryClassification.Mixed, "changed and unchanged objects mixed against new endpoint");
+        var intermediateRecovery = recoverySnapshot(5,recoveryManifest.NewStateSha256,95,149);
+        var wrongMaxRecovery = recoverySnapshot(5,recoveryManifest.NewStateSha256,89,149); wrongMaxRecovery.Observations[0].MaxHealth=101;
+        Check(RecoveryClassifier.Classify(recoveryManifest,intermediateRecovery)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,wrongMaxRecovery)==RecoveryClassification.Unknown, "recovery intermediate health and max health mismatch unknown");
+        var duplicateTargetsManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=recoveryManifest.NewStateSha256, Targets=new System.Collections.Generic.List<RecoveryTarget> { recoveryManifest.Targets[0], recoveryManifest.Targets[0] } };
+        var emptyTargetsManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=recoveryManifest.NewStateSha256, Targets=new System.Collections.Generic.List<RecoveryTarget>() };
+        var nullTargetsManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=recoveryManifest.NewStateSha256, Targets=null };
+        var emptyOldHashManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=new byte[0], NewStateSha256=recoveryManifest.NewStateSha256, Targets=recoveryManifest.Targets };
+        var nullNewHashManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=null, Targets=recoveryManifest.Targets };
+        var shortHashManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=new byte[31], NewStateSha256=recoveryManifest.NewStateSha256, Targets=recoveryManifest.Targets };
+        var invalidTargetIdentityManifest = new PendingRecoveryManifest { TransactionId=Guid.NewGuid(), WorldKey="pei/save-1", BuildKey="build-26491864", OldGeneration=4, NewGeneration=5, OldStateSha256=recoveryManifest.OldStateSha256, NewStateSha256=recoveryManifest.NewStateSha256, Targets=new System.Collections.Generic.List<RecoveryTarget> { new RecoveryTarget { Identity=new RecoveryIdentity { Kind=recoveryId1.Kind, InstanceId=recoveryId1.InstanceId, AssetGuid=recoveryId1.AssetGuid, Owner=recoveryId1.Owner, Group=recoveryId1.Group, X=Double.PositiveInfinity, Y=recoveryId1.Y, Z=recoveryId1.Z }, MaxHealth=100, OldHealth=90, NewHealth=89 } } };
+        var invalidIdentitySnapshot = new RecoverySnapshot { IsComplete=true, WorldKey="pei/save-1", BuildKey="build-26491864", Generation=4, StateSha256=recoveryManifest.OldStateSha256, Observations=new System.Collections.Generic.List<RecoveryObservation> { new RecoveryObservation { Identity=recoveryId1, MaxHealth=100, Health=90 } } };
+        var invalidObservationIdentity = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); invalidObservationIdentity.Observations[0].Identity=new RecoveryIdentity { Kind=recoveryId1.Kind, InstanceId=recoveryId1.InstanceId, AssetGuid=recoveryId1.AssetGuid, Owner=recoveryId1.Owner, Group=recoveryId1.Group, X=Double.PositiveInfinity, Y=recoveryId1.Y, Z=recoveryId1.Z };
+        var invalidMatchingInfinitySnapshot = new RecoverySnapshot { IsComplete=true, WorldKey="pei/save-1", BuildKey="build-26491864", Generation=4, StateSha256=recoveryManifest.OldStateSha256, Observations=new System.Collections.Generic.List<RecoveryObservation> { new RecoveryObservation { Identity=invalidTargetIdentityManifest.Targets[0].Identity, MaxHealth=100, Health=90 } } };
+        Check(RecoveryClassifier.Classify(duplicateTargetsManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(emptyTargetsManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(nullTargetsManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(emptyOldHashManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(nullNewHashManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(shortHashManifest,invalidManifestSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(invalidTargetIdentityManifest,invalidIdentitySnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,invalidObservationIdentity)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(invalidTargetIdentityManifest,invalidMatchingInfinitySnapshot)==RecoveryClassification.Unknown, "recovery duplicate empty null hashes targets and nonfinite identities unknown");
+        var nullEntriesSnapshot = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); nullEntriesSnapshot.Observations[0]=null;
+        var emptyEntriesSnapshot = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); emptyEntriesSnapshot.Observations.Clear();
+        var nullObservationsSnapshot = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); nullObservationsSnapshot.Observations=null;
+        var shortSnapshotHash = recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150); shortSnapshotHash.StateSha256=new byte[31];
+        Check(RecoveryClassifier.Classify(null,recoverySnapshot(4,recoveryManifest.OldStateSha256,90,150))==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,null)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,nullEntriesSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,emptyEntriesSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,nullObservationsSnapshot)==RecoveryClassification.Unknown && RecoveryClassifier.Classify(recoveryManifest,shortSnapshotHash)==RecoveryClassification.Unknown, "recovery null input and invalid observation evidence unknown");
         string document = "{\"map\":\"PEI\",\"status\":\"VERIFIED\",\"source_sha256\":\"" + digest(sourceBytes) + "\",\"chart_sha256\":\"" + digest(chartBytes) + "\",\"zones\":[{\"instance_id\":1,\"name\":\"Holman Isle\",\"polygons\":[[{\"x\":0,\"z\":0},{\"x\":2,\"z\":0},{\"x\":2,\"z\":2},{\"x\":0,\"z\":2}],[{\"x\":4,\"z\":0},{\"x\":6,\"z\":0},{\"x\":6,\"z\":2},{\"x\":4,\"z\":2}]]}]}";
         var expectedLocations = new System.Collections.Generic.Dictionary<long,string> { [1] = "Holman Isle" };
         var docBytes=System.Text.Encoding.UTF8.GetBytes(document); var reviewed=ReviewedZoneLoader.Load(docBytes,digest(docBytes),sourceBytes,chartBytes,expectedLocations);
@@ -242,7 +315,52 @@ static class Program
         var sentry=new ObjectObservation { Kind="barricade", BuildType="SENTRY", InstanceId=23,AssetId=6,AssetGuid=Guid.NewGuid(),Owner=1,Health=10,MaxHealth=10,IsStorage=true };
         Check(ObservationAudit.Valid(new[]{sentry}) && GroundDeviceCollector.Collect(new[]{sentry},safeGuids).Buildings.Count==0, "specialized storage sentry observed but excluded");
         var vehicleObject=new ObjectObservation { Kind="barricade", BuildType="DOOR", InstanceId=24,VehicleInstanceId=99,VehicleSubvehicleIndex=0,IsVehicleAttached=true,AssetId=7,AssetGuid=Guid.NewGuid(),Owner=1,Health=10,MaxHealth=10 };
-        Check(ObservationAudit.Valid(new[]{vehicleObject}) && GroundDeviceCollector.Collect(new[]{vehicleObject},safeGuids)==null, "vehicle object is observable but mutation collector fails closed");
+        var mobileSafe=new ObjectObservation { Kind="barricade", BuildType="STORAGE", InstanceId=25,VehicleInstanceId=99,VehicleSubvehicleIndex=1,IsVehicleAttached=true,AssetId=8,AssetGuid=safeId,Owner=1,Health=10,MaxHealth=10,IsStorage=true };
+        var mobileGen=new ObjectObservation { Kind="barricade", BuildType="GENERATOR", InstanceId=26,VehicleInstanceId=100,VehicleSubvehicleIndex=0,IsVehicleAttached=true,AssetId=9,AssetGuid=Guid.NewGuid(),Owner=1,Health=10,MaxHealth=10,IsGenerator=true,GeneratorPowered=true };
+        var secondMobile=new ObjectObservation { Kind="barricade", BuildType="DOOR", InstanceId=27,VehicleInstanceId=101,VehicleSubvehicleIndex=2,IsVehicleAttached=true,AssetId=10,AssetGuid=Guid.NewGuid(),Owner=1,Health=10,MaxHealth=10 };
+        Check(ObservationAudit.Valid(new[]{vehicleObject,mobileSafe,mobileGen,secondMobile}), "multiple vehicle and subvehicle observations validate");
+        var mobileOnly=GroundDeviceCollector.Collect(new[]{vehicleObject,mobileSafe,mobileGen,secondMobile},safeGuids);
+        Check(mobileOnly!=null && mobileOnly.Buildings.Count==0 && mobileOnly.Safes.Count==0 && mobileOnly.Generators.Count==0, "vehicle barricades never become targets or protection devices");
+        var mixedMobile=GroundDeviceCollector.Collect(new[]{observedSafe,observedGen,realStructure,vehicleObject,mobileSafe,mobileGen,secondMobile},safeGuids);
+        Check(mixedMobile!=null && mixedMobile.Buildings.Count==3 && mixedMobile.Safes.Count==1 && mixedMobile.Generators.Count==1 &&
+            mixedMobile.Buildings.Exists(x=>x.InstanceId==realStructure.InstanceId) &&
+            !mixedMobile.Buildings.Exists(x=>x.InstanceId==vehicleObject.InstanceId || x.InstanceId==mobileSafe.InstanceId || x.InstanceId==mobileGen.InstanceId || x.InstanceId==secondMobile.InstanceId),
+            "mixed snapshot continues ground collection and omits all vehicle objects");
+
+        var mobileShieldedTarget = new Building { Id="ground-target", Health=50, MaxHealth=100, PersistedMaxHealth=100, Owner=1, Group=99, IdentityKnown=true, Position=new Position3(0,0,0), RaidBlocked=false };
+        var shieldZone = new ZoneSet(new[]{new PolygonZone("shield-test",new[]{new ZonePoint(-1,-1),new ZonePoint(1,-1),new ZonePoint(1,1),new ZonePoint(-1,1)})});
+        var mobileShieldSnapshot = new MreDecay.Engine.Snapshot { Confirmed=true, BuildingsComplete=true, ZonesConfirmed=true, SafesComplete=true, GeneratorsComplete=true,
+            Buildings=new[]{mobileShieldedTarget}, Safes=mobileOnly.Safes, Generators=mobileOnly.Generators, Zones=shieldZone };
+        var mobileShieldPlan = StepEngine.Prepare(mobileShieldSnapshot);
+        Check(mobileOnly.Safes.Count==0 && mobileOnly.Generators.Count==0 && mobileShieldPlan!=null && mobileShieldPlan.Results.Count==1 && mobileShieldPlan.Results[0].Health==48,
+            "mobile safe and powered generator do not shield ground building");
+
+        var groundSafeMobileGen=GroundDeviceCollector.Collect(new[]{observedSafe,mobileGen},safeGuids);
+        Check(groundSafeMobileGen!=null, "ground safe plus mobile generator collection accepted");
+        var mixedDeviceTarget = new Building { Id="mixed-device-target", Health=50, MaxHealth=100, PersistedMaxHealth=100, Owner=1, Group=99, IdentityKnown=true, Position=new Position3(0,0,0), RaidBlocked=false };
+        var mixedDeviceSnapshot = new MreDecay.Engine.Snapshot { Confirmed=true, BuildingsComplete=true, ZonesConfirmed=true, SafesComplete=true, GeneratorsComplete=true,
+            Buildings=new[]{mixedDeviceTarget}, Safes=groundSafeMobileGen.Safes, Generators=groundSafeMobileGen.Generators, Zones=shieldZone };
+        var mixedDevicePlan = StepEngine.Prepare(mixedDeviceSnapshot);
+        Check(groundSafeMobileGen.Safes.Count==1 && groundSafeMobileGen.Generators.Count==0 &&
+            mixedDevicePlan!=null && mixedDevicePlan.Results.Count==1 && mixedDevicePlan.Results[0].Id=="mixed-device-target" && mixedDevicePlan.Results[0].Health==50,
+            "ground safe retained but valid powered mobile generator cannot repair ground building");
+
+        var groundPoweredGen = new ObjectObservation { Kind="barricade", BuildType="GENERATOR", InstanceId=28,AssetId=11,AssetGuid=Guid.NewGuid(),Owner=1,Health=10,MaxHealth=10,IsGenerator=true,GeneratorPowered=true };
+        var groundDeviceControl = GroundDeviceCollector.Collect(new[]{observedSafe,groundPoweredGen},safeGuids);
+        Check(groundDeviceControl!=null, "ground safe plus ground generator collection accepted");
+        var groundDeviceControlSnapshot = new MreDecay.Engine.Snapshot { Confirmed=true, BuildingsComplete=true, ZonesConfirmed=true, SafesComplete=true, GeneratorsComplete=true,
+            Buildings=new[]{new Building { Id="ground-device-control", Health=50, MaxHealth=100, PersistedMaxHealth=100, Owner=1, Group=99, IdentityKnown=true, Position=new Position3(0,0,0), RaidBlocked=false }},
+            Safes=groundDeviceControl.Safes, Generators=groundDeviceControl.Generators, Zones=shieldZone };
+        var groundDeviceControlPlan = StepEngine.Prepare(groundDeviceControlSnapshot);
+        Check(groundDeviceControl.Safes.Count==1 && groundDeviceControl.Generators.Count==1 &&
+            groundDeviceControlPlan!=null && groundDeviceControlPlan.Results.Count==1 && groundDeviceControlPlan.Results[0].Id=="ground-device-control" && groundDeviceControlPlan.Results[0].Health==51,
+            "same damaged building repairs with ground safe and powered ground generator");
+
+        var invalidMobile=(ObjectObservation[])new[]{observedSafe,vehicleObject}.Clone(); invalidMobile[1].VehicleInstanceId=0;
+        Check(!ObservationAudit.Valid(invalidMobile) && GroundDeviceCollector.Collect(invalidMobile,safeGuids)==null,
+            "invalid vehicle provenance rejects entire mixed snapshot");
+        vehicleObject.VehicleInstanceId=99;
+        vehicleObject.VehicleSubvehicleIndex=-1; Check(!ObservationAudit.Valid(new[]{vehicleObject}) && GroundDeviceCollector.Collect(new[]{vehicleObject},safeGuids)==null, "negative vehicle subregion rejected"); vehicleObject.VehicleSubvehicleIndex=0;
         vehicleObject.Kind="structure"; Check(!ObservationAudit.Valid(new[]{vehicleObject}), "vehicle structure provenance rejected"); vehicleObject.Kind="barricade";
         vehicleObject.IsVehicleAttached=false; Check(!ObservationAudit.Valid(new[]{vehicleObject}), "orphan vehicle provenance rejected"); vehicleObject.IsVehicleAttached=true;
         vehicleObject.IsVehicleAttached=false; vehicleObject.VehicleInstanceId=0; vehicleObject.VehicleSubvehicleIndex=1;

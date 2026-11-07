@@ -160,6 +160,43 @@ namespace MreAirdrop
                 MreChat.SayAdmin(caller, "MRE: аирдроп не подтверждён; проверьте серверный журнал.");
             }
         }
+        /// <summary>Actor-bound manual launch API for server-side UI integrations. Does not send chat.</summary>
+        public string LaunchManual(UnturnedPlayer actor)
+        {
+            if (Thread.CurrentThread.ManagedThreadId != gameThread) throw new InvalidOperationException("Аирдроп вызывается только на игровом потоке.");
+            if (!CanManage(actor)) return "MRE: нет права на запуск аирдропа.";
+            if (!Running || !Provider.isServer || !Level.isLoaded) return "MRE: запуск аирдропа временно недоступен.";
+            try
+            {
+                var node = FindDryNode();
+                if (node == null) return "MRE: сухая точка не найдена, аирдроп не запущен.";
+                Launch(node);
+                Logger.Log("[MRE] Manual airdrop: actor=" + actor.Id + "; hourly schedule unchanged.");
+                return "MRE: аирдроп запущен. Часовое расписание не изменено.";
+            }
+            catch (Exception error)
+            {
+                Logger.LogException(error, "[MRE] Ошибка ручного запуска аирдропа; автоматический повтор не выполняется.");
+                return "MRE: аирдроп не подтверждён; проверьте серверный журнал.";
+            }
+        }
+
+        /// <summary>Actor-bound schedule status API for server-side UI integrations. Does not send chat.</summary>
+        public string GetStatus(UnturnedPlayer actor)
+        {
+            if (Thread.CurrentThread.ManagedThreadId != gameThread) throw new InvalidOperationException("Статус аирдропа запрашивается только на игровом потоке.");
+            if (!CanManage(actor)) return "MRE: нет права на управление аирдропом.";
+            if (!Running) return "MRE: расписание аирдропов временно недоступно.";
+            return AirdropCountdown.Message(NextUtc - DateTime.UtcNow, DrySiteRetryPending);
+        }
+
+        private static bool CanManage(UnturnedPlayer player)
+        {
+            return player != null && player.Player != null &&
+                Provider.clients.Any(x => x != null && x.player == player.Player && x.playerID.steamID == player.CSteamID) &&
+                (player.IsAdmin || R.Permissions.HasPermission(player, new List<string> { "mre.airdrop.admin" }));
+        }
+
         private AirdropDevkitNode FindDryNode()
         {
             try
@@ -224,22 +261,32 @@ namespace MreAirdrop
                     throw new InvalidOperationException("Комплект не помещается в ящик: " + selected.Item2.Name);
             var filler = new LootFiller(selected.Item1.Name, ids, random.Next());
             ushort[] fillers = filler.CandidateIds().Distinct().ToArray();
+            var fillerAssets = new Dictionary<ushort, ItemAsset>();
             foreach (ushort fillerId in fillers)
             {
                 var fillerAsset = Assets.find(EAssetType.ITEM, fillerId) as ItemAsset;
-                if (fillerAsset == null || fillerAsset.size_x != 1 || fillerAsset.size_y != 1)
-                    throw new InvalidOperationException("Предмет добора должен иметь размер 1×1: " + fillerId);
+                if (fillerAsset == null || fillerAsset.size_x < 1 || fillerAsset.size_y < 1 ||
+                    fillerAsset.size_x > box.storage_x || fillerAsset.size_y > box.storage_y)
+                    throw new InvalidOperationException("Размер предмета добора не подходит ящику: " + fillerId);
+                fillerAssets.Add(fillerId, fillerAsset);
             }
-            int topUp = 0;
+            int topUp = 0, misses = 0, attempts = 0;
             byte freeX, freeY, rotation;
             while (preview.tryFindSpace(1, 1, out freeX, out freeY, out rotation))
             {
-                if (ids.Count >= cells || topUp >= cells)
+                if (ids.Count >= cells || attempts >= cells * Math.Max(1, fillers.Length))
                     throw new InvalidOperationException("Нарушен предел заполнения ящика.");
                 ushort fillerId = filler.At(topUp);
-                if (!preview.tryAddItem(new Item(fillerId, EItemOrigin.ADMIN), false))
-                    throw new InvalidOperationException("Не удалось заполнить найденную свободную клетку.");
-                ids.Add(fillerId); topUp++;
+                attempts++;
+                ItemAsset fillerAsset = fillerAssets[fillerId];
+                if (!preview.tryFindSpace(fillerAsset.size_x, fillerAsset.size_y, out freeX, out freeY, out rotation) ||
+                    !preview.tryAddItem(new Item(fillerId, EItemOrigin.ADMIN), false))
+                {
+                    topUp++;
+                    if (++misses >= fillers.Length) break;
+                    continue;
+                }
+                ids.Add(fillerId); topUp++; misses = 0;
             }
             Logger.Log("[MRE] Комплект " + selected.Item1.Name + "/" + selected.Item2.Name +
                 ": ящик " + box.storage_x + "×" + box.storage_y + ", добор [" + String.Join(",", fillers.Select(x => x.ToString()).ToArray()) + "] ×" + topUp +

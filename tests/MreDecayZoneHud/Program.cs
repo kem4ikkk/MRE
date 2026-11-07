@@ -15,8 +15,8 @@ static class Program
             var normal = HintPolicy.Evaluate(true, item, false);
             var unknown = HintPolicy.Evaluate(true, item, null);
             Check(fast.Visible && fast.Text.Contains("2%") && fast.Text.Contains("быстрее"), "accelerated zone");
-            Check(normal.Visible && normal.Text.Contains("1%") && normal.Text.Contains("обычное"), "normal zone");
-            Check(unknown.Visible && unknown.Text.Contains("не определена"), "unknown zone does not look normal");
+            Check(normal.Visible && normal.Text.Contains("1%") && normal.Text.Contains("обычной скоростью"), "normal zone");
+            Check(!unknown.Visible && unknown.Text == string.Empty, "unknown or unready zone hides status");
         }
         Check(HeldItemClassifier.Classify(null) == HeldItem.Unknown, "missing asset");
         Check(HeldItemClassifier.Classify(new ItemAsset { useableType = typeof(UseableHousingPlanner) }) == HeldItem.HousingPlanner, "planner useable");
@@ -27,6 +27,17 @@ static class Program
         foreach (EBuild build in new[] { EBuild.GENERATOR, EBuild.STORAGE, EBuild.FARM, EBuild.FREEFORM })
             Check(HeldItemClassifier.Classify(new ItemBarricadeAsset { build = build }) == HeldItem.Other, "nonbuilding barricade " + build);
         Check(HeldItemClassifier.Classify(new ItemAsset { useableType = typeof(UseableTool) }) == HeldItem.Other, "ordinary tool");
+        var aimPlayer = new SDG.Unturned.Player();
+        aimPlayer.look.aim.position = new UnityEngine.Vector3 { x=1, y=2, z=3 };
+        aimPlayer.look.aim.forward = new UnityEngine.Vector3 { x=0, y=0, z=1 };
+        UnityEngine.Physics.HitAvailable = true;
+        UnityEngine.Physics.NextHit = new UnityEngine.RaycastHit { point=new UnityEngine.Vector3 { x=40, z=-25 }, transform=new UnityEngine.Transform() };
+        UnityEngine.Vector3 aimedPoint;
+        Check(AimPointQuery.TryGetTargetPoint(aimPlayer, out aimedPoint) && aimedPoint.x==40 && aimedPoint.z==-25, "status uses point under construction aim");
+        Check(UnityEngine.Physics.LastDistance==AimPointQuery.MaxAimDistance && UnityEngine.Physics.LastOrigin.x==1 && UnityEngine.Physics.LastDirection.z==1, "aim query uses bounded ray");
+        UnityEngine.Physics.HitAvailable = false;
+        Check(!AimPointQuery.TryGetTargetPoint(aimPlayer, out aimedPoint), "missing aim hit hides status");
+        UnityEngine.Physics.HitAvailable = true;
         var sink = new RecordingSink();
         var controller = new HintController(sink);
         controller.Update(1, true, false, HeldItem.HousingPlanner, true);
@@ -37,7 +48,7 @@ static class Program
         controller.Update(1, true, true, HeldItem.HousingPlanner, false);
         Check(sink.Shows == 2 && sink.Last.Contains("1%"), "zone change refresh");
         controller.Update(1, true, true, HeldItem.HousingPlanner, null);
-        Check(sink.Shows == 3 && sink.Last.Contains("не определена"), "lost zone changes visible status");
+        Check(sink.Shows == 2 && sink.Hides == 1, "lost zone readiness hides status");
         controller.Update(1, true, true, HeldItem.Other, true);
         controller.Update(1, true, true, HeldItem.Other, true);
         Check(sink.Hides == 1, "unequip hides once");

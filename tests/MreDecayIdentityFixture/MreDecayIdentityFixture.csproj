@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>MREDecayGroundIdentityFixture</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="GroundIdentityReloadFixture.cs" />
+    <Compile Include="../../src/MreDecay/Adapter/ObjectObservation.cs" />
+    <Compile Include="../../src/MreDecay/Adapter/ObservationAudit.cs" />
+    <Compile Include="../../src/MreDecay/Adapter/ReadOnlyWorld.cs" />
+    <Reference Include="Assembly-CSharp"><HintPath>../../runtime/server/Unturned_Data/Managed/Assembly-CSharp.dll</HintPath></Reference>
+    <Reference Include="Steamworks"><HintPath>../../runtime/server/Unturned_Data/Managed/com.rlabrecque.steamworks.net.dll</HintPath></Reference>
+    <Reference Include="UnityEngine"><HintPath>../../runtime/server/Unturned_Data/Managed/UnityEngine.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>../../runtime/server/Unturned_Data/Managed/UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="Rocket.API"><HintPath>../../runtime/server/Modules/Rocket.Unturned/Rocket.API.dll</HintPath></Reference>
+    <Reference Include="Rocket.Core"><HintPath>../../runtime/server/Modules/Rocket.Unturned/Rocket.Core.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

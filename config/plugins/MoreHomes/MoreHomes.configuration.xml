@@ -12,7 +12,8 @@
   <VIPCooldowns />
   <VIPDelays />
   <VIPMaxHomes>
-    <VIPPermission PermissionTag="morehomes.vip" Value="2" />
-    <VIPPermission PermissionTag="morehomes.elite" Value="3" />
+    <VIPPermission PermissionTag="morehomes.vip" Value="3" />
+    <VIPPermission PermissionTag="morehomes.premium" Value="4" />
+    <VIPPermission PermissionTag="morehomes.elite" Value="5" />
   </VIPMaxHomes>
 </MoreHomesConfiguration>

@@ -38,7 +38,7 @@ internal static class Program
         var common = LootPlan.Select(defaults, 0.0, 0.0);
         Check(common.Item1.Name == "Оружейный" && common.Item2.Name == "Grizzly");
         var rare = LootPlan.Select(defaults, 0.99, 0.999999);
-        Check(rare.Item1.Name == "Рейдовый" && rare.Item2.Name == "Штурмовой комплект" && rare.Item2.Items[0].Id == 363);
+        Check(rare.Item1.Name == "Рейдовый" && rare.Item2.Name == "Shadowstalker Mk. II" && rare.Item2.Items[0].Id == 1441);
         defaults[0].Bundles[0].Items[0].Count = 0;
         Check(Reject(() => LootPlan.Validate(defaults)));
         Console.WriteLine("Границы вероятностей и контракт команды аирдропа проверены.");

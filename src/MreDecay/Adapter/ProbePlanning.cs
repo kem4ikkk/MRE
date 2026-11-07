@@ -17,7 +17,9 @@ namespace MreDecay.IsolatedRuntime
             var buildings = new List<Building>();
             foreach (var o in observations)
             {
-                if (o.IsVehicleAttached) return null;
+                // Valid mobile observations do not invalidate ground planning and are
+                // never translated into decay or repair targets.
+                if (o.IsVehicleAttached) continue;
                 buildings.Add(new Building {
                     Id = o.Kind + ":" + o.InstanceId, Health = o.Health, MaxHealth = o.MaxHealth,
                     Owner = o.Owner, Group = o.Group, IdentityKnown = true,
@@ -25,7 +27,7 @@ namespace MreDecay.IsolatedRuntime
                     // PersistedMaxHealth and fractional state remain unknown.
                 });
             }
-            return StepEngine.Prepare(new Snapshot {
+            return StepEngine.Prepare(new MreDecay.Engine.Snapshot {
                 Buildings = buildings, BuildingsComplete = false, Confirmed = false,
                 ZonesConfirmed = false, SafesComplete = false, GeneratorsComplete = false,
                 Zones = null, Safes = null, Generators = null

@@ -49,11 +49,15 @@ if ($LASTEXITCODE -ne 0) { throw "Ошибка компиляции MreInventory
 $referenceManifest = @($referencePaths | ForEach-Object {
     [ordered]@{ name = [IO.Path]::GetFileName($_); sha256 = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant() }
 })
+$sourceManifest = @($sourcePaths | Sort-Object | ForEach-Object {
+    [ordered]@{ name = [IO.Path]::GetFileName($_); sha256 = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant() }
+})
 $manifest = [ordered]@{
     plugin = 'MreInventoryAudit'
     built_at_utc = [DateTime]::UtcNow.ToString('o')
     sha256 = (Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash.ToLowerInvariant()
     references = $referenceManifest
+    sources = $sourceManifest
 }
 [IO.File]::WriteAllText((Join-Path $outputRoot 'build-manifest.json'), ($manifest | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding($false)))
 Write-Host "MreInventoryAudit собран: $outputPath"

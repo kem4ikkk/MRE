@@ -24,6 +24,7 @@ $UnityEditorPath = (Resolve-Path -LiteralPath $UnityEditorPath).Path
 if ([IO.Path]::GetFileName($UnityEditorPath) -ne 'Unity.exe') { throw 'Укажите именно Unity.exe редактора.' }
 $outputRoot = Join-Path $projectRoot 'runtime\ui-builds\MreTrade\Windows'
 $manifestPath = Join-Path $outputRoot 'bundle-build.json'
+$effectManifestPath = Join-Path $unityProject 'effect-manifest.json'
 $bundlePath = Join-Path $outputRoot 'MreTrade\MreTrade.unity3d'
 $datPath = Join-Path $outputRoot 'MreTrade\MreTrade.dat'
 $logRoot = Join-Path $projectRoot 'runtime\ui-builds'
@@ -38,7 +39,13 @@ try {
     Write-Host "Unity ${requiredVersion}: экспорт окна обмена. Журнал: $logPath"
     $unityProcess = Start-Process -FilePath $UnityEditorPath -ArgumentList $unityArguments -PassThru -WindowStyle Hidden
     $unityProcess.WaitForExit()
-    if ($unityProcess.ExitCode -ne 0) { throw "Unity завершился с кодом $($unityProcess.ExitCode). См. $logPath" }
+    if ($unityProcess.ExitCode -ne 0) {
+        $unityLogText = if (Test-Path -LiteralPath $logPath -PathType Leaf) { Get-Content -LiteralPath $logPath -Raw -Encoding UTF8 } else { '' }
+        if ($unityLogText -match 'No valid Unity Editor license found|No ULF license found|LicensingClient doesn.t exist|Timed-out after .*waiting for channel') {
+            throw "Unity Editor $requiredVersion не подтвердил лицензию: Licensing Client недоступен или Personal не активирована. Откройте Unity Hub, войдите в аккаунт и проверьте Settings → Licenses; затем повторите сборку. Bundle не обновлен. Журнал: $logPath"
+        }
+        throw "Unity завершился с кодом $($unityProcess.ExitCode). См. $logPath"
+    }
     foreach ($resultPath in @($manifestPath, $bundlePath, $datPath)) {
         if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) { throw "Unity не создал результат: $resultPath. См. $logPath" }
         if ((Get-Item -LiteralPath $resultPath).LastWriteTimeUtc -lt $buildStarted.AddSeconds(-2)) {
@@ -46,12 +53,20 @@ try {
         }
     }
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $effect = Get-Content -LiteralPath $effectManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($manifest.unity_version -ne $requiredVersion -or $manifest.target -ne 'StandaloneWindows64') {
         throw 'Версия Unity или платформа bundle не соответствует проекту.'
     }
     if ($manifest.effect_id -ne 48622 -or $manifest.effect_guid -ne 'a986933995df4d29816efcc37f87b220' -or
         $manifest.effect_key -ne 14822 -or $manifest.prefab_address_verified -ne $true -or $manifest.in_game_verified -ne $false) {
         throw 'Manifest не подтверждает ожидаемый контракт Effect; игровая приёмка должна оставаться отдельной.'
+    }
+    if ($effect.schema_version -ne 2 -or $effect.confirmation_protocol -cne 'nonce-input-v1' -or
+        @($effect.input_fields) -notcontains 'TradeConfirmToken' -or
+        $manifest.schema_version -ne $effect.schema_version -or
+        $manifest.confirmation_protocol -cne $effect.confirmation_protocol -or
+        @($manifest.input_fields) -notcontains 'TradeConfirmToken') {
+        throw 'Bundle не подтверждает протокол подтверждения nonce; старый UI нельзя доставлять.'
     }
     $actualHash = (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actualHash -ne $manifest.bundle_sha256) { throw 'SHA256 bundle не совпадает с manifest.' }

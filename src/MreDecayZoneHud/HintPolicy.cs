@@ -16,11 +16,10 @@ namespace MreDecayZoneHud
         {
             if (!playerAvailable || (item != HeldItem.HousingPlanner && item != HeldItem.BuildingPart))
                 return new Hint(false, string.Empty);
-            if (!acceleratedZone.HasValue)
-                return new Hint(true, "Гниение построек: зона не определена");
+            if (!acceleratedZone.HasValue) return new Hint(false, string.Empty);
             return acceleratedZone.Value
-                ? new Hint(true, "Гниение построек: быстрее — 2% за 5 мин")
-                : new Hint(true, "Гниение построек: обычное — 1% за 5 мин");
+                ? new Hint(true, "Постройка гниёт быстрее — 2% / 5 мин")
+                : new Hint(true, "Постройка гниёт с обычной скоростью — 1% / 5 мин");
         }
     }
 }

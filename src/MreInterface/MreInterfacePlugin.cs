@@ -100,6 +100,7 @@ namespace MreInterface
             RequireGameThread();
             if (!CanExecuteAdmin(actor, action)) return "Нет прав на это действие.";
             if (!Provider.isServer || !Level.isLoaded) return "Мир ещё не готов.";
+            if (action == "marker") return TeleportToMarker(actor);
             if (action == "fly") return RunBodyFlight(actor, null);
             if (action == "freecam") return SetFreecamPermission(actor, true);
             if (action == "spectate") return StartObservation(actor, targetId);
@@ -162,11 +163,12 @@ namespace MreInterface
             if (args.Length == 0 && TryOpenAdminMenu(actor)) return;
             if (args.Length == 0 || args[0].Equals("help", StringComparison.OrdinalIgnoreCase))
             {
-                MreChat.SayAdmin(actor, "MRE /admin: " + string.Join(", ", AdminPolicy.Actions.Where(a => CanExecuteAdmin(actor, a)).ToArray()) + ". tp/bring/kick требуют SteamID64 или точное имя; heal без имени лечит себя.");
+                MreChat.SayAdmin(actor, "MRE /admin: " + string.Join(", ", AdminPolicy.Actions.Where(a => (a != "marker" || actor.IsAdmin) && CanExecuteAdmin(actor, a)).ToArray()) + ". tp/bring/kick требуют SteamID64 или точное имя; heal без имени лечит себя.");
                 if (CanExecuteAdmin(actor, "announce")) MreChat.SayAdmin(actor, "Объявления: /admin announce event <текст>; сообщение о перезапуске: /admin announce restart <минуты> (без запуска перезапуска).");
                 MreChat.SayAdmin(actor, "MRE: профили и наказания — /staff; инвентарь — /inspectinventory; смерти — /previewdeath и /restoredeath. Эти модули требуют отдельных прав."); return;
             }
             string action = args[0].ToLowerInvariant();
+            if (action == "marker" && args.Length != 1) { MreChat.SayAdmin(actor, "?????????????: /admin marker"); return; }
             if (!AdminPolicy.KnownAction(action)) { MreChat.SayAdmin(actor, "MRE: неизвестное действие. /admin help"); return; }
             if (action == "announce") { HandleAnnouncement(actor, args); return; }
             if (action == "fly" || action == "freecam" || action == "god" || action == "vanish" || action == "workzone" || action == "stats" || action == "remove" || (action == "kill" && args.Length == 3 && args[1].Equals("confirm", StringComparison.OrdinalIgnoreCase)) || (action == "spectate" && args.Length == 2 && args[1].Equals("off", StringComparison.OrdinalIgnoreCase)))

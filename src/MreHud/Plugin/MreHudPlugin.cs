@@ -24,7 +24,7 @@ namespace MreHud
             public bool Failed;
             public BuildingHitState BuildingHit;
             public bool BuildingRestart;
-            public readonly DamageSlots Damage = new DamageSlots(8);
+            public readonly DamageSlots Damage = new DamageSlots(16);
             public readonly Dictionary<string, MeterAnimation> Meters = new Dictionary<string, MeterAnimation>();
             public readonly Dictionary<string, int> SegmentCounts = new Dictionary<string, int>();
             public float LastMeterTime;
@@ -49,7 +49,9 @@ namespace MreHud
         private Type statsSnapshotType;
         private DateTime nextProtectionDiscoveryUtc;
         private PropertyInfo protectionInstance;
+        private PropertyInfo protectionDuration;
         private MethodInfo protectionRemaining;
+        private const int SpawnProtectionSegments = 15;
         private static readonly EPluginWidgetFlags[] ReplacedFlags = {
             EPluginWidgetFlags.ShowHealth, EPluginWidgetFlags.ShowFood, EPluginWidgetFlags.ShowWater,
             EPluginWidgetFlags.ShowVirus, EPluginWidgetFlags.ShowStamina, EPluginWidgetFlags.ShowOxygen,
@@ -344,16 +346,57 @@ namespace MreHud
                     Type type = AppDomain.CurrentDomain.GetAssemblies().Reverse()
                         .Select(a => a.GetType("MreSpawnProtection.MreSpawnProtectionPlugin", false)).FirstOrDefault(t => t != null);
                     protectionInstance = type == null ? null : type.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
+                    protectionDuration = type == null ? null : type.GetProperty("DurationSeconds", BindingFlags.Public | BindingFlags.Instance);
                     protectionRemaining = type == null ? null : type.GetMethod("GetRemainingSeconds", new[] { typeof(Player) });
                 }
                 object instance = protectionInstance == null ? null : protectionInstance.GetValue(null, null);
                 object result = instance == null || protectionRemaining == null ? null : protectionRemaining.Invoke(instance, new object[] { view.Player });
                 double seconds = result is double ? (double)result : 0;
-                bool shown = !Double.IsNaN(seconds) && !Double.IsInfinity(seconds) && seconds > 0;
-                if (shown) Text(view, "SpawnProtectionTimer", Math.Ceiling(Math.Min(999, seconds)).ToString(CultureInfo.InvariantCulture) + " с");
+                object durationResult = instance == null || protectionDuration == null ? null : protectionDuration.GetValue(instance, null);
+                double duration = durationResult is double ? (double)durationResult : 0;
+                bool shown = !Double.IsNaN(seconds) && !Double.IsInfinity(seconds) && seconds > 0 &&
+                    !Double.IsNaN(duration) && !Double.IsInfinity(duration) && duration > 0;
+                if (shown)
+                {
+                    Text(view, "SpawnProtectionTimer", Math.Ceiling(Math.Min(999, seconds)).ToString(CultureInfo.InvariantCulture) + " с");
+                    double fraction = Math.Max(0, Math.Min(1, seconds / duration));
+                    int filled = (int)Math.Ceiling(fraction * SpawnProtectionSegments);
+                    SetSpawnProtectionSegments(view, filled);
+                }
+                else SetSpawnProtectionSegments(view, 0);
                 Visible(view, "SpawnProtectionPanel", shown);
             }
-            catch (Exception) { Visible(view, "SpawnProtectionPanel", false); }
+            catch (Exception)
+            {
+                SetSpawnProtectionSegments(view, 0);
+                Visible(view, "SpawnProtectionPanel", false);
+            }
+        }
+
+        private void SetSpawnProtectionSegments(View view, int filled)
+        {
+            filled = Math.Max(0, Math.Min(SpawnProtectionSegments, filled));
+            int previous;
+            if (view.SegmentCounts.TryGetValue("SpawnProtectionDiscrete", out previous))
+            {
+                if (previous == filled) return;
+                if (filled < previous)
+                {
+                    for (int i = previous; i > filled; i--)
+                        Visible(view, "SpawnProtectionFill" + i.ToString("00", CultureInfo.InvariantCulture), false);
+                }
+                else
+                {
+                    for (int i = previous + 1; i <= filled; i++)
+                        Visible(view, "SpawnProtectionFill" + i.ToString("00", CultureInfo.InvariantCulture), true);
+                }
+            }
+            else
+            {
+                for (int i = 1; i <= filled; i++)
+                    Visible(view, "SpawnProtectionFill" + i.ToString("00", CultureInfo.InvariantCulture), true);
+            }
+            view.SegmentCounts["SpawnProtectionDiscrete"] = filled;
         }
 
         private void RenderStats(View view, ulong id)
@@ -487,9 +530,7 @@ namespace MreHud
             Text(view, "VoteEligible", "голосов за · участников " + vote.EligibleCount.ToString(CultureInfo.InvariantCulture));
             int seconds = active ? (int)Math.Ceiling(Math.Max(0, vote.RemainingSeconds)) : 0;
             Text(view, "VoteTimer", active ? seconds.ToString(CultureInfo.InvariantCulture) + " с" : "");
-            // Plugin Key #3/#4 can be assigned to physical Q/E in the client controls.
-            // The server receives only those plugin-key events, so the HUD deliberately
-            // shows the requested Q/E labels instead of pretending to read raw keyboard input.
+            // Unturned resolves these tokens to each client's actual key bindings.
             bool showChoices = active && (vote.CanVote || vote.HasVoted);
             Visible(view, "VoteYesPanel", showChoices);
             Visible(view, "VoteNoPanel", showChoices);
@@ -498,8 +539,9 @@ namespace MreHud
             Visible(view, "VoteProgressTrack", active);
             Visible(view, "VoteHoldCaption", active && vote.CanVote);
             Visible(view, "VoteStatus", !showChoices);
-            Text(view, "VoteYesKey", showChoices ? "Q" : "");
-            Text(view, "VoteNoKey", showChoices ? "E" : "");
+            Text(view, "VoteYesKey", showChoices ? "/" : "");
+            Text(view, "VoteNoKey", showChoices ? ";" : "");
+            Text(view, "VoteHoldCaption", "Назначено: <plugin_2/> / <plugin_3/> · удерживать 2 с");
             Visible(view, "VoteYesSelected", vote.VotedYes);
             Visible(view, "VoteNoSelected", vote.VotedNo);
             string status = active && vote.HasVoted

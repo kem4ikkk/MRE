@@ -1,17 +1,17 @@
-# MRE /help — Unity source
+# MRE `/menu` и `/help` — Unity UI
 
-Standalone Unity project for a modal in-game MRE command guide. Unity **2022.3.62f3**, uGUI package **1.0.0**, Windows Standalone asset bundle, 1920×1080 reference canvas. Typography uses bundled PT Sans under OFL.
+Автономный Unity-проект меню MRE. Используется Unity **2022.3.62f3**, uGUI package **1.0.0**, Windows Standalone AssetBundle и reference canvas 1920×1080. Шрифт PT Sans включён по лицензии OFL.
 
-The generated effect contract is ID **48625**, GUID **6e4a31b49c874f428a622e1a68e4d203**, key **14825**, prefab address **Effect**. Close button: `HelpClose`. Category buttons: `HelpTabBasics`, `HelpTabTravel`, `HelpTabGroups`, `HelpTabCombat`; selection indicators: `HelpSelectedBasics`, `HelpSelectedTravel`, `HelpSelectedGroups`, `HelpSelectedCombat`. Title/subtitle: `HelpTitle`, `HelpSubtitle`. Ten command and description text elements: `HelpCommand01..10`, `HelpDescription01..10`; row visibility: `HelpRow01..10`.
+Контракт EffectAsset: ID **48625**, GUID **6e4a31b4-9c87-4f42-8a62-2e1a68e4d203**, key **14825**, prefab address **Effect**. Верхние кнопки: `MenuTopMain`, `MenuTopProgress`, `MenuTopSettings`; разделы: `MenuSectionInformation`, `MenuSectionGroup`, `MenuSectionCommands`, `MenuSectionLinks`, `MenuSectionRewards`, `MenuSectionTop`; закрытие: `MenuClose`. Десять строк: `MenuRow01..10`, заголовки `MenuRowTitle01..10`, описания `MenuRowDescription01..10`; перелистывание `MenuCommandsPrevious`/`MenuCommandsNext`, номер страницы `MenuPage`, заголовок окна `MenuTitle`, подпись `MenuSubtitle`, нижняя строка `MenuFooter`.
 
-To build using the matching local editor:
+Сборка подходящим локальным Unity Editor:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/Build-MreHelpAssets.ps1
 ```
 
-Output stays under `ui/MreHelp/Build/Windows/MreHelp/`. The build creates `MreHelp.unity3d`, `MreHelp.dat`, and `effect-manifest.json`, then reloads the bundle and verifies the prefab and UI element names. `-RenderPreview` additionally writes `Build/MreHelp-preview.png` from Unity. The current committed visual preview is `ui/preview/mre-help.png`. The bundle is not installed, packed into Workshop, or published by this script.
+Вывод bundle и dat находится в `ui/MreHelp/Build/Windows/MreHelp/`, а `effect-manifest.json` — рядом, в `ui/MreHelp/Build/Windows/`. Параметр `-RenderPreview` рисует `Build/MreHelp-preview.png`. Скрипт сам не устанавливает, не упаковывает и не публикует ресурсы.
 
-The prefab has sample command text for the Unity preview. At runtime the server fills each category from the registered commands and the player's permissions, so unavailable commands are omitted. A client must receive the matching effect asset (for example via the existing MRE Workshop item) before the server can open it. Update an existing local Workshop package and test a clean client and server before publishing. Do not put this asset in the shared root `Bundles` directory: MRE UI assets use an isolated Workshop package to avoid GUID collisions.
+В prefab записан пример текста для Unity preview. На сервере заполняется явный каталог команд MRE; команда показывается, если она зарегистрирована и у игрока есть право. Это не автоматический список всех Rocket-команд. Клиенту нужен тот же EffectAsset. Сервер показывает текстовую подсказку, если сам не нашёл asset; он не может надёжно определить, загрузил ли его клиент. Опубликованный Workshop-пакет MRE HUD пока не содержит bundle меню; сначала соберите локальный объединённый пакет и проверьте его на чистом клиенте и сервере. Не помещайте эффект в общий каталог `Bundles`: UI MRE доставляется отдельным Workshop-пакетом, чтобы избежать конфликтов GUID.
 
-The preview and bundle build do not prove in-game click delivery, resolution scaling, keyboard close behavior, platform support beyond Windows, or Workshop distribution; these need client acceptance.
+Сборка prefab и просмотр PNG не подтверждают доставку кликов, масштабирование разрешения, закрытие клавиатурой, поддержку платформ кроме Windows или распространение Workshop. Это требует отдельной игровой приёмки.

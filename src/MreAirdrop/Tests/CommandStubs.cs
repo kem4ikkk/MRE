@@ -21,6 +21,7 @@ namespace MreShared
     {
         internal static int Count;
         internal static void Say(Rocket.API.IRocketPlayer player, string text) { Count++; }
+        internal static void SayAdmin(Rocket.API.IRocketPlayer player, string text) { Say(player, text); }
     }
 }
 namespace MreAirdrop

@@ -78,11 +78,31 @@ try {
         if (-not $node) { $node=$Document.CreateElement($Name); [void]$Document.DocumentElement.AppendChild($node) }
         $node.InnerText=$Value
     }
+    function Set-MreHomeLimits([xml]$Document) {
+        $container=$Document.DocumentElement.SelectSingleNode('VIPMaxHomes')
+        if (-not $container) { $container=$Document.CreateElement('VIPMaxHomes'); [void]$Document.DocumentElement.AppendChild($container) }
+        $managed=@('morehomes.vip','morehomes.premium','morehomes.elite')
+        foreach ($permission in @($container.SelectNodes('VIPPermission') | Where-Object { $_.GetAttribute('PermissionTag') -in $managed })) {
+            [void]$container.RemoveChild($permission)
+        }
+        $limits=@(
+            [pscustomobject]@{PermissionTag='morehomes.vip';Value=3},
+            [pscustomobject]@{PermissionTag='morehomes.premium';Value=4},
+            [pscustomobject]@{PermissionTag='morehomes.elite';Value=5}
+        )
+        foreach ($entry in $limits) {
+            $permission=$Document.CreateElement('VIPPermission')
+            $permission.SetAttribute('PermissionTag',$entry.PermissionTag)
+            $permission.SetAttribute('Value',[string]$entry.Value)
+            [void]$container.AppendChild($permission)
+        }
+    }
     if (-not $targetedInstall) {
         Set-XmlValue $essentials 'MinimumPlayers' '1'
         Set-XmlValue $essentials 'MaxSkillsEnabled' 'true'
         Set-XmlValue $homes 'DefaultMaxHomes' '2'
         Set-XmlValue $homes 'DefaultHomeDelay' '10'
+        Set-MreHomeLimits $homes
     }
     # Rocket читает приоритет из сохраненного mapping, даже при Register(... High).
     if (-not $VaultOnly -and -not $KitsOnly -and -not $ChatOnly -and -not $AirdropOnly -and -not $TradeOnly) {
@@ -151,7 +171,7 @@ try {
         installed_at_utc=[DateTime]::UtcNow.ToString('o')
         backup_path=$backupRoot
         files=@($copies | Select-Object Name,SHA256)
-        settings=if($targetedInstall){[ordered]@{InterfaceOnly=[bool]$InterfaceOnly;AdminOnly=[bool]$AdminOnly;VaultOnly=[bool]$VaultOnly;KitsOnly=[bool]$KitsOnly;ChatOnly=[bool]$ChatOnly;AirdropOnly=[bool]$AirdropOnly;TradeOnly=[bool]$TradeOnly}}else{[ordered]@{MinimumPlayers=1;MaxSkillsEnabled=$true;DefaultMaxHomes=2;DefaultHomeDelay=10}}
+        settings=if($targetedInstall){[ordered]@{InterfaceOnly=[bool]$InterfaceOnly;AdminOnly=[bool]$AdminOnly;VaultOnly=[bool]$VaultOnly;KitsOnly=[bool]$KitsOnly;ChatOnly=[bool]$ChatOnly;AirdropOnly=[bool]$AirdropOnly;TradeOnly=[bool]$TradeOnly}}else{[ordered]@{MinimumPlayers=1;MaxSkillsEnabled=$true;DefaultMaxHomes=2;DefaultHomeDelay=10;VipMaxHomes=@{VIP=3;Premium=4;Elite=5}}}
         gameplay_validation='pending'
     }
     [IO.File]::WriteAllText((Join-Path $runtimeRoot 'features-installed.json'),($receipt | ConvertTo-Json -Depth 6),$utf8)

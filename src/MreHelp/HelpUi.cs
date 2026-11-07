@@ -22,6 +22,7 @@ namespace MreHelp
             internal Player Player;
             internal MenuPrimary Primary;
             internal MenuSection Section;
+            internal int Page;
         }
 
         private static readonly Dictionary<ulong, Session> viewers = new Dictionary<ulong, Session>();
@@ -59,6 +60,7 @@ namespace MreHelp
                 if (!ReferenceEquals(existing.Player, p)) { Close(id); return false; }
                 existing.Primary = primary;
                 existing.Section = section;
+                existing.Page = 0;
                 try { Render(existing); return true; }
                 catch (Exception error)
                 {
@@ -94,12 +96,25 @@ namespace MreHelp
             Session session;
             if (!viewers.TryGetValue(id, out session) || !ReferenceEquals(session.Player, player)) return;
             if (name == "MenuClose") { Close(id); return; }
+            if (name == "MenuCommandsPrevious" || name == "MenuCommandsNext")
+            {
+                if (session.Primary != MenuPrimary.Main || session.Section != MenuSection.Commands) return;
+                MenuRow[] rows = Rows(session, UnturnedPlayer.FromPlayer(player));
+                int pageCount = Math.Max(1, (rows.Length + 9) / 10);
+                session.Page = name == "MenuCommandsNext"
+                    ? (session.Page + 1) % pageCount
+                    : (session.Page + pageCount - 1) % pageCount;
+                try { Render(session); }
+                catch (Exception error) { Logger.LogException(error, "[MRE Menu] Не удалось перелистнуть команды."); Close(id); }
+                return;
+            }
 
             switch (name)
             {
                 case "MenuTopMain": session.Primary = MenuPrimary.Main; session.Section = MenuSection.Information; break;
                 case "MenuTopProgress": session.Primary = MenuPrimary.Progress; session.Section = MenuSection.Rewards; break;
                 case "MenuTopSettings": session.Primary = MenuPrimary.Settings; break;
+                case "MenuSectionSettings": session.Primary = MenuPrimary.Settings; break;
                 case "MenuSectionInformation": session.Primary = MenuPrimary.Main; session.Section = MenuSection.Information; break;
                 case "MenuSectionGroup": session.Primary = MenuPrimary.Main; session.Section = MenuSection.Group; break;
                 case "MenuSectionCommands": session.Primary = MenuPrimary.Main; session.Section = MenuSection.Commands; break;
@@ -108,6 +123,7 @@ namespace MreHelp
                 case "MenuSectionTop": session.Primary = MenuPrimary.Progress; session.Section = MenuSection.Top; break;
                 default: return;
             }
+            session.Page = 0;
             try { Render(session); }
             catch (Exception error)
             {
@@ -124,11 +140,24 @@ namespace MreHelp
             bool isMain = session.Primary == MenuPrimary.Main;
             bool isProgress = session.Primary == MenuPrimary.Progress;
             bool isSettings = session.Primary == MenuPrimary.Settings;
+            bool information = isMain && session.Section == MenuSection.Information;
+            bool commands = isMain && session.Section == MenuSection.Commands;
+            bool links = isMain && session.Section == MenuSection.Links;
+            bool showRows = commands || links;
+            bool planned = isSettings || session.Section == MenuSection.Group || session.Section == MenuSection.Rewards || session.Section == MenuSection.Top;
 
             EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuTitle", WindowTitle(session));
             EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuSubtitle", WindowSubtitle(session));
             EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuFooter", Footer(session));
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuRowsEyebrow", RowsEyebrow(session));
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuRowsHint", RowsHint(session));
             EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuTopBrand", "MRE  /  PEI");
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionCommandsSelected", session.Section == MenuSection.Commands && isMain);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionInformationSelected", session.Section == MenuSection.Information && isMain);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionGroupSelected", session.Section == MenuSection.Group && isMain);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionLinksSelected", session.Section == MenuSection.Links && isMain);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionRewardsSelected", session.Section == MenuSection.Rewards && isProgress);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionTopSelected", session.Section == MenuSection.Top && isProgress);
             foreach (MenuPrimary primary in Enum.GetValues(typeof(MenuPrimary)))
                 EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSelectedTop" + primary, session.Primary == primary);
             EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionInformation", isMain);
@@ -137,21 +166,28 @@ namespace MreHelp
             EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionLinks", isMain);
             EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionRewards", isProgress);
             EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionTop", isProgress);
-            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuPlannedPanel", isSettings || session.Section == MenuSection.Group || session.Section == MenuSection.Rewards || session.Section == MenuSection.Top);
-            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuRowsPanel", !(isSettings || session.Section == MenuSection.Group || session.Section == MenuSection.Rewards || session.Section == MenuSection.Top));
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionSettings", isSettings);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuSectionSettingsSelected", isSettings);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuInformationPanel", information);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuPlannedPanel", planned);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuRowsPanel", showRows);
+            EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuCommandPager", commands);
 
-            MenuRow[] rows = Rows(session, unturnedPlayer);
+            MenuRow[] allRows = Rows(session, unturnedPlayer);
+            int pageCount = Math.Max(1, (allRows.Length + 9) / 10);
+            session.Page = Math.Max(0, Math.Min(session.Page, pageCount - 1));
+            MenuRow[] rows = allRows.Skip(session.Page * 10).Take(10).ToArray();
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuPage", (session.Page + 1) + " / " + pageCount);
             for (int i = 0; i < 10; i++)
             {
                 string number = (i + 1).ToString("00");
-                bool visible = i < rows.Length;
+                bool visible = showRows && i < rows.Length;
                 EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuRow" + number, visible);
                 if (!visible) continue;
                 EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuRowTitle" + number, rows[i].Title);
                 EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuRowDescription" + number, rows[i].Description);
             }
 
-            bool planned = isSettings || session.Section == MenuSection.Group || session.Section == MenuSection.Rewards || session.Section == MenuSection.Top;
             EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuPlannedTitle", PlannedTitle(session));
             EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuPlannedDescription", planned ? PlannedDescription(session) : String.Empty);
         }
@@ -162,18 +198,12 @@ namespace MreHelp
                 return new MenuRow[0];
             switch (session.Section)
             {
-                case MenuSection.Commands: return HelpCatalog.ForCommands(player).Select(x => new MenuRow(x.Command, x.Description)).Take(10).ToArray();
+                case MenuSection.Commands: return HelpCatalog.ForCommands(player).Select(x => new MenuRow(x.Command, x.Description)).ToArray();
                 case MenuSection.Links: return new[] {
                     new MenuRow("Репозиторий MRE", "Исходный код и документация проекта: https://github.com/kem4ikkk/MRE"),
                     new MenuRow("Сообщество", "Ссылки VK и Discord для MRE пока не настроены.")
                 };
-                default: return new[] {
-                    new MenuRow("Наборы", "Команды /kits и /kit <имя> показывают и выдают доступные наборы."),
-                    new MenuRow("Дом и телепортация", "/homes, /home и /tpa управляют кроватями и запросами на перенос."),
-                    new MenuRow("Обмен и хранилище", "Для обмена используйте /trade; личное хранилище открывается командой /s."),
-                    new MenuRow("Группа", "Группа сервера ограничена четырьмя игроками."),
-                    new MenuRow("Справка", "Команда /help сразу открывает список команд в этом меню.")
-                };
+                default: return new MenuRow[0];
             }
         }
 
@@ -207,15 +237,33 @@ namespace MreHelp
 
         private static string PlannedDescription(Session session)
         {
-            if (session.Primary == MenuPrimary.Settings) return "Персональные переключатели появятся после подключения настроек игрока. Сейчас раздел не меняет параметры аккаунта.";
-            if (session.Section == MenuSection.Group) return "Здесь появится управление группой. Пока используйте встроенное меню групп Unturned.";
-            if (session.Section == MenuSection.Rewards) return "Система ежедневных наград MRE ещё не подключена. Этот экран не выдаёт предметы.";
-            return "Экран топа ещё не связан со статистикой MRE. Данные и сортировки будут подключены отдельно.";
+            if (session.Primary == MenuPrimary.Settings) return "Настройки появятся позже.";
+            if (session.Section == MenuSection.Group) return "Управление группой появится позже. Пока используйте встроенное меню групп Unturned.";
+            if (session.Section == MenuSection.Rewards) return "Раздел наград находится в разработке.";
+            return "Рейтинг появится позже.";
         }
 
         private static string Footer(Session session)
         {
-            return session.Section == MenuSection.Commands ? "/help  ·  команды MRE" : "Нажмите ×, чтобы закрыть меню";
+            return session.Primary == MenuPrimary.Main && session.Section == MenuSection.Commands
+                ? "/help  ·  команды MRE"
+                : "Закрыть меню: × в правом верхнем углу";
+        }
+
+        private static string RowsEyebrow(Session session)
+        {
+            if (session.Primary != MenuPrimary.Main) return String.Empty;
+            if (session.Section == MenuSection.Commands) return "КОМАНДЫ ИГРОКА";
+            if (session.Section == MenuSection.Links) return "ССЫЛКИ И ДОКУМЕНТАЦИЯ";
+            return String.Empty;
+        }
+
+        private static string RowsHint(Session session)
+        {
+            if (session.Primary != MenuPrimary.Main) return String.Empty;
+            if (session.Section == MenuSection.Commands) return "Доступные вам команды сервера";
+            if (session.Section == MenuSection.Links) return "Официальные ресурсы проекта MRE";
+            return String.Empty;
         }
 
         private static void Disconnected(CSteamID id) { Close(id.m_SteamID); }

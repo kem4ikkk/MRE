@@ -7,9 +7,17 @@ $statePath = Join-Path $projectRoot 'runtime\mre-process.json'
 if (-not (Test-Path -LiteralPath $statePath)) { throw 'MRE еще не запускался.' }
 $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
 $expectedExe = Join-Path $projectRoot 'runtime\server\Unturned.exe'
-$processInfo = Get-CimInstance Win32_Process -Filter ('ProcessId = ' + [int]$state.ProcessId)
-if (-not $processInfo -or -not $processInfo.ExecutablePath -or
-    [IO.Path]::GetFullPath($processInfo.ExecutablePath) -ne [IO.Path]::GetFullPath($expectedExe)) {
+. (Join-Path $PSScriptRoot 'Get-MreProcessPath.ps1')
+$processInfo = $null
+$processPath = $null
+try {
+    $processInfo = Get-CimInstance Win32_Process -Filter ('ProcessId = ' + [int]$state.ProcessId) -ErrorAction Stop
+    if ($processInfo) { $processPath = [string]$processInfo.ExecutablePath }
+} catch {
+    $localProcess = Get-Process -Id ([int]$state.ProcessId) -ErrorAction SilentlyContinue
+    if ($localProcess) { $processPath = Get-MreProcessPath ([pscustomobject]@{ ProcessId=$localProcess.Id }) }
+}
+if (-not $processPath -or [IO.Path]::GetFullPath($processPath) -ne [IO.Path]::GetFullPath($expectedExe)) {
     throw 'Процесс MRE не работает или путь не совпадает.'
 }
 

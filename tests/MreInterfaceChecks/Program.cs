@@ -9,6 +9,9 @@ class Program
     static void Main()
     {
         var rights = new HashSet<string>();
+        Check(!AdminPolicy.CanExecute("marker", rights.Contains), "Marker requires admin rights");
+        Check(AdminPolicy.CanExecute("marker", p => p == "mre.admin" || p == "mre.admin.marker"), "Marker has separate permission");
+        Check(MarkerRules.IsInsideMap(0, 0, 2048) && !MarkerRules.IsInsideMap(1024, 0, 2048) && !MarkerRules.IsInsideMap(float.NaN, 0, 2048) && !MarkerRules.IsInsideMap(0, float.PositiveInfinity, 2048), "Marker coordinates must be finite and within map");
         Check(!AdminPolicy.CanExecute("kick", rights.Contains), "No rights denies");
         rights.Add("mre.admin");
         Check(!AdminPolicy.CanExecute("kick", rights.Contains), "Open menu does not authorize kick");

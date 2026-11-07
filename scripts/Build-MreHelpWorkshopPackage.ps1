@@ -13,7 +13,7 @@ $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | Convert
 $bundlePath = Join-Path $helpDir 'MreHelp.unity3d'
 $bundleHash = (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($manifest.effect_id -ne 48625 -or $manifest.effect_guid -ne '6e4a31b49c874f428a622e1a68e4d203' -or
-    $manifest.bundle_sha256 -ne $bundleHash -or $manifest.workshop_published -ne $false -or $manifest.in_game_verified -ne $false) {
+    $manifest.bundle_sha256 -ne $bundleHash -or $manifest.in_game_verified -ne $false) {
     throw 'UI помощи опубликован, изменён или отличается от ожидаемого asset contract.'
 }
 
@@ -72,5 +72,5 @@ $newReceipt = [ordered]@{
 }
 [IO.File]::WriteAllText((Join-Path $package 'package.json'), ($newReceipt | ConvertTo-Json -Depth 5), (New-Object Text.UTF8Encoding($false)))
 if ((Get-FileHash -LiteralPath (Join-Path $destination 'MreHelp.unity3d') -Algorithm SHA256).Hash.ToLowerInvariant() -ne $bundleHash) { throw 'Хэш скопированного MreHelp bundle не совпал.' }
-Write-Host "Локальная заготовка пакета MRE HUD + /help готова: $content"
-Write-Host 'Пакет не опубликован и не установлен игрокам.'
+Write-Host "Локальная заготовка пакета MRE HUD + /menu готова: $content"
+Write-Host 'Пакет локально собран. Публикация в Workshop выполняется отдельно.'

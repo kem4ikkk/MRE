@@ -18,6 +18,11 @@ public static class MreHudBuilder
     private static readonly Color Lime = Hex("b8d66b");
     private static readonly Color Red = Hex("e57669");
     private static readonly Color Water = Hex("79b9d0");
+    // Vanilla Palette values, with white water explicitly requested for this HUD.
+    private static readonly Color HealthBar = Hex("bf1f1f");
+    private static readonly Color FoodBar = Hex("ab8019");
+    private static readonly Color WaterBar = Hex("ffffff");
+    private static readonly Color StaminaBar = Hex("dcb413");
     private static Font font;
     private static Font boldFont;
 
@@ -62,6 +67,7 @@ public static class MreHudBuilder
             ValidateFontGlyphs();
             ValidateFireMode(root);
             ValidateTeleportKeys(root);
+            ValidateSpawnProtection(root);
             content.gameObject.SetActive(false);
             PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             AssetDatabase.SaveAssets();
@@ -138,7 +144,8 @@ public static class MreHudBuilder
             camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = new Color(0.12f, 0.2f, 0.16f); camera.orthographic = true; camera.targetTexture = texture;
             var canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceCamera; canvas.worldCamera = camera; canvas.planeDistance = 1;
             var rects = root.GetComponentsInChildren<RectTransform>(true).ToDictionary(x => x.name);
-            foreach (string name in new[] { "HudContent", "VitalsLowLayout", "WeaponLowLayout", "StatsPanel", "HealthFill92", "FoodFill76", "WaterFill72", "StaminaFill85", "BuildingPanel", "DamageNumberPanel0", "DamageNumberPanel1", "DamageNumberPanel2", "DamageNumberPanel3", "DamageNumberPanel4", "DamageNumberPanel5", "DamageNumberPanel6", "DamageNumberPanel7" }) rects[name].gameObject.SetActive(true);
+            foreach (string name in new[] { "HudContent", "VitalsLowLayout", "WeaponLowLayout", "StatsPanel", "HealthFill92", "FoodFill76", "WaterFill72", "StaminaFill85", "BuildingPanel" }) rects[name].gameObject.SetActive(true);
+            for (int i = 0; i < 16; i++) rects["DamageNumberPanel" + i].gameObject.SetActive(true);
             string[] targets = { "HealthValue", "FoodValue", "WaterValue", "StaminaValue", "StatsKillsValue", "StatsKdValue", "StatsDeathsValue", "StatsZombiesValue" };
             string[] values = { "92", "76", "72", "85", "41", "2.05", "20", "368" };
             for (int i = 0; i < targets.Length; i++) rects[targets[i]].GetComponent<Text>().text = values[i];
@@ -162,13 +169,19 @@ public static class MreHudBuilder
                 rects["HomeName"].GetComponent<Text>().text = "bed1";
                 rects["HomeProgressFill60"].gameObject.SetActive(true);
             }
-            if (scenario == "spawn") rects["SpawnProtectionPanel"].gameObject.SetActive(true);
-            string[] damage = { "-1", "-70", "-225", "-65535", "-1", "-70", "-225", "-65535" };
-            for (int i = 0; i < damage.Length; i++)
+            if (scenario == "spawn")
+            {
+                rects["SpawnProtectionPanel"].gameObject.SetActive(true);
+                rects["SpawnProtectionTimer"].GetComponent<Text>().text = "12 с";
+                for (int i = 1; i <= 15; i++)
+                    rects["SpawnProtectionFill" + i.ToString("00")].gameObject.SetActive(i <= 12);
+            }
+            string[] damage = { "-1", "-70", "-225", "-65535" };
+            for (int i = 0; i < 16; i++)
             {
                 rects["DamageNumberPanel" + i].GetComponent<CanvasGroup>().alpha = 1;
                 var damageText = rects["DamageNumberText" + i].GetComponent<Text>();
-                damageText.text = i < 4 ? "<color=#E57669>" + damage[i] + "</color>" : "<color=#EEF2E8>" + damage[i] + "</color>"; damageText.color = TextColor;
+                damageText.text = i % 2 == 0 ? "<color=#E57669>" + damage[i % damage.Length] + "</color>" : "<color=#EEF2E8>" + damage[i % damage.Length] + "</color>"; damageText.color = TextColor;
             }
             Canvas.ForceUpdateCanvases(); camera.Render();
             foreach (var text in root.GetComponentsInChildren<Text>(false))
@@ -194,10 +207,10 @@ public static class MreHudBuilder
         RectTransform low = Rect("VitalsLowLayout", content, 0, 0, 0, 0);
         // Штатные значки рисуются поверх HUD и могут закрыть часть нижней карточки.
         RectTransform card = Box("VitalsPanel", low, 28, 28, 285, 129, Back);
-        SmallMeter(card, "Health", "\u0417\u0414\u041e\u0420\u041e\u0412\u042c\u0415", 9, 97, Lime);
-        SmallMeter(card, "Food", "\u0415\u0414\u0410", 9, 67, Lime);
-        SmallMeter(card, "Water", "\u0412\u041e\u0414\u0410", 9, 37, Water);
-        SmallMeter(card, "Stamina", "\u042d\u041d\u0415\u0420\u0413\u0418\u042f", 9, 7, Lime);
+        SmallMeter(card, "Health", "\u0417\u0414\u041e\u0420\u041e\u0412\u042c\u0415", 9, 97, HealthBar);
+        SmallMeter(card, "Food", "\u0415\u0414\u0410", 9, 67, FoodBar);
+        SmallMeter(card, "Water", "\u0412\u041e\u0414\u0410", 9, 37, WaterBar);
+        SmallMeter(card, "Stamina", "\u042d\u041d\u0415\u0420\u0413\u0418\u042f", 9, 7, StaminaBar);
         Box("LowHealth", card, 0, 127, 285, 2, Red);
 
         RectTransform stats = Rect("StatsPanel", low, 28, 164, 285, 32);
@@ -261,13 +274,17 @@ public static class MreHudBuilder
         var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
         if (existing == null) AssetDatabase.CreateAsset(clip, clipPath);
         else { EditorUtility.CopySerialized(clip, existing); UnityEngine.Object.DestroyImmediate(clip); clip = existing; }
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 16; i++)
         {
             RectTransform card = Rect("DamageNumberPanel" + i, content, 0, 0, 68, 24);
             card.anchorMin = card.anchorMax = new Vector2(0.5f, 0.5f);
-            card.anchoredPosition = new Vector2(34 + (i % 2) * 72, 25 + (i / 2) * 25);
+            card.pivot = new Vector2(0.5f, 0.5f);
+            // Spread consecutive hits around an ellipse while keeping the crosshair clear.
+            float angle = ((i * 7) % 16) * Mathf.PI / 8f;
+            card.anchoredPosition = new Vector2(190f * Mathf.Cos(angle), 100f * Mathf.Sin(angle));
             Label("DamageNumberText" + i, card, "22", 0, 0, 68, 24, 14, TextColor, FontStyle.Bold);
             var damageText = card.Find("DamageNumberText" + i).GetComponent<Text>();
+            damageText.alignment = TextAnchor.MiddleCenter;
             damageText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             damageText.supportRichText = true;
             var outline = damageText.gameObject.AddComponent<Outline>();
@@ -424,7 +441,7 @@ public static class MreHudBuilder
             importer.textureType = TextureImporterType.Sprite; importer.mipmapEnabled = false;
             importer.alphaIsTransparency = true; importer.textureCompression = TextureImporterCompression.Uncompressed;
             importer.SaveAndReimport();
-            var rect = Rect(name, parent, name == "VoteSun" ? 10 : name == "SpawnShield" ? 7 : 6, name == "VoteSun" ? 116 : name == "SpawnShield" ? 3 : 4, 32, 32);
+            var rect = Rect(name, parent, name == "VoteSun" ? 10 : name == "SpawnShield" ? 8 : 6, name == "VoteSun" ? 116 : name == "SpawnShield" ? 5 : 4, 32, 32);
             var image = rect.gameObject.AddComponent<Image>();
             image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path); image.raycastTarget = false;
             if (image.sprite == null) throw new InvalidOperationException("Missing block emblem: " + name);
@@ -451,12 +468,18 @@ public static class MreHudBuilder
 
     private static void CreateSpawnProtection(RectTransform content)
     {
-        RectTransform card = Box("SpawnProtectionPanel", content, 0, -28, 224, 38, Back,
+        RectTransform card = Box("SpawnProtectionPanel", content, 0, -28, 240, 42, Back,
             new Vector2(0.5f, 1), new Vector2(0.5f, 1));
-        Box("SpawnProtectionAccent", card, 0, 36, 224, 2, Lime);
+        Box("SpawnProtectionAccent", card, 0, 40, 240, 2, Hex("84966a", 0.3f));
+        for (int i = 1; i <= 15; i++)
+        {
+            RectTransform segment = Box("SpawnProtectionFill" + i.ToString("00"), card,
+                1 + (i - 1) * 16, 40, 14, 2, Lime);
+            segment.gameObject.SetActive(false);
+        }
         BlockEmblem("SpawnShield", card, false);
-        Label("SpawnProtectionCaption", card, "ЗАЩИТА СПАВНА", 43, 10, 139, 23, 12, TextColor, FontStyle.Bold);
-        Label("SpawnProtectionTimer", card, "15 с", 183, 8, 34, 26, 16, Lime, FontStyle.Bold);
+        Label("SpawnProtectionCaption", card, "ЗАЩИТА СПАВНА", 48, 9, 128, 24, 12, TextColor, FontStyle.Bold);
+        Label("SpawnProtectionTimer", card, "15 с", 184, 9, 48, 24, 15, Lime, FontStyle.Bold);
         card.gameObject.SetActive(false);
     }
 
@@ -473,18 +496,18 @@ public static class MreHudBuilder
         Label("VoteCount", card, "0 за  ·  0 против", 14, 95, 242, 20, 11, Muted);
         RectTransform yes = Box("VoteYesPanel", card, 14, 43, 117, 43, Panel);
         Box("VoteYesSelected", yes, 0, 0, 117, 43, Hex("3a542e", 0.98f)).gameObject.SetActive(false);
-        Box("VoteYesKeyBack", yes, 8, 9, 25, 25, Hex("111916"));
-        Label("VoteYesKey", yes, "Q", 8, 9, 25, 25, 14, TextColor, FontStyle.Bold);
-        Label("VoteYesLabel", yes, "ЗА", 42, 9, 67, 25, 12, Lime, FontStyle.Bold);
+        Box("VoteYesKeyBack", yes, 5, 9, 58, 25, Hex("111916"));
+        Label("VoteYesKey", yes, "/", 5, 9, 58, 25, 14, TextColor, FontStyle.Bold);
+        Label("VoteYesLabel", yes, "ЗА", 68, 9, 44, 25, 12, Lime, FontStyle.Bold);
         RectTransform no = Box("VoteNoPanel", card, 139, 43, 117, 43, Panel);
         Box("VoteNoSelected", no, 0, 0, 117, 43, Hex("633a34", 0.98f)).gameObject.SetActive(false);
-        Box("VoteNoKeyBack", no, 8, 9, 25, 25, Hex("111916"));
-        Label("VoteNoKey", no, "E", 8, 9, 25, 25, 14, TextColor, FontStyle.Bold);
-        Label("VoteNoLabel", no, "ПРОТИВ", 42, 9, 70, 25, 12, Red, FontStyle.Bold);
+        Box("VoteNoKeyBack", no, 5, 9, 58, 25, Hex("111916"));
+        Label("VoteNoKey", no, ";", 5, 9, 58, 25, 14, TextColor, FontStyle.Bold);
+        Label("VoteNoLabel", no, "ПРОТИВ", 66, 9, 48, 25, 10, Red, FontStyle.Bold);
         Label("VoteStatus", card, "Наступил день", 14, 43, 242, 51, 16, TextColor, FontStyle.Bold);
         card.Find("VoteStatus").gameObject.SetActive(false);
         Bar("VoteProgress", card, 14, 32, 242, 3, 100, Lime);
-        Label("VoteHoldCaption", card, "Удерживайте клавишу 2 секунды", 14, 8, 242, 19, 10, Muted);
+        Label("VoteHoldCaption", card, "Назначено: Slash / Semicolon · удерживать 2 с", 14, 8, 242, 19, 10, Muted);
         foreach (string name in new[] { "VoteInitiator", "VoteEligible", "VoteHint", "VoteTopic" })
         {
             Label(name, card, "", 0, 0, 1, 1, 9, Muted);
@@ -548,6 +571,8 @@ public static class MreHudBuilder
             text.resizeTextForBestFit = true;
             text.resizeTextMinSize = 8;
             text.resizeTextMaxSize = size;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
         }
         if (name == "TpaAcceptKey" || name == "TpaDenyKey")
         {
@@ -562,7 +587,7 @@ public static class MreHudBuilder
             text.resizeTextMinSize = 7;
             text.resizeTextMaxSize = size;
         }
-        if (name == "TpaPlayerName" || name == "WeaponName" || name == "MagazineName" || name == "VoteTopic" || name == "VoteInitiator" || name == "VoteHint" || name == "BuildingName" || name == "HomeName" || name == "VoteStatus")
+        if (name == "TpaPlayerName" || name == "WeaponName" || name == "MagazineName" || name == "VoteTopic" || name == "VoteInitiator" || name == "VoteHint" || name == "VoteHoldCaption" || name == "BuildingName" || name == "HomeName" || name == "VoteStatus")
         {
             text.resizeTextForBestFit = true;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -647,6 +672,48 @@ public static class MreHudBuilder
             throw new InvalidOperationException("Home cancel key does not fit");
     }
 
+    private static void ValidateSpawnProtection(GameObject root)
+    {
+        var rects = root.GetComponentsInChildren<RectTransform>(true).ToDictionary(x => x.name);
+        var card = rects["SpawnProtectionPanel"];
+        var shield = rects["SpawnShield"];
+        var caption = rects["SpawnProtectionCaption"];
+        var timer = rects["SpawnProtectionTimer"];
+        var accent = rects["SpawnProtectionAccent"];
+        if (card.parent != rects["HudContent"] || card.gameObject.activeSelf ||
+            card.anchorMin != new Vector2(0.5f, 1) || card.anchorMax != card.anchorMin ||
+            card.pivot != card.anchorMin || card.anchoredPosition != new Vector2(0, -28) || card.sizeDelta != new Vector2(240, 42) ||
+            shield.parent != card || caption.parent != card || timer.parent != card || accent.parent != card ||
+            shield.anchoredPosition != new Vector2(8, 5) || shield.sizeDelta != new Vector2(32, 32) ||
+            caption.anchoredPosition != new Vector2(48, 9) || caption.sizeDelta != new Vector2(128, 24) ||
+            timer.anchoredPosition != new Vector2(184, 9) || timer.sizeDelta != new Vector2(48, 24) ||
+            accent.anchoredPosition != new Vector2(0, 40) || accent.sizeDelta != new Vector2(240, 2) ||
+            shield.GetComponent<Image>() == null || shield.GetComponent<Image>().sprite == null ||
+            caption.GetComponent<Text>().alignment != TextAnchor.MiddleLeft || timer.GetComponent<Text>().alignment != TextAnchor.MiddleLeft)
+            throw new InvalidOperationException("Invalid spawn protection panel layout");
+        for (int i = 1; i <= 15; i++)
+        {
+            var segment = rects["SpawnProtectionFill" + i.ToString("00")];
+            if (segment.parent != card || segment.anchoredPosition != new Vector2(1 + (i - 1) * 16, 40) ||
+                segment.sizeDelta != new Vector2(14, 2) || segment.gameObject.activeSelf ||
+                segment.GetComponent<Image>() == null)
+                throw new InvalidOperationException("Invalid spawn protection progress segment " + i);
+        }
+        foreach (var item in new[] { new { Rect = caption, Values = new[] { "ЗАЩИТА СПАВНА" } }, new { Rect = timer, Values = new[] { "0 с", "12 с", "999 с" } } })
+        {
+            Text label = item.Rect.GetComponent<Text>();
+            var settings = label.GetGenerationSettings(item.Rect.rect.size);
+            foreach (string value in item.Values)
+            {
+                var generator = new TextGenerator();
+                if (!generator.Populate(value, settings) || generator.characterCountVisible != value.Length ||
+                    generator.GetPreferredWidth(value, settings) > item.Rect.rect.width ||
+                    generator.GetPreferredHeight(value, settings) > item.Rect.rect.height)
+                    throw new InvalidOperationException(item.Rect.name + " does not fit: " + value);
+            }
+        }
+    }
+
     private static void ValidateNames(GameObject root)
     {
         var duplicates = root.GetComponentsInChildren<RectTransform>(true).GroupBy(x => x.name).Where(x => x.Count() > 1).Select(x => x.Key).ToArray();
@@ -676,8 +743,8 @@ public static class MreHudBuilder
         if (vote.anchorMin != new Vector2(1, 0.5f) || vote.anchorMax != vote.anchorMin ||
             vote.pivot != new Vector2(1, 0.5f) || vote.anchoredPosition != new Vector2(-28, 0) ||
             vote.sizeDelta != new Vector2(270, 156) || rects["VoteYesSelected"].gameObject.activeSelf ||
-            rects["VoteNoSelected"].gameObject.activeSelf || rects["VoteYesKey"].GetComponent<Text>().text != "Q" ||
-            rects["VoteNoKey"].GetComponent<Text>().text != "E" ||
+            rects["VoteNoSelected"].gameObject.activeSelf || rects["VoteYesKey"].GetComponent<Text>().text != "/" ||
+            rects["VoteNoKey"].GetComponent<Text>().text != ";" ||
             !rects["VoteYesKey"].GetComponent<Text>().resizeTextForBestFit ||
             !rects["VoteNoKey"].GetComponent<Text>().resizeTextForBestFit)
             throw new InvalidOperationException("Invalid vote panel geometry or default selection");
@@ -688,7 +755,7 @@ public static class MreHudBuilder
             rects["VoteFailureAccent"].gameObject.activeSelf ||
             rects["VoteStatus"].GetComponent<Text>().alignment != TextAnchor.MiddleCenter)
             throw new InvalidOperationException("Invalid vote emblem or result defaults");
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 16; i++)
         {
             var damagePanel = rects["DamageNumberPanel" + i];
             var damageLabel = rects["DamageNumberText" + i].GetComponent<Text>();
@@ -704,13 +771,15 @@ public static class MreHudBuilder
             if (pulse == null || pulse.length != 2 || Math.Abs(pulse.keys[1].time - 0.12f) > 0.001f ||
                 pulse.keys[0].value != 0.2f || pulse.keys[1].value != 1f || AnimationUtility.GetAnimationEvents(damageAnimation.clip).Length != 0)
                 throw new InvalidOperationException("Invalid damage number pulse " + i);
-            if (damagePanel.anchoredPosition != new Vector2(34 + (i % 2) * 72, 25 + (i / 2) * 25) ||
+            float angle = ((i * 7) % 16) * Mathf.PI / 8f;
+            if (Vector2.Distance(damagePanel.anchoredPosition, new Vector2(190f * Mathf.Cos(angle), 100f * Mathf.Sin(angle))) > 0.01f ||
+                damagePanel.pivot != new Vector2(0.5f, 0.5f) ||
                 damagePanel.sizeDelta != new Vector2(68, 24) || damagePanel.gameObject.activeSelf ||
-                damageLabel == null || damageLabel.fontSize != 14 || !damageLabel.supportRichText)
+                damageLabel == null || damageLabel.fontSize != 14 || !damageLabel.supportRichText || damageLabel.alignment != TextAnchor.MiddleCenter)
                 throw new InvalidOperationException("Invalid damage number slot " + i);
         }
         var outlines = root.GetComponentsInChildren<Outline>(true);
-        if (outlines.Length != 8 || outlines.Any(x => !x.name.StartsWith("DamageNumberText", StringComparison.Ordinal)))
+        if (outlines.Length != 16 || outlines.Any(x => !x.name.StartsWith("DamageNumberText", StringComparison.Ordinal)))
             throw new InvalidOperationException("Unexpected outline components");
         var building = rects["BuildingPanel"];
         var buildingAnimation = building.GetComponent<Animation>();
@@ -725,6 +794,9 @@ public static class MreHudBuilder
         var names = rects.Keys.ToArray();
         foreach (string name in required)
             if (!names.Contains(name)) throw new InvalidOperationException("Отсутствует UI-элемент: " + name);
+        for (int i = 1; i <= 15; i++)
+            if (!names.Contains("SpawnProtectionFill" + i.ToString("00")))
+                throw new InvalidOperationException("Отсутствует сегмент индикатора защиты спавна: " + i);
         foreach (string name in new[] { "HealthValue", "FoodValue", "WaterValue", "StaminaValue", "OxygenValue", "OxygenPanel", "LowHealth", "BleedingPanel", "BrokenPanel", "WeaponName", "MagazineName", "AmmoValue", "AmmoCapacity", "FireModeValue", "DurabilityValue", "EmptyMagazine", "WeaponPanel" })
             if (!names.Contains(name + "High")) throw new InvalidOperationException("Отсутствует запасной UI-элемент: " + name);
         foreach (string bar in new[] { "Health", "Food", "Water", "Stamina", "Oxygen", "TpaProgress", "HomeProgress", "VoteProgress", "Building" })

@@ -16,6 +16,26 @@ namespace MreHelp
 
     internal static class HelpCatalog
     {
+        internal static HelpRow[] ForCommands(UnturnedPlayer player)
+        {
+            var rows = new List<HelpRow>();
+            Add(rows, player, "menu", "/menu", "Открыть меню сервера MRE.", "");
+            Add(rows, player, "help", "/help", "Открыть этот раздел команд.", "");
+            Add(rows, player, "kits", "Посмотреть доступные наборы.", "mre.kit");
+            Add(rows, player, "kit", "Получить набор: /kit start.", "mre.kit");
+            Add(rows, player, "vote", "Голосование за день: /vote day, /vote yes, /vote no.", "mre.vote");
+            Add(rows, player, "whenairdrop", "Узнать время до следующего аирдропа.", "mre.whenairdrop");
+            Add(rows, player, "mytrustscore", "/trustscore", "Посмотреть свой trustscore.", "mre.trustscore");
+            Add(rows, player, "home", "Переместиться к своей кровати; /home cancel отменяет ожидание.", "home");
+            Add(rows, player, "homes", "Показать сохранённые кровати.", "homes");
+            Add(rows, player, "tpa", "Запросить перенос: /tpa <игрок>; принять — /tpa a, отказать — /tpa d.", "tpa");
+            Add(rows, player, "destroyhome", "Удалить сохранённую кровать.", "destroyhome");
+            Add(rows, player, "renamehome", "Переименовать сохранённую кровать.", "renamehome");
+            Add(rows, player, "trade", "Начать обмен: /trade <игрок>; проверить предметы: /trade list.", "mre.trade");
+            Add(rows, player, "s", "Открыть личное хранилище.", "mre.vault");
+            return rows.ToArray();
+        }
+
         internal static HelpRow[] For(HelpCategory category, UnturnedPlayer player)
         {
             var rows = new List<HelpRow>();
@@ -37,7 +57,7 @@ namespace MreHelp
                     rows.Add(new HelpRow("Безопасное перемещение", "Перед /home и /tpa проверьте место назначения и обстановку вокруг."));
                     break;
                 default:
-                    rows.Add(new HelpRow("/help", "Открыть эту справку. Если UI недоступен, команды покажутся в чате."));
+                    Add(rows, player, "menu", "/menu", "Открыть меню сервера и раздел команд.", "");
                     Add(rows, player, "kits", "Посмотреть доступные наборы.", "mre.kit");
                     Add(rows, player, "kit", "Получить набор: /kit start.", "mre.kit");
                     Add(rows, player, "vote", "Голосование за день: /vote day, /vote yes, /vote no.", "mre.vote");
@@ -55,7 +75,7 @@ namespace MreHelp
 
         private static void Add(List<HelpRow> rows, UnturnedPlayer player, string lookup, string display, string description, string permission)
         {
-            if (player == null || R.Commands.GetCommand(lookup) == null || !Allowed(player, permission)) return;
+            if (player == null || R.Commands.GetCommand(lookup) == null || (!String.IsNullOrEmpty(permission) && !Allowed(player, permission))) return;
             string visibleCommand = display.StartsWith("/", StringComparison.Ordinal) ? display : "/" + display;
             rows.Add(new HelpRow(visibleCommand, description));
         }

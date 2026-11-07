@@ -41,11 +41,13 @@ namespace MreAirdrop
                     Bundle("Кирпичная база", 35, Entry(1230, 1), Entry(1215, 4), Entry(1979, 2), Entry(1210, 1), Entry(1984, 1), Entry(1212, 1), Entry(285, 3)),
                     Bundle("Укреплённая база", 25, Entry(1372, 2), Entry(1230, 1), Entry(1215, 4), Entry(1979, 2), Entry(1211, 1), Entry(1216, 1)) } },
                 new DropCategory { Name = "Рейдовый", Weight = 1, Bundles = new List<LootBundle> {
-                    Bundle("Рейдовый арсенал", 25, Entry(519, 1), Entry(520, 1), Entry(1240, 1), Entry(1241, 4), Entry(1100, 4)),
-                    Bundle("Подрывной комплект", 25, Entry(519, 1), Entry(520, 1), Entry(1240, 1), Entry(1393, 3), Entry(1241, 3)),
-                    Bundle("Ракетный комплект", 20, Entry(519, 1), Entry(520, 2), Entry(1393, 2), Entry(1240, 1), Entry(1100, 3)),
+                    Bundle("Рейдовый арсенал", 20, Entry(519, 1), Entry(520, 1), Entry(1240, 1), Entry(1241, 4), Entry(1100, 4)),
+                    Bundle("Подрывной комплект", 20, Entry(519, 1), Entry(520, 1), Entry(1240, 1), Entry(1393, 3), Entry(1241, 3)),
+                    Bundle("Ракетный комплект", 15, Entry(519, 1), Entry(520, 2), Entry(1393, 2), Entry(1240, 1), Entry(1100, 3)),
                     Bundle("Взрывные стрелы", 15, Entry(357, 1), Entry(1209, 4), Entry(1520, 3), Entry(1241, 2), Entry(1240, 1)),
-                    Bundle("Штурмовой комплект", 15, Entry(363, 1), Entry(1200, 3), Entry(519, 1), Entry(520, 1), Entry(1520, 4), Entry(1240, 1), Entry(1393, 2)) } }
+                    Bundle("Штурмовой комплект", 10, Entry(363, 1), Entry(1200, 3), Entry(519, 1), Entry(520, 1), Entry(1520, 4), Entry(1240, 1), Entry(1393, 2)),
+                    Bundle("Shadowstalker", 10, Entry(300, 1), Entry(301, 6), Entry(1241, 1), Entry(1393, 1)),
+                    Bundle("Shadowstalker Mk. II", 10, Entry(1441, 1), Entry(1443, 3), Entry(1241, 1), Entry(1393, 1)) } }
             };
         }
         internal static void Validate(IList<DropCategory> categories)

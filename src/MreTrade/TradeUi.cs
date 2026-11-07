@@ -35,6 +35,7 @@ namespace MreTrade
                 uiHarmony = new Harmony("mre.trade.projection");
                 TradeProjectionHooks.Install(uiHarmony);
                 EffectManager.onEffectButtonClicked += TradeButton;
+                EffectManager.onEffectTextCommitted += TradeTextCommitted;
                 uiReady = true;
                 Logger.Log("[MRE TRADE] Тестовый интерфейс обмена включён.");
             }
@@ -48,6 +49,7 @@ namespace MreTrade
         private void StopTradeUi()
         {
             EffectManager.onEffectButtonClicked -= TradeButton;
+            EffectManager.onEffectTextCommitted -= TradeTextCommitted;
             foreach (ulong id in editors.Keys.ToArray()) ClearTradeUi(id);
             foreach (ulong id in modalOwned.ToArray()) ClearTradeUi(id);
             // При исключении закрытия удаляем только созданные нами копии до снятия guards.
@@ -64,6 +66,7 @@ namespace MreTrade
         {
             TradeSession s; var p = Online(id);
             if (!uiReady || p == null || !sessions.TryGetValue(id, out s) || !s.Accepted || IsEditorOpen(id) || !Allowed(p)) return;
+            s.InvalidateConfirmationTicket(id);
             try
             {
                 var connection = p.Player.channel.GetOwnerTransportConnection();
@@ -76,6 +79,8 @@ namespace MreTrade
         private void HideTradeEffect(UnturnedPlayer p)
         {
             if (p == null || p.Player == null) return;
+            TradeSession session;
+            if (sessions.TryGetValue(p.CSteamID.m_SteamID, out session)) session.InvalidateConfirmationTicket(p.CSteamID.m_SteamID);
             EffectManager.ClearEffectByGuid(TradeEffectGuid, p.Player.channel.GetOwnerTransportConnection());
             if (modalOwned.Remove(p.CSteamID.m_SteamID)) p.Player.disablePluginWidgetFlag(EPluginWidgetFlags.Modal);
         }
@@ -129,6 +134,8 @@ namespace MreTrade
                 EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeOwn" + i, i < own.Count ? SafeLabel(ItemName(own[i].Id)) + " ×" + own[i].Amount + " / " + own[i].Quality + "%" : "+");
                 EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeOther" + i, i < other.Count ? SafeLabel(ItemName(other[i].Id)) + " ×" + other[i].Amount + " / " + other[i].Quality + "%" : "—");
             }
+            // Publish the current revision token only after its visible offer fields.
+            EffectManager.sendUIEffectText(TradeEffectKey, c, true, "TradeConfirmToken", s.GetOrIssueConfirmationTicket(id) ?? String.Empty);
         }
         private static string SafeLabel(string text)
         {
@@ -145,22 +152,30 @@ namespace MreTrade
         {
             if (Thread.CurrentThread.ManagedThreadId != gameThread) return;
             if (!uiReady || player == null || player.channel == null || player.channel.owner == null) return;
+            // This event carries only a static button name. Confirmation is accepted exclusively
+            // through the accompanying InputField commit, which carries its revision-bound nonce.
+            if (name == "TradeConfirm") return;
             ulong id = player.channel.owner.playerID.steamID.m_SteamID; TradeSession s;
             var actor = Online(id);
             if (actor == null || actor.Player != player || !sessions.TryGetValue(id, out s) || !s.Accepted || s.Committing || IsEditorOpen(id) || !Allowed(actor) || !Allowed(Online(s.Other(id)))) return;
             if (DateTime.UtcNow >= s.ExpiresUtc) { Cancel(s, "Обмен отменён: истекло время."); return; }
-            if (name == "TradeConfirm")
-            {
-                // UI already shows the current revision; acknowledge it before invoking the shared confirmation path.
-                try { s.Acknowledge(id, s.Revision); } catch (InvalidOperationException) { RefreshTradeUi(s); return; }
-                Confirm(actor, s); return;
-            }
             if (name == "TradeCancel") { Cancel(s, "Обмен отменён."); return; }
             if (name != null && name.StartsWith("TradeOwnSlot", StringComparison.Ordinal))
             {
                 int index;
                 if (Int32.TryParse(name.Substring("TradeOwnSlot".Length), out index) && index >= 0 && index < 10) OpenEditor(actor, s);
             }
+        }
+        private void TradeTextCommitted(Player player, string fieldName, string text)
+        {
+            if (Thread.CurrentThread.ManagedThreadId != gameThread || !uiReady || fieldName != "TradeConfirmToken" ||
+                player == null || player.channel == null || player.channel.owner == null) return;
+            ulong id = player.channel.owner.playerID.steamID.m_SteamID; TradeSession s;
+            if (!sessions.TryGetValue(id, out s) || !s.Accepted || s.Committing || IsEditorOpen(id)) return;
+            var actor = Online(id);
+            if (actor == null || actor.Player != player || !Allowed(actor) || !Allowed(Online(s.Other(id)))) return;
+            if (DateTime.UtcNow >= s.ExpiresUtc) { Cancel(s, "Обмен отменён: истекло время."); return; }
+            Confirm(actor, s, text ?? String.Empty);
         }
         private void OpenEditor(UnturnedPlayer actor, TradeSession s)
         {

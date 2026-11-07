@@ -115,7 +115,19 @@ namespace MreModeration
         public string ApplyModeration(UnturnedPlayer actor,ulong target,string kind,string reason,string operationId,int durationSeconds=0)
         {
             Authorize(actor,kind);if(!new[]{"note","warn","commend","kick","ban","mute"}.Contains(kind))throw new ArgumentException("Недопустимое наказание.");
+            if(target==0)throw new ArgumentException("SteamID цели не может быть нулевым.");
+            reason=StaffPolicy.Clean(reason,512);if(reason.Length==0)throw new ArgumentException("Нужна причина.");
+            Guid parsedOperation;if(!Guid.TryParseExact(operationId,"N",out parsedOperation))throw new ArgumentException("Некорректный id действия.");
+            // A retry must be recognized before online/native-punishment checks: a successful
+            // kick removes the player and a successful ban creates a native ban.
+            PlayerProfile priorProfile=ledger.Get(target);ModerationRecord prior=priorProfile==null?null:priorProfile.Records.FirstOrDefault(r=>r.Id==operationId);
+            if(prior!=null) {
+                int priorDuration=prior.ExpiresUtc.HasValue?(int)(prior.ExpiresUtc.Value-prior.AtUtc).TotalSeconds:0;
+                if(prior.ActorId!=actor.CSteamID.m_SteamID||prior.Kind!=kind||prior.Reason!=reason||((kind=="ban"||kind=="mute")&&priorDuration!=durationSeconds))throw new InvalidOperationException("Id действия уже использован для других данных.");
+                return "Действие уже записано; повтор не выполнен.";
+            }
             if((kind=="ban"||kind=="kick"||kind=="mute")&&target==actor.CSteamID.m_SteamID)throw new InvalidOperationException("Нельзя применить это действие к себе.");
+            if(durationSeconds<0||durationSeconds>31536000||(!new[]{"ban","mute"}.Contains(kind)&&durationSeconds!=0))throw new ArgumentOutOfRangeException("durationSeconds","Длительность допустима только для ban/mute и не превышает 365 дней.");
             SteamPlayer online=Provider.clients.FirstOrDefault(p=>p!=null&&p.playerID.steamID.m_SteamID==target);
             if(kind=="kick"&&online==null)throw new InvalidOperationException("Игрок уже отключен.");
             if(kind=="ban") {SteamBlacklistID external;if(SteamBlacklist.checkBanned(new CSteamID(target),out external))throw new InvalidOperationException("У игрока уже есть native-бан; существующая блокировка не заменяется.");}
@@ -132,11 +144,27 @@ namespace MreModeration
             var profile=ledger.Get(target);var entry=profile.Records.First(r=>r.Id==operationId);Publish(target,entry);Changed(target);if(online!=null)ApplyTrustGroup(UnturnedPlayer.FromPlayer(online.player));
             return "Записано: "+kind+"; id "+operationId+".";
         }
+        // Typed entry points for staff UI integrations. operationId is a caller-generated N-format
+        // GUID and is durable/idempotent in the profile ledger. Ban/mute duration is seconds;
+        // zero means permanent. All methods require the current online Rocket actor session.
+        public string AddNote(UnturnedPlayer actor,ulong target,string reason,string operationId) {return ApplyModeration(actor,target,"note",reason,operationId);}
+        public string WarnPlayer(UnturnedPlayer actor,ulong target,string reason,string operationId) {return ApplyModeration(actor,target,"warn",reason,operationId);}
+        public string CommendPlayer(UnturnedPlayer actor,ulong target,string reason,string operationId) {return ApplyModeration(actor,target,"commend",reason,operationId);}
+        public string KickPlayer(UnturnedPlayer actor,ulong target,string reason,string operationId) {return ApplyModeration(actor,target,"kick",reason,operationId);}
+        public string BanPlayer(UnturnedPlayer actor,ulong target,int durationSeconds,string reason,string operationId) {return ApplyModeration(actor,target,"ban",reason,operationId,durationSeconds);}
+        public string MutePlayer(UnturnedPlayer actor,ulong target,int durationSeconds,string reason,string operationId) {return ApplyModeration(actor,target,"mute",reason,operationId,durationSeconds);}
+        public string UnbanPlayer(UnturnedPlayer actor,ulong target,string reason) {return RevokePunishment(actor,target,"ban",reason);}
+        public string UnmutePlayer(UnturnedPlayer actor,ulong target,string reason) {return RevokePunishment(actor,target,"mute",reason);}
+        public string RevokeModerationRecord(UnturnedPlayer actor,ulong target,string recordId,string reason) {return RevokeRecord(actor,target,recordId,reason);}
         public string RevokeRecord(UnturnedPlayer actor,ulong target,string recordId,string reason)
         {
             Authorize(actor,"revoke");var profile=ledger.Get(target);var record=profile==null?null:profile.Records.FirstOrDefault(r=>r.Id==recordId);if(record==null)throw new InvalidOperationException("Запись не найдена.");
             if(record.Kind=="ban"||record.Kind=="mute")Authorize(actor,record.Kind=="ban"?"unban":"unmute");
-            if(String.IsNullOrWhiteSpace(reason))throw new ArgumentException("Укажите причину отмены.");
+            reason=StaffPolicy.Clean(reason,512);if(reason.Length==0)throw new ArgumentException("Укажите причину отмены.");
+            if(!String.IsNullOrEmpty(record.RevokedBy)) {
+                if(record.RevokedBy==actor.CSteamID.m_SteamID.ToString()&&record.RevokeReason==reason)return "Запись уже отменена этим действием; повтор не выполнен.";
+                throw new InvalidOperationException("Запись уже отменена.");
+            }
             if(record.Kind=="ban")RemoveOwnedNativeBan(target,new[]{record.Id});
             ledger.Revoke(target,recordId,actor.CSteamID.m_SteamID,reason);var changed=ledger.Get(target).Records.First(r=>r.Id==recordId);Publish(target,changed);Changed(target);return "Запись отменена; история сохранена.";
         }

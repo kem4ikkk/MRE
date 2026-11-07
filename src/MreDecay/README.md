@@ -5,7 +5,7 @@
 ## Что уже проверено
 
 - Изолированный периодический fixture в отдельном TEMP сервере PEI дождался 300 секунд и применил проверенные игровые API изменения к полу, сейфу и генератору. Свежий снимок подтвердил все три результата; FARM и SPIKE остались без изменений и были исключены. Зоны, raid и persisted state в этом fixture были синтетическими.
-- `dotnet run --project tests/MreDecayEngine/MreDecayEngine.csproj --configuration Release` проверяет 212 случаев, включая отказ при каждом неподтверждённом gate, default-off, снятие готовности перед транзакцией, повторный вход и запрет повтора после неопределённого commit.
+- `dotnet run --project tests/MreDecayEngine/MreDecayEngine.csproj --configuration Release` проверяет 225 случаев, включая отказ при каждом неподтверждённом gate, default-off, снятие готовности перед транзакцией, повторный вход и запрет повтора после неопределённого commit.
 - `src/MreDecay/Adapter/Build-Runtime.ps1` собирает shell против локальных Rocket/Unturned DLL. Скрипт разрешает output только внутри `%TEMP%`; сборка не устанавливает DLL.
 
 ## Что блокирует реальные записи

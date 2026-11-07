@@ -91,24 +91,55 @@ try {
     $gameplay = Merge-Gameplay (Get-Content -LiteralPath $gameplayPath -Encoding UTF8) $overrides
     [xml]$permissions = Get-Content -LiteralPath $permissionsPath -Raw -Encoding UTF8
     [xml]$template = Get-Content -LiteralPath (Join-Path $projectRoot 'config\RocketPermissions.xml') -Raw -Encoding UTF8
+    $groupIds = @{}
+    foreach ($existingGroup in @($permissions.SelectNodes('/RocketPermissions/Groups/Group'))) {
+        $existingIdNode = $existingGroup.SelectSingleNode('Id')
+        $existingId = if ($existingIdNode) { [string]$existingIdNode.InnerText } else { '' }
+        if ([string]::IsNullOrWhiteSpace($existingId) -or $groupIds.ContainsKey($existingId)) {
+            throw 'В runtime Rocket Permissions найдены пустой или повторяющийся Id группы (без учёта регистра).'
+        }
+        $groupIds[$existingId] = $true
+    }
+    $permissions.RocketPermissions.DefaultGroup = [string]$template.RocketPermissions.DefaultGroup
     foreach ($templateGroup in $template.RocketPermissions.Groups.Group) {
         $groupId = [string]$templateGroup.Id
-        $group = $permissions.SelectSingleNode("/RocketPermissions/Groups/Group[Id='$groupId']")
-        if (-not $group) {
+        $matches = @($permissions.SelectNodes('/RocketPermissions/Groups/Group') | Where-Object { [string]$_.SelectSingleNode('Id').InnerText -eq $groupId })
+        if ($matches.Count -gt 1) { throw "В runtime найдено несколько групп '$groupId' (без учёта регистра)." }
+        if ($matches.Count -eq 0) {
             [void]$permissions.RocketPermissions.Groups.AppendChild($permissions.ImportNode($templateGroup,$true))
             continue
         }
-        $permissionList = $group.SelectSingleNode('Permissions')
-        foreach ($permission in $templateGroup.SelectNodes('Permissions/Permission')) {
-            $existing = @($permissionList.SelectNodes('Permission') | Where-Object InnerText -eq $permission.InnerText)
-            if (-not $existing.Count) { [void]$permissionList.AppendChild($permissions.ImportNode($permission,$true)) }
+        $group = $matches[0]
+
+        # For project-managed groups the template is authoritative. Preserve local
+        # memberships, but replace metadata, parent links, priorities and permissions
+        # so a previously broader role cannot retain stale access after a rank split.
+        $existingMembers = $group.SelectSingleNode('Members')
+        $replacement = $permissions.ImportNode($templateGroup,$true)
+        $replacementMembers = $replacement.SelectSingleNode('Members')
+        if ($existingMembers -and $replacementMembers) {
+            while ($replacementMembers.HasChildNodes) { [void]$replacementMembers.RemoveChild($replacementMembers.FirstChild) }
+            foreach ($memberNode in @($existingMembers.ChildNodes)) {
+                [void]$replacementMembers.AppendChild($permissions.ImportNode($memberNode,$true))
+            }
         }
+        [void]$permissions.RocketPermissions.Groups.ReplaceChild($replacement,$group)
     }
     $commands = @(Get-Content -LiteralPath $commandsPath -Encoding UTF8)
     if ($adminId) {
-        $adminGroup = $permissions.SelectSingleNode('/RocketPermissions/Groups/Group[Id="mre_admin"]')
-        if (-not $adminGroup) { throw 'В шаблоне нет группы mre_admin.' }
-        $members = $adminGroup.SelectSingleNode('Members')
+        $ownerGroup = $permissions.SelectSingleNode('/RocketPermissions/Groups/Group[Id="mre_owner"]')
+        if (-not $ownerGroup) { throw 'В шаблоне нет группы mre_owner.' }
+        foreach ($staffGroupId in @('helper','moderator','senior_moderator','mre_admin','head_admin')) {
+            $staffGroups = @($permissions.SelectNodes('/RocketPermissions/Groups/Group') | Where-Object { [string]$_.SelectSingleNode('Id').InnerText -eq $staffGroupId })
+            if ($staffGroups.Count -gt 1) { throw "Найдено несколько групп '$staffGroupId' (без учёта регистра)." }
+            if ($staffGroups.Count -eq 0) { continue }
+            $staffGroup = $staffGroups[0]
+            $staffMembers = $staffGroup.SelectSingleNode('Members')
+            foreach ($memberNode in @($staffMembers.SelectNodes('Member') | Where-Object InnerText -eq $adminId)) {
+                [void]$staffMembers.RemoveChild($memberNode)
+            }
+        }
+        $members = $ownerGroup.SelectSingleNode('Members')
         if (-not @($members.SelectNodes('Member') | Where-Object InnerText -eq $adminId).Count) {
             $member = $permissions.CreateElement('Member'); $member.InnerText = $adminId; [void]$members.AppendChild($member)
         }
@@ -131,6 +162,6 @@ try {
     $permissions.Save($permissionsPath)
     [IO.File]::WriteAllText($commandsPath,($commands -join "`r`n") + "`r`n",$utf8)
     [IO.File]::WriteAllText($settingsPath,($settings | ConvertTo-Json),$utf8)
-    Write-Host 'Настройки применены. Существующие группы, участники и посторонние параметры сохранены.'
+    Write-Host 'Настройки применены. Участники управляемых групп сохранены, права и наследование синхронизированы; остальные группы и посторонние параметры сохранены.'
 }
 finally { if ($maintenanceLock) { $maintenanceLock.Dispose() } }

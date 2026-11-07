@@ -1,10 +1,13 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using UnityEditor;
+using UnityEditor.Events;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 // Только Editor; игровой bundle содержит стандартный uGUI без клиентского кода.
@@ -51,6 +54,8 @@ public static class MreTradeBuilder
             Text("TradeStatus", content, "Выберите ячейку, перетащите предмет и подтвердите кнопкой.", -510, -260, 1020, 45, 19, "EDF1E8");
             var confirm = Button("TradeConfirm", content, -510, -315, 490, 58, "B8D66B");
             var confirmText = Text("TradeConfirmLabel", confirm, "ПОДТВЕРДИТЬ ОБМЕН", -225, -17, 450, 34, 20, "172018"); confirmText.alignment = TextAnchor.MiddleCenter;
+            var confirmToken = HiddenInputField(content, "TradeConfirmToken");
+            BindConfirmToken(confirm.GetComponent<Button>(), confirmToken);
             var cancel = Button("TradeCancel", content, 20, -315, 490, 58, "49322F");
             var cancelText = Text("TradeCancelLabel", cancel, "ОТМЕНИТЬ ОБМЕН", -225, -17, 450, 34, 20, "FFE8E4"); cancelText.alignment = TextAnchor.MiddleCenter;
             Validate(root);
@@ -84,7 +89,7 @@ public static class MreTradeBuilder
         using (var sha = SHA256.Create())
         {
             string hash = BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(source))).Replace("-", "").ToLowerInvariant();
-            File.WriteAllText(Path.Combine(output, "bundle-build.json"), "{\n  \"effect_id\":48622,\n  \"effect_guid\":\"" + EffectGuid + "\",\n  \"effect_key\":14822,\n  \"unity_version\":\"" + Application.unityVersion + "\",\n  \"target\":\"StandaloneWindows64\",\n  \"bundle_sha256\":\"" + hash + "\",\n  \"prefab_address_verified\":true,\n  \"in_game_verified\":false\n}\n", new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(output, "bundle-build.json"), "{\n  \"effect_id\":48622,\n  \"schema_version\":2,\n  \"confirmation_protocol\":\"nonce-input-v1\",\n  \"input_fields\":[\"TradeConfirmToken\"],\n  \"effect_guid\":\"" + EffectGuid + "\",\n  \"effect_key\":14822,\n  \"unity_version\":\"" + Application.unityVersion + "\",\n  \"target\":\"StandaloneWindows64\",\n  \"bundle_sha256\":\"" + hash + "\",\n  \"prefab_address_verified\":true,\n  \"in_game_verified\":false\n}\n", new UTF8Encoding(false));
         }
         Debug.Log("MRE Trade: bundle собран, не установлен и не опубликован: " + mod);
     }
@@ -110,6 +115,27 @@ public static class MreTradeBuilder
         text.alignment = TextAnchor.MiddleLeft; text.supportRichText = false; text.raycastTarget = false;
         text.horizontalOverflow = HorizontalWrapMode.Wrap; text.verticalOverflow = VerticalWrapMode.Truncate; return text;
     }
+    private static InputField HiddenInputField(Transform parent, string name)
+    {
+        var rect = Rect(name, parent, 1, 1, 0, 0);
+        var image = rect.gameObject.AddComponent<Image>(); image.color = new Color(1, 1, 1, 0); image.raycastTarget = false;
+        var field = rect.gameObject.AddComponent<InputField>();
+        field.targetGraphic = image; field.interactable = false; field.characterLimit = 64;
+        field.lineType = InputField.LineType.SingleLine; field.contentType = InputField.ContentType.Standard;
+        field.navigation = new Navigation { mode = Navigation.Mode.None };
+        var textRect = Rect(name + "Text", rect, 1, 1, 0, 0);
+        var text = textRect.gameObject.AddComponent<Text>(); text.font = font; text.fontSize = 1; text.color = new Color(1, 1, 1, 0);
+        text.supportRichText = false; text.raycastTarget = false; text.horizontalOverflow = HorizontalWrapMode.Overflow; text.verticalOverflow = VerticalWrapMode.Overflow;
+        field.textComponent = text; field.text = String.Empty;
+        return field;
+    }
+    private static void BindConfirmToken(Button confirm, InputField tokenField)
+    {
+        var sendOnEndEdit = typeof(InputField).GetMethod("SendOnEndEdit", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (sendOnEndEdit == null) throw new MissingMethodException(typeof(InputField).FullName, "SendOnEndEdit");
+        var callback = (UnityAction)Delegate.CreateDelegate(typeof(UnityAction), tokenField, sendOnEndEdit);
+        UnityEventTools.AddPersistentListener(confirm.onClick, callback);
+    }
     private static void Validate(GameObject root)
     {
         var transforms = root.GetComponentsInChildren<RectTransform>(true);
@@ -117,8 +143,35 @@ public static class MreTradeBuilder
         if (names.Distinct().Count() != names.Length) throw new InvalidDataException("Повторные имена UI объектов.");
         foreach (string n in new[] { "TradePartner", "TradeOwnOffer", "TradePartnerOffer", "TradeStatus" }.Concat(Enumerable.Range(0,10).Select(i=>"TradeOwn"+i)).Concat(Enumerable.Range(0,10).Select(i=>"TradeOther"+i)))
             if (transforms.SingleOrDefault(x=>x.name==n)?.GetComponent<Text>() == null) throw new InvalidDataException("Нет поля " + n);
+        if (transforms.SingleOrDefault(x => x.name == "TradeConfirmToken")?.GetComponent<InputField>() == null)
+            throw new InvalidDataException("Нет скрытого поля nonce TradeConfirmToken.");
         foreach (string n in new[] { "TradeConfirm", "TradeCancel" }.Concat(Enumerable.Range(0,10).Select(i=>"TradeOwnSlot"+i)))
             if (transforms.SingleOrDefault(x=>x.name==n)?.GetComponent<Button>() == null) throw new InvalidDataException("Нет кнопки " + n);
+        var confirmButton = transforms.Single(x => x.name == "TradeConfirm").GetComponent<Button>();
+        var confirmToken = transforms.SingleOrDefault(x => x.name == "TradeConfirmToken")?.GetComponent<InputField>();
+        if (confirmToken == null || confirmToken.interactable || confirmToken.characterLimit < 32 ||
+            confirmButton.onClick.GetPersistentEventCount() != 1 ||
+            confirmButton.onClick.GetPersistentTarget(0) != confirmToken ||
+            confirmButton.onClick.GetPersistentMethodName(0) != "SendOnEndEdit" ||
+            confirmButton.onClick.GetPersistentListenerState(0) != UnityEventCallState.RuntimeOnly)
+            throw new InvalidDataException("Кнопка подтверждения должна отправлять nonce через скрытое поле TradeConfirmToken.");
+        string committed = null; const string probe = "mre-confirm-payload-check";
+        UnityAction<string> capture = value => committed = value;
+        confirmToken.onEndEdit.AddListener(capture);
+        var listenerState = confirmButton.onClick.GetPersistentListenerState(0);
+        try
+        {
+            confirmToken.SetTextWithoutNotify(probe);
+            confirmButton.onClick.SetPersistentListenerState(0, UnityEventCallState.EditorAndRuntime);
+            confirmButton.onClick.Invoke();
+        }
+        finally
+        {
+            confirmButton.onClick.SetPersistentListenerState(0, listenerState);
+            confirmToken.onEndEdit.RemoveListener(capture);
+            confirmToken.SetTextWithoutNotify(String.Empty);
+        }
+        if (committed != probe) throw new InvalidDataException("Нажатие кнопки не передало актуальный nonce через onEndEdit.");
         if (root.GetComponentsInChildren<Button>(true).Length != 12 || root.GetComponent<GraphicRaycaster>() == null || root.GetComponent<Canvas>().sortingOrder != 20)
             throw new InvalidDataException("Неверный контракт ввода окна обмена.");
         if (root.GetComponentsInChildren<Text>(true).Any(x=>x.supportRichText || x.raycastTarget)) throw new InvalidDataException("Текст должен быть без rich text и без перехвата кликов.");

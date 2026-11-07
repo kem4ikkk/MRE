@@ -1,6 +1,7 @@
 using RestoreMonarchy.Teleportation.Utils;
 using Rocket.Core.Utils;
 using Rocket.Unturned.Player;
+using Rocket.Core.Logging;
 using SDG.Unturned;
 using Steamworks;
 using System;
@@ -10,6 +11,7 @@ namespace RestoreMonarchy.Teleportation.Models
 {
     public class TPARequest
     {
+        private const ushort TeleportArrivalEffectId = 64; // Glass_0 from the vanilla Unturned core bundle.
         private TeleportationPlugin pluginInstance => TeleportationPlugin.Instance;
 
         public TPARequest(CSteamID sender, CSteamID target)
@@ -104,6 +106,15 @@ namespace RestoreMonarchy.Teleportation.Models
                     } else
                     {
                         SenderPlayer.Teleport(TargetPlayer);
+                    }
+
+                    try
+                    {
+                        SenderPlayer.TriggerEffect(TeleportArrivalEffectId);
+                    }
+                    catch (Exception error)
+                    {
+                        Logger.LogException(error, "[MRE TPA] Не удалось воспроизвести звук прибытия.");
                     }
 
                     pluginInstance.SendMessageToPlayer(SenderPlayer, "TPASuccess", TargetPlayer.DisplayName);

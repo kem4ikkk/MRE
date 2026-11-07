@@ -71,7 +71,7 @@ namespace MreEssentials
 
         private static string NormalizeCommand(string text)
         {
-            foreach (string allowed in new[] { "Save", "Shutdown", "Players", "Day", "Night", "Diagnostics", "ApplyMaxSkills" })
+            foreach (string allowed in new[] { "Save", "Shutdown", "Players", "Day", "Night", "Diagnostics", "ApplyMaxSkills", "Airdrop" })
                 if (String.Equals(text.Trim(), allowed, StringComparison.OrdinalIgnoreCase)) return allowed;
             return null;
         }

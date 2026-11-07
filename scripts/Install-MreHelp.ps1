@@ -26,18 +26,19 @@ if ($commandMap.DocumentElement.Name -ne 'RocketCommands' -or -not $commandMap.S
     throw 'Неизвестный формат Commands.config.xml; установка остановлена.'
 }
 $mappings = @($commandMap.SelectNodes('/RocketCommands/Commands/Command'))
-foreach ($name in @('help', 'mrehelp')) {
+foreach ($name in @('help', 'mrehelp', 'menu')) {
+    $expectedType = if ($name -eq 'menu') { 'MreHelp.CommandMenu/menu' } else { "MreHelp.CommandHelp/$name" }
     foreach ($mapping in $mappings | Where-Object { $_.GetAttribute('Name') -eq $name }) {
-        if ($mapping.InnerText -match '^MreHelp\.CommandHelp/' -and $mapping.InnerText -ne "MreHelp.CommandHelp/$name") {
+        if ($mapping.InnerText -match '^MreHelp\.(CommandHelp|CommandMenu)/' -and $mapping.InnerText -ne $expectedType) {
             throw "Найден конфликтующий MreHelp mapping для /${name}: $($mapping.InnerText)."
         }
         if ($mapping.GetAttribute('Enabled') -eq 'true' -and $mapping.InnerText -notmatch '^Rocket\.(Core|Unturned)\.') {
-            if ($mapping.InnerText -ne "MreHelp.CommandHelp/$name") { throw "Команду /$name уже назначил другой плагин: $($mapping.InnerText)." }
+            if ($mapping.InnerText -ne $expectedType) { throw "Команду /$name уже назначил другой плагин: $($mapping.InnerText)." }
         }
     }
 }
 if (-not $Apply) {
-    [pscustomobject]@{ Plugin='MreHelp'; SHA256=$manifest.sha256; Help='MreHelp.CommandHelp/help'; Alias='MreHelp.CommandHelp/mrehelp'; Apply=$false }
+    [pscustomobject]@{ Plugin='MreHelp'; SHA256=$manifest.sha256; Menu='MreHelp.CommandMenu/menu'; Help='MreHelp.CommandHelp/help'; Alias='MreHelp.CommandHelp/mrehelp'; Apply=$false }
     return
 }
 
@@ -50,7 +51,15 @@ $dllExisted = Test-Path -LiteralPath $targetDll -PathType Leaf
 try {
     $maintenanceLock = [IO.File]::Open((Join-Path $runtimeRoot '.mre-maintenance.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
     $serverPrefix = [IO.Path]::GetFullPath($serverRoot).TrimEnd('\') + '\'
-    foreach ($processInfo in @(Get-CimInstance Win32_Process -Filter "Name = 'Unturned.exe' OR Name = 'Unturned_Headless.exe'")) {
+    $processInfos = @()
+    try {
+        $processInfos = @(Get-CimInstance Win32_Process -Filter "Name = 'Unturned.exe' OR Name = 'Unturned_Headless.exe'" -ErrorAction Stop)
+    } catch {
+        $processInfos = @(Get-Process -Name Unturned,Unturned_Headless -ErrorAction SilentlyContinue | ForEach-Object {
+            [pscustomobject]@{ ProcessId=$_.Id }
+        })
+    }
+    foreach ($processInfo in $processInfos) {
         $liveProcess = Get-Process -Id $processInfo.ProcessId -ErrorAction SilentlyContinue
         if (-not $liveProcess -or $liveProcess.HasExited) { continue }
         $path = Get-MreProcessPath $processInfo
@@ -67,8 +76,8 @@ try {
     $license = Join-Path $projectRoot 'src\MreHelp\LICENSE'
     if (Test-Path -LiteralPath $installedLicense) { Copy-Item -LiteralPath $installedLicense -Destination (Join-Path $backupRoot 'LICENSE') }
 
-    foreach ($name in @('help', 'mrehelp')) {
-        $type = "MreHelp.CommandHelp/$name"
+    foreach ($name in @('help', 'mrehelp', 'menu')) {
+        $type = if ($name -eq 'menu') { 'MreHelp.CommandMenu/menu' } else { "MreHelp.CommandHelp/$name" }
         $matches = @($commandMap.SelectNodes('/RocketCommands/Commands/Command') | Where-Object { $_.InnerText -eq $type })
         $mapping = $matches | Select-Object -First 1
         if (-not $mapping) {
@@ -101,8 +110,8 @@ try {
     try { $commandMap.Save($writer) } finally { $writer.Dispose() }
     [void][xml]([IO.File]::ReadAllText($temporaryMap))
     [IO.File]::Replace($temporaryMap, $commandMapPath, (Join-Path $backupRoot 'Commands.config.xml.previous'))
-    Write-Host "MreHelp установлен. При следующем запуске /help будет открывать MRE-справку. Резервная копия: $backupRoot"
-    Write-Host 'Пока клиентский EffectAsset отсутствует, команда покажет категоризированную справку в чате.'
+    Write-Host "MRE menu установлен. При следующем запуске /menu откроет меню, а /help сразу выберет раздел команд. Резервная копия: $backupRoot"
+    Write-Host 'Клиентам нужен EffectAsset ID 48625 из пакета MRE HUD + MreHelp. Текстовая подсказка появляется только если сервер не загрузил asset; получение asset клиентом отдельно не подтверждается.'
 }
 catch {
     if ($backupRoot -and (Test-Path -LiteralPath (Join-Path $backupRoot 'Commands.config.xml'))) { Copy-Item -LiteralPath (Join-Path $backupRoot 'Commands.config.xml') -Destination $commandMapPath -Force }

@@ -21,6 +21,12 @@ Items
     Crate_Bullets_Full_Chance 1
 }
 
+Vehicles
+{
+    Max_Instances_Medium 32
+    Min_Natural_Vehicles 32
+}
+
 Zombies
 {
     Loot_Chance 1

@@ -7,6 +7,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(SourceDir)/HintPolicy.cs" />
+    <Compile Include="$(SourceDir)/DecayZoneStatusSource.cs" />
+    <Compile Include="$(SourceDir)/AimPointQuery.cs" />
     <Compile Include="$(SourceDir)/HintController.cs" />
     <Compile Include="$(SourceDir)/EffectHintSink.cs" />
     <Compile Include="$(SourceDir)/UnturnedEffectTransport.cs" />
@@ -15,6 +17,7 @@
     <Compile Include="$(SourceDir)/GameHintAdapter.cs" />
     <Reference Include="Assembly-CSharp"><HintPath>$(ManagedDir)/Assembly-CSharp.dll</HintPath></Reference>
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(ManagedDir)/UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(ManagedDir)/UnityEngine.PhysicsModule.dll</HintPath></Reference>
     <Reference Include="SDG.NetTransport"><HintPath>$(ManagedDir)/SDG.NetTransport.dll</HintPath></Reference>
     <Reference Include="com.rlabrecque.steamworks.net"><HintPath>$(ManagedDir)/com.rlabrecque.steamworks.net.dll</HintPath></Reference>
   </ItemGroup>

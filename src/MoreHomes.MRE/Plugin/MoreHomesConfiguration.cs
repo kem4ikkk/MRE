@@ -25,7 +25,7 @@ namespace RestoreMonarchy.MoreHomes
             MessageIconUrl = "https://i.imgur.com/9TF5aB1.png";
             DefaultHomeCooldown = 80;
             DefaultHomeDelay = 5;
-            DefaultMaxHomes = 1;
+            DefaultMaxHomes = 2;
             TeleportHeight = 0.5f;
             CancelOnMove = false;
             MoveMaxDistance = 0.5f;
@@ -36,7 +36,8 @@ namespace RestoreMonarchy.MoreHomes
             VIPMaxHomes = new List<VIPPermission>()
             {
                 new VIPPermission("morehomes.vip", 3),
-                new VIPPermission("morehomes.star", 4)
+                new VIPPermission("morehomes.premium", 4),
+                new VIPPermission("morehomes.elite", 5)
             };
         }
     }

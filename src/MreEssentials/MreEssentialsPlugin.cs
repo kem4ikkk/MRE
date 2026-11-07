@@ -344,7 +344,7 @@ namespace MreEssentials
                 finishedVoteOnline = null;
                 voteUiVisibleUntilUtc = DateTime.MinValue;
                 nextVoteUtc = now.AddSeconds(c.VoteCooldownSeconds);
-                MreChat.Say(MreChatSection.Vote, String.Format("MRE: голосование за день! Нужно {0} из {1}. Удерживайте Code Hotkey #3 (за) или #4 (против) 2 с; /vote yes и /vote no. Время: {2} с.",
+                MreChat.Say(MreChatSection.Vote, String.Format("MRE: голосование за день! Нужно {0} из {1}. За: /vote yes; против: /vote no. Можно удерживать 2 с назначенные в настройках Controls → Mods/Plugins клавиши Code Hotkey #3 (за) или #4 (против). Время: {2} с.",
                     session.RequiredVotes, session.EligibleCount, VoteDurationSeconds));
             }
             VoteResult result = session.TryVote(player.CSteamID.m_SteamID, OnlinePlayers(), now, action == "no" ? VoteChoice.No : VoteChoice.Yes);

@@ -40,21 +40,30 @@ static class EffectSinkChecks
         sessionsSink.ForgetDisconnected(9);
         sessionsController.Update(9, true, true, HeldItem.BuildingPart, true);
         Check(sessionsWire.Creates == 2 && !sessionsWire.Calls.Contains("clear:9"), "new session recreates effect");
-        bool available = true;
-        bool Zone(double x, double z, out bool fast) { fast = true; if (!available) throw new InvalidOperationException(); return true; }
+        var zoneStatus = new ZoneSource();
         var lifecycleWire = new Wire();
-        var lifecycle = new HintSessions(new EffectHintSink(lifecycleWire), Zone);
+        var lifecycle = new HintSessions(new EffectHintSink(lifecycleWire), zoneStatus);
         object oldSession = new object(), newSession = new object();
         lifecycle.Update(10, oldSession, HeldItem.BuildingPart, 0, 0);
         try { lifecycle.Update(10, newSession, HeldItem.BuildingPart, 0, 0); throw new Exception("session must be fenced"); }
         catch (InvalidOperationException) { }
-        available = false;
+        zoneStatus.IsOperational = false;
         lifecycle.Update(10, oldSession, HeldItem.BuildingPart, 0, 0);
         Check(lifecycleWire.Calls.Contains("clear:10"), "failed zone lookup hides old hint");
         lifecycle.Disconnected(10, oldSession);
-        available = true;
+        zoneStatus.IsOperational = true;
         lifecycle.Update(10, newSession, HeldItem.BuildingPart, 0, 0);
         Check(lifecycleWire.Creates == 2, "confirmed reconnect recreates hint");
+        zoneStatus.ZonesConfirmed = false;
+        lifecycle.Update(10, newSession, HeldItem.BuildingPart, 0, 0);
+        Check(lifecycleWire.Calls.Contains("clear:10"), "unconfirmed zones hide hint");
+        zoneStatus.ZonesConfirmed = true;
+        lifecycle.Update(10, newSession, HeldItem.BuildingPart, 0, 0);
+        Check(lifecycleWire.Creates == 3, "confirmed zones restore hint");
+        var unavailableWire = new Wire();
+        var unavailable = new HintSessions(new EffectHintSink(unavailableWire), new UnavailableDecayZoneStatusSource());
+        unavailable.Update(12, new object(), HeldItem.BuildingPart, 0, 0);
+        Check(unavailableWire.Creates == 0 && unavailableWire.Calls.Count == 0, "unavailable provider never shows status");
         var guid = Guid.NewGuid();
         var player = new SDG.Unturned.Player { channel = new SDG.Unturned.Channel() };
         SDG.Unturned.Provider.clients.Add(new SDG.Unturned.SteamPlayer { player = player, playerID = new SDG.Unturned.PlayerId { steamID = new SDG.Unturned.SteamId { m_SteamID = 1 } } });
@@ -84,31 +93,31 @@ static class EffectSinkChecks
         var first = new SDG.Unturned.SteamPlayer { player = new SDG.Unturned.Player { channel = new SDG.Unturned.Channel(), equipment = new SDG.Unturned.Equipment { asset = new SDG.Unturned.ItemStructureAsset() } }, playerID = new SDG.Unturned.PlayerId { steamID = new SDG.Unturned.SteamId { m_SteamID = 11 } } };
         SDG.Unturned.Provider.clients.Add(first);
         int createsBefore = SDG.Unturned.EffectManager.Creates;
-        bool ready = true;
-        bool GameZone(double x, double z, out bool fast) { fast = true; return ready; }
-        var adapter = new GameHintAdapter(GameZone, 42, guid, 17, e => throw new Exception("adapter error", e));
+        var adapterStatus = new ZoneSource();
+        var adapter = new GameHintAdapter(adapterStatus, 42, guid, 17, e => throw new Exception("adapter error", e));
         adapter.Tick(); adapter.Tick();
         Check(SDG.Unturned.EffectManager.Creates == createsBefore + 1, "adapter emits once per session");
-        ready = false; adapter.Tick();
+        Check(adapterStatus.LastX == 40 && adapterStatus.LastZ == -25, "adapter queries zone at aimed point");
+        adapterStatus.IsOperational = false; adapter.Tick();
         Check(SDG.Unturned.EffectManager.Last == "clear", "adapter hides on lost readiness");
-        ready = true; adapter.Tick();
+        adapterStatus.IsOperational = true; adapter.Tick();
         SDG.Unturned.Provider.clients.Clear(); adapter.Tick();
         var second = new SDG.Unturned.SteamPlayer { player = new SDG.Unturned.Player { channel = new SDG.Unturned.Channel(), equipment = new SDG.Unturned.Equipment { asset = new SDG.Unturned.ItemStructureAsset() } }, playerID = first.playerID };
         SDG.Unturned.Provider.clients.Add(second); adapter.Tick();
         Check(SDG.Unturned.EffectManager.Creates == createsBefore + 3, "adapter recreates after reconnect");
         var errors = new List<Exception>();
         SDG.Unturned.Provider.clients.Clear();
-        var broken = new SDG.Unturned.SteamPlayer { player = new SDG.Unturned.Player { channel = new SDG.Unturned.Channel(), equipment = new SDG.Unturned.Equipment { asset = new SDG.Unturned.ItemStructureAsset() }, transform = null }, playerID = first.playerID };
+        var broken = new SDG.Unturned.SteamPlayer { player = new SDG.Unturned.Player { channel = new SDG.Unturned.Channel(), equipment = new SDG.Unturned.Equipment { asset = new SDG.Unturned.ItemStructureAsset() }, look = null }, playerID = first.playerID };
         SDG.Unturned.Provider.clients.Add(broken);
-        var robust = new GameHintAdapter(GameZone, 42, guid, 18, errors.Add);
+        var robust = new GameHintAdapter(adapterStatus, 42, guid, 18, errors.Add);
         robust.Tick();
-        Check(errors.Count == 1, "first tick error reported");
+        Check(errors.Count == 0, "missing aim hides safely");
         SDG.Unturned.Provider.clients.Clear(); robust.Tick();
         SDG.Unturned.Provider.clients.Add(second); robust.Tick();
-        Check(SDG.Unturned.EffectManager.Last == "visible:DecayZonePanel", "first tick error does not block reconnect");
-        second.player.transform = null; robust.Tick();
+        Check(SDG.Unturned.EffectManager.Last == "visible:DecayZonePanel", "missing aim does not block reconnect");
+        second.player.look.aim = null; robust.Tick();
         Check(SDG.Unturned.EffectManager.Last == "clear", "lost position hides existing hint");
-        second.player.transform = new UnityEngine.Transform(); robust.Tick();
+        second.player.look.aim = new UnityEngine.Transform { forward = new UnityEngine.Vector3 { z=1 } }; robust.Tick();
         SDG.Unturned.Provider.clients.Add(new SDG.Unturned.SteamPlayer { player = new SDG.Unturned.Player { channel = new SDG.Unturned.Channel() }, playerID = second.playerID });
         try { robust.Tick(); throw new Exception("duplicate player must fail"); }
         catch (InvalidOperationException) { }
@@ -124,5 +133,21 @@ static class EffectSinkChecks
         public void SetText(ulong playerId, string element, string text) { Calls.Add("text:" + playerId + ":" + element); if (FailText) throw new InvalidOperationException(); }
         public void SetVisible(ulong playerId, string element, bool visible) { Calls.Add("visible:" + playerId + ":" + element); }
         public void Clear(ulong playerId) { Calls.Add("clear:" + playerId); if (FailClear) throw new InvalidOperationException(); }
+    }
+
+    sealed class ZoneSource : IDecayZoneStatusSource
+    {
+        public bool IsOperational = true;
+        public bool ZonesConfirmed = true;
+        public double LastX, LastZ;
+        bool IDecayZoneStatusSource.IsOperational => IsOperational;
+        bool IDecayZoneStatusSource.ZonesConfirmed => ZonesConfirmed;
+        public bool TryGetAcceleratedZone(double x, double z, out bool accelerated)
+        {
+            LastX = x;
+            LastZ = z;
+            accelerated = true;
+            return IsOperational && ZonesConfirmed;
+        }
     }
 }

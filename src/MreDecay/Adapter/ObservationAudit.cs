@@ -16,7 +16,7 @@ namespace MreDecay.Adapter
                 if (item == null || (item.Kind != "structure" && item.Kind != "barricade") ||
                     item.InstanceId == 0 || item.AssetId == 0 || item.AssetGuid == Guid.Empty || item.Owner == 0 ||
                     item.MaxHealth == 0 || item.Health > item.MaxHealth ||
-                    (item.IsVehicleAttached && (item.Kind != "barricade" || item.VehicleInstanceId == 0)) ||
+                    (item.IsVehicleAttached && (item.Kind != "barricade" || item.VehicleInstanceId == 0 || item.VehicleSubvehicleIndex < 0)) ||
                     (!item.IsVehicleAttached && (item.VehicleInstanceId != 0 || item.VehicleSubvehicleIndex != 0)) ||
                     (item.Kind == "structure" && (item.IsStorage || item.IsGenerator)) ||
                     (item.IsStorage && item.IsGenerator) ||

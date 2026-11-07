@@ -87,13 +87,13 @@ namespace MreTrade
             if (!Configuration.Instance.ExperimentalTradeEnabled) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен временно недоступен."); return; }
             ulong id = actor.CSteamID.m_SteamID;
             if (!Allowed(actor)) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен недоступен: проверка боя, рейда, входа или журнала не пройдена."); return; }
-            if (args == null || args.Length == 0) { MreChat.Say(MreChatSection.Trade, actor, "MRE: используйте /trade <имя|SteamID>, /trade accept или /trade deny."); return; }
+            if (args == null || args.Length == 0) { MreChat.Say(MreChatSection.Trade, actor, "MRE: используйте /trade <ник>, /trade accept или /trade deny."); return; }
             string action = args[0].ToLowerInvariant(); TradeSession s;
             if (!uiReady && !String.Equals(action, "deny", StringComparison.OrdinalIgnoreCase))
             { Tell(id, "Интерфейс обмена ещё не готов. Повторите позже или используйте /trade deny для отказа от входящего запроса."); return; }
             if (!sessions.TryGetValue(id, out s))
             {
-                if (ReservedTradeWords.Contains(action)) { Tell(id, "Доступны только /trade <имя|SteamID>, /trade accept и /trade deny."); return; }
+                if (ReservedTradeWords.Contains(action)) { Tell(id, "Доступны только /trade <ник>, /trade accept и /trade deny."); return; }
                 Invite(actor, args); return;
             }
             if (s.Committing) { MreChat.Say(MreChatSection.Trade, actor, "MRE: обмен обрабатывается."); return; }
@@ -138,8 +138,7 @@ namespace MreTrade
             Tell(id, "Ваш инвентарь, страница " + number + "/" + pages + ":");
             foreach (string row in rows.Skip((number - 1) * 8).Take(8)) Tell(id, row);
             Tell(id, "Ваше предложение: " + Describe(s.Own(id)) + "; предложение партнёра: " + Describe(s.Own(s.Other(id))) + ".");
-            Tell(id, "Версия " + listedRevision.ToString(CultureInfo.InvariantCulture) + ". После проверки нажмите кнопку подтверждения в окне обмена.");
-            if (!s.Acknowledge(id, listedRevision)) Tell(id, "Предложение изменилось во время вывода списка. Обновите окно обмена и проверьте его ещё раз.");
+            Tell(id, "Версия " + listedRevision.ToString(CultureInfo.InvariantCulture) + ". Список только для просмотра; подтверждение выполняется кнопкой в актуальном окне обмена.");
         }
         private static string ItemName(ushort id) { var asset = Assets.find(EAssetType.ITEM, id) as ItemAsset; return asset == null ? "Предмет" : asset.itemName; }
         private static string Describe(List<TradeOffer> offers) { return offers.Count == 0 ? "пусто" : String.Join(", ", offers.Select(o => ItemName(o.Id) + " [" + o.Id + "] ×" + o.Amount + ", качество " + o.Quality + "%").ToArray()); }
@@ -157,16 +156,20 @@ namespace MreTrade
             s.Changed(); offers.Add(new TradeOffer { Page = page, X = x, Y = y, Jar = jar, Item = item, Id = item.id, Amount = item.amount, Quality = item.quality, State = (byte[])item.state.Clone() });
             Both(s, "Предложение изменено; проверьте обновлённое окно и подтвердите заново.");
         }
-        private void Confirm(UnturnedPlayer actor, TradeSession s)
+        private void Confirm(UnturnedPlayer actor, TradeSession s, string nonce)
         {
             ulong id = actor.CSteamID.m_SteamID; var a = Online(s.A); var b = Online(s.B);
             if (DateTime.UtcNow >= s.ExpiresUtc) { Cancel(s, "Обмен отменён: истекло время."); return; }
-            if (s.AcknowledgedRevision(id) != s.Revision) { Tell(id, "Сначала проверьте актуальное предложение в окне обмена."); return; }
             if (IsEditorOpen(s.A) || IsEditorOpen(s.B)) { Tell(id, "Оба игрока должны закрыть инвентарь перед подтверждением."); return; }
             if (s.OffersA.Count == 0 && s.OffersB.Count == 0) { Tell(id, "Пустой обмен не подтверждается."); return; }
-            if (!Allowed(a) || !Allowed(b) || !NotEquipped(a, s.OffersA) || !NotEquipped(b, s.OffersB) || !TradeDelivery.Valid(a.Player.inventory, s.OffersA) || !TradeDelivery.Valid(b.Player.inventory, s.OffersB)) { s.Changed(); Both(s, "Предметы или состояние игроков изменились; проверьте предложение."); return; }
-            try { if (!s.Confirm(id)) { Both(s, "Одна сторона подтвердила эту версию; ожидается вторая."); return; } }
-            catch (InvalidOperationException) { Tell(id, "Сначала проверьте актуальное предложение в окне обмена."); RefreshTradeUi(s); return; }
+            if (!Allowed(a) || !Allowed(b) || !NotEquipped(a, s.OffersA) || !NotEquipped(b, s.OffersB) || !TradeDelivery.Valid(a.Player.inventory, s.OffersA) || !TradeDelivery.Valid(b.Player.inventory, s.OffersB)) { s.Changed(); Both(s, "Предметы или состояние игроков изменились; проверьте предложение."); RefreshTradeUi(s); return; }
+            bool complete;
+            try
+            {
+                if (!s.TryConfirm(id, nonce, out complete)) { Tell(id, "Подтверждение устарело. Проверьте текущее предложение и нажмите кнопку ещё раз."); RefreshTradeUi(s); return; }
+            }
+            catch (InvalidOperationException) { Tell(id, "Сессия обмена изменилась. Проверьте новое окно и подтвердите его заново."); RefreshTradeUi(s); return; }
+            if (!complete) { Both(s, "Подтверждение этой версии принято; ожидается вторая сторона."); RefreshTradeUi(s); return; }
             try
             {
                 var ia = a.Player.inventory; var ib = b.Player.inventory;
@@ -188,8 +191,30 @@ namespace MreTrade
             catch (Exception error)
             {
                 Logger.LogException(error, "[MRE TRADE] Неопределённый результат обмена; нужна сверка журнала.");
-                sessions.Remove(s.A); sessions.Remove(s.B); Both(s, "Обмен прерван. Не повторяйте его; обратитесь к администрации для проверки.");
+                sessions.Remove(s.A); sessions.Remove(s.B);
+                CloseAfterCommitError(s.A); CloseAfterCommitError(s.B);
+                try { Tell(s.A, "Обмен прерван. Не повторяйте его; обратитесь к администрации для проверки."); }
+                catch (Exception notifyError) { Logger.LogException(notifyError, "[MRE TRADE] Не удалось уведомить игрока."); }
+                try { Tell(s.B, "Обмен прерван. Не повторяйте его; обратитесь к администрации для проверки."); }
+                catch (Exception notifyError) { Logger.LogException(notifyError, "[MRE TRADE] Не удалось уведомить игрока."); }
             }
+        }
+        private void CloseAfterCommitError(ulong id)
+        {
+            try { ClearTradeUi(id); }
+            catch (Exception error) { Logger.LogException(error, "[MRE TRADE] Не удалось закрыть интерфейс обмена."); }
+            // При ошибке проекция остаётся под защитой; эффект и modal закрываются отдельно.
+            try
+            {
+                var player = Online(id);
+                if (player != null && player.Player != null)
+                {
+                    try { EffectManager.ClearEffectByGuid(TradeEffectGuid, player.Player.channel.GetOwnerTransportConnection()); }
+                    finally { if (modalOwned.Remove(id)) player.Player.disablePluginWidgetFlag(EPluginWidgetFlags.Modal); }
+                }
+                else modalOwned.Remove(id);
+            }
+            catch (Exception error) { Logger.LogException(error, "[MRE TRADE] Не удалось освободить интерфейс обмена."); }
         }
         private static bool NotEquipped(UnturnedPlayer p, IList<TradeOffer> offers) { return p != null && p.Player != null && offers.All(o => !p.Player.equipment.checkSelection(o.Page, o.X, o.Y)); }
         // Во время commit собственные lock-файлы уже существуют.

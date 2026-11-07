@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <RocketPermissions>
   <DefaultGroup>default</DefaultGroup>
   <Groups>
@@ -20,44 +20,29 @@
         <Permission Cooldown="0">mre.trustscore</Permission>
       </Permissions>
     </Group>
+    <!-- Legacy-группа сохранена для совместимости с уже назначенными участниками. -->
     <Group>
-      <Id>supporter</Id><DisplayName>SUPPORTER</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>90</Priority>
+      <Id>supporter</Id><DisplayName>SUPPORTER (устар.)</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>90</Priority>
       <Permissions />
     </Group>
     <Group>
       <Id>vip</Id><DisplayName>VIP</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>80</Priority>
       <Permissions><Permission Cooldown="0">morehomes.vip</Permission></Permissions>
     </Group>
+    <!-- Уровень сохранён в иерархии, но отдельная проверенная механика Premium пока отсутствует. -->
     <Group>
-      <Id>elite</Id><DisplayName>ELITE</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>70</Priority>
+      <Id>premium</Id><DisplayName>PREMIUM</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>vip</ParentGroup><Priority>75</Priority>
+      <Permissions><Permission Cooldown="0">morehomes.premium</Permission></Permissions>
+    </Group>
+    <Group>
+      <Id>elite</Id><DisplayName>ELITE</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>premium</ParentGroup><Priority>70</Priority>
       <Permissions><Permission Cooldown="0">morehomes.elite</Permission></Permissions>
     </Group>
     <Group>
-      <Id>mre_admin</Id><DisplayName>Администратор MRE</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>10</Priority>
+      <Id>helper</Id><DisplayName>Хелпер</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>default</ParentGroup><Priority>50</Priority>
       <Permissions>
         <Permission Cooldown="0">mre.admin</Permission>
-        <Permission Cooldown="0">mre.airdrop.admin</Permission>
         <Permission Cooldown="0">mre.admin.players</Permission>
-        <Permission Cooldown="0">mre.admin.tp</Permission>
-        <Permission Cooldown="0">mre.admin.bring</Permission>
-        <Permission Cooldown="0">mre.admin.heal</Permission>
-        <Permission Cooldown="0">mre.admin.kick</Permission>
-        <Permission Cooldown="0">mre.admin.save</Permission>
-        <Permission Cooldown="0">mre.admin.day</Permission>
-        <Permission Cooldown="0">mre.admin.night</Permission>
-        <Permission Cooldown="0">mre.admin.fly</Permission>
-        <Permission Cooldown="0">mre.admin.spectate</Permission>
-        <Permission Cooldown="0">mre.admin.remove</Permission>
-        <Permission Cooldown="0">mre.admin.owner</Permission>
-        <Permission Cooldown="0">mre.admin.god</Permission>
-        <Permission Cooldown="0">mre.admin.vanish</Permission>
-        <Permission Cooldown="0">mre.admin.workzone</Permission>
-        <Permission Cooldown="0">mre.admin.stats</Permission>
-        <Permission Cooldown="0">mre.admin.door</Permission>
-        <Permission Cooldown="0">mre.admin.storage</Permission>
-        <Permission Cooldown="0">mre.inventory.inspect</Permission>
-        <Permission Cooldown="0">mre.inventory.deaths</Permission>
-        <Permission Cooldown="0">mre.inventory.restore</Permission>
         <Permission Cooldown="0">mre.staff</Permission>
         <Permission Cooldown="0">mre.staff.list</Permission>
         <Permission Cooldown="0">mre.staff.profile</Permission>
@@ -65,17 +50,64 @@
         <Permission Cooldown="0">mre.staff.note</Permission>
         <Permission Cooldown="0">mre.staff.warn</Permission>
         <Permission Cooldown="0">mre.staff.commend</Permission>
+      </Permissions>
+    </Group>
+    <Group>
+      <Id>moderator</Id><DisplayName>Модератор</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>helper</ParentGroup><Priority>40</Priority>
+      <Permissions>
         <Permission Cooldown="0">mre.staff.kick</Permission>
+        <Permission Cooldown="0">mre.staff.mute</Permission>
+      </Permissions>
+    </Group>
+    <Group>
+      <Id>senior_moderator</Id><DisplayName>Ст. Модератор</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>moderator</ParentGroup><Priority>30</Priority>
+      <Permissions>
         <Permission Cooldown="0">mre.staff.logs</Permission>
         <Permission Cooldown="0">mre.staff.ban</Permission>
-        <Permission Cooldown="0">mre.staff.mute</Permission>
         <Permission Cooldown="0">mre.staff.unban</Permission>
         <Permission Cooldown="0">mre.staff.unmute</Permission>
         <Permission Cooldown="0">mre.staff.revoke</Permission>
-        <Permission Cooldown="0">mre.admin.kill</Permission>
+      </Permissions>
+    </Group>
+    <Group>
+      <Id>mre_admin</Id><DisplayName>Админ</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>senior_moderator</ParentGroup><Priority>20</Priority>
+      <Permissions>
+        <Permission Cooldown="0">mre.admin.kick</Permission>
+        <Permission Cooldown="0">mre.admin.tp</Permission>
+        <Permission Cooldown="0">mre.admin.bring</Permission>
+        <Permission Cooldown="0">mre.admin.heal</Permission>
+        <Permission Cooldown="0">mre.admin.save</Permission>
+        <Permission Cooldown="0">mre.admin.day</Permission>
+        <Permission Cooldown="0">mre.admin.night</Permission>
+        <Permission Cooldown="0">mre.admin.fly</Permission>
+        <Permission Cooldown="0">mre.admin.spectate</Permission>
+        <Permission Cooldown="0">mre.admin.god</Permission>
+        <Permission Cooldown="0">mre.admin.vanish</Permission>
+        <Permission Cooldown="0">mre.admin.stats</Permission>
+        <Permission Cooldown="0">mre.admin.owner</Permission>
         <Permission Cooldown="0">mre.admin.announce</Permission>
         <Permission Cooldown="0">mre.admin.freeze</Permission>
+        <Permission Cooldown="0">mre.inventory.inspect</Permission>
+        <Permission Cooldown="0">mre.inventory.deaths</Permission>
       </Permissions>
+    </Group>
+    <Group>
+      <Id>head_admin</Id><DisplayName>Гл. Админ</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>mre_admin</ParentGroup><Priority>10</Priority>
+      <Permissions>
+        <Permission Cooldown="0">mre.admin.workzone</Permission>
+        <Permission Cooldown="0">mre.admin.door</Permission>
+        <Permission Cooldown="0">mre.admin.storage</Permission>
+        <Permission Cooldown="0">mre.admin.give</Permission>
+        <Permission Cooldown="0">mre.admin.veh</Permission>
+        <Permission Cooldown="0">mre.airdrop.admin</Permission>
+        <Permission Cooldown="0">mre.admin.kill</Permission>
+        <Permission Cooldown="0">mre.admin.remove</Permission>
+        <Permission Cooldown="0">mre.inventory.restore</Permission>
+      </Permissions>
+    </Group>
+    <Group>
+      <Id>mre_owner</Id><DisplayName>Владелец</DisplayName><Prefix /><Suffix /><Color>white</Color><Members /><ParentGroup>head_admin</ParentGroup><Priority>0</Priority>
+      <Permissions />
     </Group>
   </Groups>
 </RocketPermissions>

@@ -34,7 +34,7 @@ namespace MreFlight
         protected abstract bool Vertical {get;}
         public string Help {get{return "Скорость физического полета";}}
         public string Syntax {get{return "<число>";}}
-        public List<string> Aliases {get{return new List<string>();}}
+        public List<string> Aliases {get{return Vertical?new List<string>{"aflyvs"}:new List<string>{"aflys"};}}
         public List<string> Permissions {get{return new List<string>{"mre.admin.fly"};}}
         public void Execute(IRocketPlayer caller,string[] args)
         {

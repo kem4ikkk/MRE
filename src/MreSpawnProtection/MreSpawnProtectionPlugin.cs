@@ -29,9 +29,12 @@ namespace MreSpawnProtection
         private readonly Dictionary<ulong, Player> tracked = new Dictionary<ulong, Player>();
         private readonly Dictionary<ulong, double> nextVisual = new Dictionary<ulong, double>();
         private EffectAsset visual;
+        private double nextVisualLookup;
+        private bool visualWarning;
         private Harmony harmony;
         private static FieldInfo attachmentsField;
         private static double Now { get { return (double)Stopwatch.GetTimestamp() / Stopwatch.Frequency; } }
+        public double DurationSeconds { get { return Duration; } }
         private static ulong Id(Player player) { return player != null && player.channel != null && player.channel.owner != null ? player.channel.owner.playerID.steamID.m_SteamID : 0; }
         public double GetRemainingSeconds(Player player) { Player session; ulong id = Id(player); return player == null || player.life == null || player.life.isDead || !tracked.TryGetValue(id, out session) || !ProtectionPolicy.SameSession(session, player) ? 0 : timer.Remaining(id, Now); }
         public bool IsProtected(Player player) { return GetRemainingSeconds(player) > 0; }
@@ -61,8 +64,8 @@ namespace MreSpawnProtection
                 harmony.Patch(breakLegs, prefix: new HarmonyMethod(typeof(MreSpawnProtectionPlugin), "BeforeBreakLegs") { priority = Priority.First });
                 harmony.Patch(jab, prefix: new HarmonyMethod(typeof(MreSpawnProtectionPlugin), "BeforeJab") { priority = Priority.First });
                 Instance = this;
-                visual = Assets.find(VisualGuid) as EffectAsset;
-                if (visual == null || visual.id != VisualId) { visual = null; Logger.LogWarning("[MRE] Визуальный эффект защиты отсутствует; защита работает без него."); }
+                // Workshop assets can load after Rocket plugins; resolve once the level is loaded.
+                visual = null;
                 PlayerLife.OnRevived_Global += OnRevived;
                 PlayerLife.onPlayerDied += OnDeath;
                 Provider.onServerDisconnected += OnDisconnect;
@@ -123,7 +126,19 @@ namespace MreSpawnProtection
         private static void Say(Player player, string message) { if (player != null) MreChat.SayServer(UnturnedPlayer.FromPlayer(player), message); }
         private void Update()
         {
-            if (Instance != this || tracked.Count == 0) return;
+            if (Instance != this || !Level.isLoaded) return;
+            double lookupNow = Now;
+            if (visual == null && lookupNow >= nextVisualLookup) {
+                nextVisualLookup = lookupNow + 10;
+                visual = Assets.find(VisualGuid) as EffectAsset;
+                if (visual != null && visual.id != VisualId) visual = null;
+                if (visual != null) Logger.Log("[MRE] Визуальный эффект защиты зарегистрирован: GUID " + VisualGuid + ", ID " + VisualId + ".");
+                if (visual == null && !visualWarning) {
+                    visualWarning = true;
+                    Logger.LogWarning("[MRE] Визуальный эффект защиты отсутствует; защита работает без него.");
+                }
+            }
+            if (tracked.Count == 0) return;
             var finished = new List<Player>();
             var stale = new List<ulong>();
             foreach (var pair in tracked) {
@@ -134,9 +149,11 @@ namespace MreSpawnProtection
                     double now = Now;
                     if (!nextVisual.TryGetValue(pair.Key, out next) || now >= next) {
                         nextVisual[pair.Key] = now + VisualInterval;
-                        var parameters = new TriggerEffectParameters(VisualId);
+                        var parameters = new TriggerEffectParameters(visual);
                         parameters.position = pair.Value.transform.position;
-                        parameters.relevantPlayerID = new CSteamID(pair.Key);
+                        parameters.SetRotation(Quaternion.identity);
+                        parameters.relevantDistance = 64;
+                        // Без адресата эффект получают ближайшие игроки.
                         EffectManager.triggerEffect(parameters);
                     }
                 }

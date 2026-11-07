@@ -4,8 +4,7 @@ using MreDecay.Adapter;
 
 namespace MreDecay.IsolatedRuntime
 {
-    // Converts every observed object from the diagnostic snapshot, not a selected
-    // subset. Vehicle objects are intentionally rejected before any mutation plan.
+    // Converts supported ground objects from a validated diagnostic snapshot.
     internal sealed class GroundDeviceSet
     {
         internal readonly List<ProtectionObject> Safes=new List<ProtectionObject>();
@@ -19,15 +18,15 @@ namespace MreDecay.IsolatedRuntime
             if (!ObservationAudit.Valid(observations) || safeGuids==null || safeGuids.Count==0 || safeGuids.Contains(Guid.Empty)) return null;
             var result=new GroundDeviceSet();
             foreach (var o in observations) {
-                // Vehicle attachment is observed for coverage diagnostics, but remains
-                // outside the supported mutation policy until a vehicle-safe backend exists.
-                if (o.IsVehicleAttached) return null;
+                // Mobile barricades are observed and provenance-checked above, but they
+                // are never decay targets or protection devices for ground structures.
+                if (o.IsVehicleAttached) continue;
                 bool safe=safeGuids.Contains(o.AssetGuid);
-                if (safe && (!o.IsStorage || o.Kind!="barricade" || o.IsVehicleAttached)) return null;
+                if (safe && (!o.IsStorage || o.Kind!="barricade")) return null;
                 var position=new Position3(o.X,o.Y,o.Z);
                 if(safe) result.Safes.Add(new ProtectionObject { Owner=o.Owner,Group=o.Group,IdentityKnown=true,Position=position });
                 if(o.IsGenerator) {
-                    if(o.IsVehicleAttached || !o.GeneratorPowered.HasValue) return null;
+                    if(!o.GeneratorPowered.HasValue) return null;
                     result.Generators.Add(new ProtectionObject { Owner=o.Owner,Group=o.Group,IdentityKnown=true,Position=position,Powered=o.GeneratorPowered });
                 }
                 if (!PlacementPolicy.Included(o.Kind,o.BuildType)) continue;

@@ -20,12 +20,12 @@ var cases = new List<(string name, Action test)>
         Assert(DamageNumber.Calculate(0, 0, false) == 0, "Dead target displayed damage");
     }),
     ("rapid hits use separate slots and reuse the oldest", () => {
-        var slots = new DamageSlots(8); var start = new DateTime(2026, 1, 1);
-        for (int i = 0; i < 8; i++) {
+        var slots = new DamageSlots(16); var start = new DateTime(2026, 1, 1);
+        for (int i = 0; i < 16; i++) {
             Assert(slots.Add(start.AddMilliseconds(i * 10), TimeSpan.FromSeconds(1.2)) == i, "Hit shared a slot early");
             Assert(slots.IsVisible(i, start.AddSeconds(1)), "Hit expired early");
         }
-        Assert(slots.Add(start.AddMilliseconds(80), TimeSpan.FromSeconds(1.2)) == 0, "Ninth hit did not replace oldest");
+        Assert(slots.Add(start.AddMilliseconds(160), TimeSpan.FromSeconds(1.2)) == 0, "Seventeenth hit did not replace oldest");
         Assert(slots.IsVisible(0, start.AddMilliseconds(1250)) && !slots.IsVisible(1, start.AddMilliseconds(1250)), "Reused slot did not get its own expiry");
         slots.Clear(); Assert(!slots.IsVisible(0, start.AddMilliseconds(100)) && slots.Add(start, TimeSpan.FromSeconds(1.2)) == 0, "Clear did not reset slots");
     }),

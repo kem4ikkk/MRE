@@ -238,6 +238,11 @@ internal static class Program
         bridge.Poll();
         Check(executed.Count == 3 && executed[2] == "ApplyMaxSkills", "ApplyMaxSkills входит в локальный allowlist");
         Check(Status(root, maxSkillsId) == "completed", "Проверка навыков подтверждается после выполнения");
+        string airdropId = Guid.NewGuid().ToString("N");
+        File.WriteAllText(Path.Combine(requests, airdropId + ".cmd"), "Airdrop");
+        bridge.Poll();
+        Check(executed.Count == 4 && executed[3] == "Airdrop", "Airdrop входит в локальный allowlist");
+        Check(Status(root, airdropId) == "completed", "Airdrop получает подтверждение после вызова команды");
         shutdownId = Guid.NewGuid().ToString("N");
         File.WriteAllText(Path.Combine(requests, shutdownId + ".cmd"), "Shutdown");
         bridge.Poll();

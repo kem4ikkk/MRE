@@ -89,7 +89,23 @@ namespace MreInventoryAudit
             if(player==null||player.player.life.isDead)throw new InvalidOperationException("Для компенсации игрок должен быть подключен и жив.");
             DeathSnapshot[] deaths=ledger.List(target);
             if(deathNumber<1||deathNumber>deaths.Length)throw new InvalidOperationException("Нет смерти с таким номером.");
-            DeathSnapshot snapshot=deaths[deathNumber-1];if(snapshot.Status!="available")throw new InvalidOperationException("Снимок уже выдан либо требует сверки после сбоя.");
+            return PrepareRestoreSnapshot(actor,target,player,deaths[deathNumber-1]);
+        }
+        // UI integrations address a snapshot by its durable id. List positions change when a
+        // newer death is captured, so the UI must never submit a cached row number.
+        public RestorePreview PrepareRestoreById(UnturnedPlayer actor,ulong target,string snapshotId)
+        {
+            Authorize(actor,"mre.inventory.restore");
+            if(String.IsNullOrWhiteSpace(snapshotId))throw new ArgumentException("Нужен идентификатор снимка.","snapshotId");
+            SteamPlayer player=Target(target);
+            if(player==null||player.player.life.isDead)throw new InvalidOperationException("Для компенсации игрок должен быть подключен и жив.");
+            DeathSnapshot snapshot=ledger.Get(target,snapshotId);
+            if(snapshot==null)throw new InvalidOperationException("Снимок больше недоступен.");
+            return PrepareRestoreSnapshot(actor,target,player,snapshot);
+        }
+        private RestorePreview PrepareRestoreSnapshot(UnturnedPlayer actor,ulong target,SteamPlayer player,DeathSnapshot snapshot)
+        {
+            if(snapshot.Status!="available")throw new InvalidOperationException("Снимок уже выдан либо требует сверки после сбоя.");
             var intent=new Intent {Token=Guid.NewGuid().ToString("N"),Target=target,Snapshot=snapshot.Id,ActorPlayer=actor.Player,TargetPlayer=player.player,Expires=DateTime.UtcNow.AddSeconds(30)};
             intents[actor.CSteamID.m_SteamID]=intent;
             return new RestorePreview {Token=intent.Token,ExpiresUtc=intent.Expires,Inventory=View(target,snapshot.AtUtc,snapshot.Id,snapshot.Status,snapshot.Items)};

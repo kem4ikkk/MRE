@@ -6,6 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/MreDecayZoneHud/HintPolicy.cs" Link="HintPolicy.cs" />
+    <Compile Include="../../src/MreDecayZoneHud/DecayZoneStatusSource.cs" Link="DecayZoneStatusSource.cs" />
+    <Compile Include="../../src/MreDecayZoneHud/AimPointQuery.cs" Link="AimPointQuery.cs" />
     <Compile Include="../../src/MreDecayZoneHud/HeldItemClassifier.cs" Link="HeldItemClassifier.cs" />
     <Compile Include="../../src/MreDecayZoneHud/HintController.cs" Link="HintController.cs" />
     <Compile Include="../../src/MreDecayZoneHud/EffectHintSink.cs" Link="EffectHintSink.cs" />

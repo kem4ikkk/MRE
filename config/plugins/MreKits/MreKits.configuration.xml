@@ -3,8 +3,9 @@
   <Kits>
     <KitDefinition>
       <Name>start</Name>
-      <Description>Лук, стрелы, одежда, спальник, бинты, топор, еда и вода</Description>
-      <CooldownSeconds>3600</CooldownSeconds>
+      <Description>Стартовый набор выживания</Description>
+      <Permission>mre.kit</Permission>
+      <CooldownSeconds>86400</CooldownSeconds>
       <AutoEquipClothing>true</AutoEquipClothing>
       <Items>
         <KitItem><Id>353</Id><Count>1</Count></KitItem>
@@ -20,9 +21,10 @@
     </KitDefinition>
     <KitDefinition>
       <Name>home</Name>
-      <Description>Берёзовые строительные элементы, дверь, верстак, планировщик и шкаф</Description>
+      <Description>Базовый строительный набор</Description>
+      <Permission>mre.kit</Permission>
       <CooldownSeconds>172800</CooldownSeconds>
-      <AutoEquipClothing>false</AutoEquipClothing>
+      <AutoEquipClothing>true</AutoEquipClothing>
       <Items>
         <KitItem><Id>55</Id><Count>1</Count></KitItem>
         <KitItem><Id>51</Id><Count>1</Count></KitItem>
@@ -34,6 +36,44 @@
         <KitItem><Id>1764</Id><Count>1</Count></KitItem>
         <KitItem><Id>328</Id><Count>1</Count></KitItem>
         <KitItem><Id>290</Id><Count>1</Count></KitItem>
+        <KitItem><Id>162</Id><Count>1</Count></KitItem>
+        <KitItem><Id>208</Id><Count>1</Count></KitItem>
+      </Items>
+    </KitDefinition>
+    <KitDefinition>
+      <Name>vip</Name>
+      <Description>Небольшой набор строительных материалов и расходников</Description>
+      <Permission>mre.kit.vip</Permission>
+      <CooldownSeconds>86400</CooldownSeconds>
+      <AutoEquipClothing>false</AutoEquipClothing>
+      <Items>
+        <KitItem><Id>55</Id><Count>2</Count></KitItem><KitItem><Id>51</Id><Count>2</Count></KitItem>
+        <KitItem><Id>57</Id><Count>4</Count></KitItem><KitItem><Id>53</Id><Count>2</Count></KitItem>
+        <KitItem><Id>95</Id><Count>2</Count></KitItem><KitItem><Id>13</Id><Count>2</Count></KitItem><KitItem><Id>14</Id><Count>2</Count></KitItem>
+      </Items>
+    </KitDefinition>
+    <KitDefinition>
+      <Name>premium</Name>
+      <Description>Строительные материалы и расходники выживания</Description>
+      <Permission>mre.kit.premium</Permission>
+      <CooldownSeconds>86400</CooldownSeconds>
+      <AutoEquipClothing>false</AutoEquipClothing>
+      <Items>
+        <KitItem><Id>55</Id><Count>3</Count></KitItem><KitItem><Id>51</Id><Count>3</Count></KitItem>
+        <KitItem><Id>57</Id><Count>6</Count></KitItem><KitItem><Id>53</Id><Count>3</Count></KitItem><KitItem><Id>49</Id><Count>1</Count></KitItem>
+        <KitItem><Id>95</Id><Count>3</Count></KitItem><KitItem><Id>13</Id><Count>3</Count></KitItem><KitItem><Id>14</Id><Count>3</Count></KitItem>
+      </Items>
+    </KitDefinition>
+    <KitDefinition>
+      <Name>elite</Name>
+      <Description>Расширенный строительный набор и расходники выживания</Description>
+      <Permission>mre.kit.elite</Permission>
+      <CooldownSeconds>86400</CooldownSeconds>
+      <AutoEquipClothing>false</AutoEquipClothing>
+      <Items>
+        <KitItem><Id>55</Id><Count>4</Count></KitItem><KitItem><Id>51</Id><Count>4</Count></KitItem>
+        <KitItem><Id>57</Id><Count>8</Count></KitItem><KitItem><Id>53</Id><Count>4</Count></KitItem><KitItem><Id>49</Id><Count>2</Count></KitItem>
+        <KitItem><Id>95</Id><Count>4</Count></KitItem><KitItem><Id>13</Id><Count>4</Count></KitItem><KitItem><Id>14</Id><Count>4</Count></KitItem>
       </Items>
     </KitDefinition>
   </Kits>

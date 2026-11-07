@@ -1,26 +1,40 @@
 ﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('Save', 'Shutdown', 'Players', 'Day', 'Night', 'Diagnostics', 'ApplyMaxSkills')]
+    [ValidateSet('Save', 'Shutdown', 'Players', 'Day', 'Night', 'Diagnostics', 'ApplyMaxSkills', 'Airdrop')]
     [string]$Command,
     [ValidateRange(1, 120)][int]$TimeoutSeconds = 30
 )
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'Get-MreProcessPath.ps1')
 $statePath = Join-Path $projectRoot 'runtime\mre-process.json'
 $expectedExe = Join-Path $projectRoot 'runtime\server\Unturned.exe'
 if (-not (Test-Path -LiteralPath $statePath)) { throw 'Нет локальной записи о работающем MRE.' }
 $serverState = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
-$serverProcess = Get-CimInstance Win32_Process -Filter ('ProcessId = ' + [int]$serverState.ProcessId)
-if (-not $serverProcess -or -not $serverProcess.ExecutablePath -or
-    [IO.Path]::GetFullPath($serverProcess.ExecutablePath) -ne [IO.Path]::GetFullPath($expectedExe)) {
+$serverProcess = $null
+$processPath = $null
+$processStartedAt = $null
+try {
+    $serverProcess = Get-CimInstance Win32_Process -Filter ('ProcessId = ' + [int]$serverState.ProcessId) -ErrorAction Stop
+    if ($serverProcess) {
+        $processPath = [string]$serverProcess.ExecutablePath
+        if ($serverProcess.CreationDate) { $processStartedAt = ([DateTime]$serverProcess.CreationDate).ToUniversalTime() }
+    }
+} catch {
+    $localProcess = Get-Process -Id ([int]$serverState.ProcessId) -ErrorAction SilentlyContinue
+    if ($localProcess) {
+        $processPath = Get-MreProcessPath ([pscustomobject]@{ ProcessId=$localProcess.Id })
+        $processStartedAt = $localProcess.StartTime.ToUniversalTime()
+    }
+}
+if (-not $processPath -or [IO.Path]::GetFullPath($processPath) -ne [IO.Path]::GetFullPath($expectedExe)) {
     throw 'Записанный процесс MRE не работает или его путь не совпадает.'
 }
 if ($serverState.PSObject.Properties.Name -contains 'ProcessStartedAtUtc') {
     $expectedStart = [DateTime]::Parse($serverState.ProcessStartedAtUtc).ToUniversalTime()
-    $actualStart = ([DateTime]$serverProcess.CreationDate).ToUniversalTime()
-    if ([math]::Abs(($actualStart - $expectedStart).TotalSeconds) -gt 1) {
+    if (-not $processStartedAt -or [math]::Abs(($processStartedAt - $expectedStart).TotalSeconds) -gt 1) {
         throw 'Время создания процесса MRE не совпадает. Возможно, Windows повторно использовала PID.'
     }
 }

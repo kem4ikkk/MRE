@@ -21,7 +21,14 @@ try {
     if (-not (Test-Path -LiteralPath (Join-Path $serverRoot 'Servers\MRE\Server\Commands.dat'))) {
         throw 'Сначала выполните Initialize-MreServer.ps1.'
     }
-    $serverProcesses = @(Get-CimInstance Win32_Process -Filter "Name = 'Unturned.exe'")
+    $serverProcesses = @()
+    try {
+        $serverProcesses = @(Get-CimInstance Win32_Process -Filter "Name = 'Unturned.exe'" -ErrorAction Stop)
+    } catch {
+        $serverProcesses = @(Get-Process -Name Unturned -ErrorAction SilentlyContinue | ForEach-Object {
+            [pscustomobject]@{ ProcessId=$_.Id }
+        })
+    }
     foreach ($serverProcess in $serverProcesses) {
         $imagePath = Get-MreProcessPath $serverProcess
         if (-not $imagePath) { throw 'Не удалось определить путь одного из процессов Unturned.' }

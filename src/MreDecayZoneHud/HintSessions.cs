@@ -3,8 +3,6 @@ using System.Collections.Generic;
 
 namespace MreDecayZoneHud
 {
-    public delegate bool TryAcceleratedZone(double x, double z, out bool accelerated);
-
     // Единственный Unity-поток. Идентификатор session — объект соединения;
     // для выхода вызывающая сторона должна подтвердить, что оно отключено.
     public sealed class HintSessions
@@ -12,12 +10,12 @@ namespace MreDecayZoneHud
         private readonly Dictionary<ulong, object> sessions = new Dictionary<ulong, object>();
         private readonly EffectHintSink sink;
         private readonly HintController controller;
-        private readonly TryAcceleratedZone zone;
+        private readonly IDecayZoneStatusSource zoneStatus;
 
-        public HintSessions(EffectHintSink sink, TryAcceleratedZone zone)
+        public HintSessions(EffectHintSink sink, IDecayZoneStatusSource zoneStatus)
         {
             this.sink = sink ?? throw new ArgumentNullException(nameof(sink));
-            this.zone = zone ?? throw new ArgumentNullException(nameof(zone));
+            this.zoneStatus = zoneStatus ?? throw new ArgumentNullException(nameof(zoneStatus));
             controller = new HintController(sink);
         }
 
@@ -38,8 +36,12 @@ namespace MreDecayZoneHud
         {
             Register(playerId, session);
             bool accelerated = false;
-            bool ready;
-            try { ready = zone(x, z, out accelerated); }
+            bool ready = false;
+            try
+            {
+                ready = zoneStatus.IsOperational && zoneStatus.ZonesConfirmed &&
+                    zoneStatus.TryGetAcceleratedZone(x, z, out accelerated);
+            }
             catch { ready = false; }
             controller.Update(playerId, true, ready, item, ready ? (bool?)accelerated : null);
         }

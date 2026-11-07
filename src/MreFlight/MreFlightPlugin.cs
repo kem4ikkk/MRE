@@ -59,7 +59,7 @@ namespace MreFlight
             try{Apply(session,state.Tick(false,false,false,true,true),true);}
             catch{Stop(id);throw;}
             Logger.Log("[MRE FLIGHT] enabled actor="+id);
-            return "Физический полет включен: WASD — движение, прыжок — вверх, спринт при взгляде вниз — вниз. /afly off — выключить.";
+            return "Физический полет включен: WASD — движение, прыжок — вверх, спринт при взгляде вниз — спуск. Скорость: /aflys <число> и /aflyvs <число>. /afly off — выключить.";
         }
         public string SetSpeed(UnturnedPlayer actor,float horizontal,float vertical)
         {
