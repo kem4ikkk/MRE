@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -6,55 +7,55 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Создаёт оригинальный MRE EffectAsset для общей серверной навигации.
+// Builds the static MRE menu shell. Runtime navigation is owned by HelpUi.
 public static class MreHelpBuilder
 {
     private const string PrefabPath = "Assets/MreHelp/Effect.prefab";
     private const string EffectGuid = "6e4a31b49c874f428a622e1a68e4d203";
     private const ushort EffectId = 48625;
-    // Backdrop dims the game world while keeping it clearly visible outside the menu.
-    private static readonly Color Overlay = Hex("07110D", .54f);
-    private static readonly Color Back = Hex("101A16", .97f);
-    private static readonly Color Panel = Hex("17231D", .98f);
-    private static readonly Color Raised = Hex("26332C", 1f);
-    private static readonly Color Text = Hex("F0F3EC", 1f);
-    private static readonly Color Muted = Hex("AAB5AA", 1f);
-    private static readonly Color Lime = Hex("36E59A", 1f);
-    private static readonly Color Gold = Hex("F1C94B", 1f);
-    private static readonly Color Cyan = Hex("56D8F4", 1f);
+    private const ushort EffectKey = 14825;
+    private static readonly string[] Tabs = { "Home", "Help", "Team", "Events", "Stats", "Links", "Settings", "BattlePass", "Rewards", "Reports" };
+    private static readonly string[] Titles = { "Главная", "Справка", "Команда", "Ивенты", "Статистика", "Ссылки", "Настройки", "BattlePass", "Награды", "Репорты" };
+    private static readonly string[] Icons = { "home", "help", "team", "events", "stats", "links", "settings", "battlepass", "rewards", "reports", "bell", "close", "left", "right" };
+    private static readonly Color Overlay = Hex("040A07", .52f);
+    private static readonly Color Surface = Hex("111513");
+    private static readonly Color Raised = Hex("1B211E");
+    private static readonly Color Line = Hex("2A322D");
+    private static readonly Color TextColor = Hex("E9EFEB");
+    private static readonly Color Muted = Hex("929F96");
+    private static readonly Color Accent = Hex("83DCA9");
+    private static readonly Color Active = Hex("1A2C21");
     private static Font regular;
-    private static Font bold;
-    private static Sprite roundedSprite;
+    private static Font semibold;
+    private static Sprite rounded;
+    private static Sprite logo;
+    private static readonly Dictionary<int, Sprite> roundSprites = new Dictionary<int, Sprite>();
 
     [MenuItem("MRE/Создать UI меню")]
     public static void Generate()
     {
-        regular = AssetDatabase.LoadAssetAtPath<Font>("Assets/MreFonts/PTSans-Regular.ttf");
-        bold = AssetDatabase.LoadAssetAtPath<Font>("Assets/MreFonts/PTSans-Bold.ttf");
-        roundedSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        if (regular == null || bold == null) throw new InvalidOperationException("Не найдены встроенные шрифты PT Sans.");
+        roundSprites.Clear();
+        ImportSprites();
+        regular = AssetDatabase.LoadAssetAtPath<Font>("Assets/MreFonts/NotoSans-Regular.ttf");
+        semibold = AssetDatabase.LoadAssetAtPath<Font>("Assets/MreFonts/NotoSans-SemiBold.ttf");
+        logo = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/MreMenuArt/server-logo.png");
+        rounded = RoundSprite(12);
+        if (regular == null || semibold == null) throw new InvalidOperationException("Missing NotoSans Regular/SemiBold under Assets/MreFonts.");
+        if (logo == null) throw new InvalidOperationException("Missing server logo sprite Assets/MreMenuArt/server-logo.png.");
 
         var root = new GameObject("Effect", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         try
         {
-            var canvas = root.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 20;
-            var scaler = root.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = .5f;
+            Canvas canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 20;
+            CanvasScaler scaler = root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize; scaler.scaleFactor = 1;
+            scaler.referenceResolution = new Vector2(1920, 1080); scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight; scaler.matchWidthOrHeight = .5f;
 
-            RectTransform content = Rect("MenuContent", root.transform, 0, 0, 0, 0, Vector2.zero, Vector2.one);
-            content.offsetMin = content.offsetMax = Vector2.zero;
-            Box("MenuBackdrop", content, 0, 0, 0, 0, Overlay, Vector2.zero, Vector2.one, true);
+            RectTransform content = Stretch("MenuContent", root.transform, 0, 0, 0, 0);
+            RectTransform backdrop = Stretch("MenuBackdrop", content, 0, 0, 0, 0);
+            Image backdropImage = backdrop.gameObject.AddComponent<Image>(); backdropImage.color = Overlay; backdropImage.raycastTarget = true;
             BuildWindow(content);
             Validate(root);
-            Directory.CreateDirectory("Assets/MreHelp");
-            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            Directory.CreateDirectory("Assets/MreHelp"); PrefabUtility.SaveAsPrefabAsset(root, PrefabPath); AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
             Debug.Log("MRE Menu: создан " + PrefabPath + "; ID=" + EffectId + ", GUID=" + EffectGuid + ".");
         }
         finally { UnityEngine.Object.DestroyImmediate(root); }
@@ -64,362 +65,196 @@ public static class MreHelpBuilder
     public static void BuildWindows()
     {
         Generate();
-        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-        string output = Path.Combine(projectRoot, "Build/Windows");
-        Directory.CreateDirectory(output);
+        string project = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string output = Path.Combine(project, "Build/Windows"); Directory.CreateDirectory(output);
         var build = new AssetBundleBuild { assetBundleName = "MreHelp.unity3d", assetNames = new[] { PrefabPath }, addressableNames = new[] { "Effect" } };
-        var manifest = BuildPipeline.BuildAssetBundles(output, new[] { build },
-            BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode | BuildAssetBundleOptions.ForceRebuildAssetBundle,
-            BuildTarget.StandaloneWindows64);
+        var manifest = BuildPipeline.BuildAssetBundles(output, new[] { build }, AssetBundleBuildOptions(), BuildTarget.StandaloneWindows64);
         if (manifest == null) throw new InvalidOperationException("Unity не собрал MRE Menu bundle.");
-        string bundlePath = Path.Combine(output, "MreHelp.unity3d");
-        var bundle = AssetBundle.LoadFromFile(bundlePath);
+        string bundlePath = Path.Combine(output, "MreHelp.unity3d"); AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
         if (bundle == null) throw new InvalidOperationException("Собранный bundle не читается Unity.");
-        try
-        {
-            var prefab = bundle.LoadAsset<GameObject>("Effect");
-            if (prefab == null || prefab.GetComponent<Canvas>() == null) throw new InvalidOperationException("В bundle отсутствует Canvas prefab Effect.");
-            Validate(prefab);
-        }
+        try { GameObject prefab = bundle.LoadAsset<GameObject>("Effect"); if (prefab == null || prefab.GetComponent<Canvas>() == null) throw new InvalidOperationException("В bundle отсутствует Canvas prefab Effect."); Validate(prefab); }
         finally { bundle.Unload(true); }
-
-        string mod = Path.Combine(output, "MreHelp");
-        Directory.CreateDirectory(mod);
-        File.Copy(bundlePath, Path.Combine(mod, "MreHelp.unity3d"), true);
+        string mod = Path.Combine(output, "MreHelp"); Directory.CreateDirectory(mod); File.Copy(bundlePath, Path.Combine(mod, "MreHelp.unity3d"), true);
         File.WriteAllText(Path.Combine(mod, "MreHelp.dat"), "GUID " + EffectGuid + "\nType Effect\nID " + EffectId + "\nAsset_Bundle_Version 6\nExclude_From_Master_Bundle\n", new System.Text.UTF8Encoding(false));
-        string sha;
-        using (var hash = SHA256.Create()) sha = BitConverter.ToString(hash.ComputeHash(File.ReadAllBytes(bundlePath))).Replace("-", "").ToLowerInvariant();
-        string buttons = "[\"MenuClose\",\"MenuTopMain\",\"MenuTopProgress\",\"MenuTopSettings\",\"MenuSectionInformation\",\"MenuSectionGroup\",\"MenuSectionCommands\",\"MenuSectionLinks\",\"MenuSectionRewards\",\"MenuSectionTop\",\"MenuCommandsPrevious\",\"MenuCommandsNext\"]";
-        File.WriteAllText(Path.Combine(output, "effect-manifest.json"),
-            "{\n  \"effect_id\": " + EffectId + ",\n  \"effect_guid\": \"" + EffectGuid + "\",\n  \"effect_key\": 14825,\n  \"bundle\": \"MreHelp.unity3d\",\n  \"prefab_address\": \"Effect\",\n  \"unity_version\": \"" + Application.unityVersion + "\",\n  \"target\": \"StandaloneWindows64\",\n  \"bundle_sha256\": \"" + sha + "\",\n  \"prefab_address_verified\": true,\n  \"schema_version\": 2,\n  \"button_names\": " + buttons + ",\n  \"row_name_pattern\": \"MenuRow{01..10}\",\n  \"row_visibility_pattern\": \"MenuRow{01..10}\",\n  \"title_name_pattern\": \"MenuRowTitle{01..10}\",\n  \"description_name_pattern\": \"MenuRowDescription{01..10}\",\n  \"footer_text_name\": \"MenuFooter\",\n  \"window_title_text_name\": \"MenuTitle\",\n  \"window_subtitle_text_name\": \"MenuSubtitle\",\n  \"page_text_name\": \"MenuPage\",\n  \"in_game_verified\": false,\n  \"workshop_published\": false\n}\n", new System.Text.UTF8Encoding(false));
+        string sha; using (var hash = SHA256.Create()) sha = BitConverter.ToString(hash.ComputeHash(File.ReadAllBytes(bundlePath))).Replace("-", "").ToLowerInvariant();
+        string buttons = JsonArray(new[] { "MenuTabHome", "MenuTabHelp", "MenuTabTeam", "MenuTabEvents", "MenuTabStats", "MenuTabLinks", "MenuTabSettings", "MenuTabBattlePass", "MenuTabRewards", "MenuTabReports", "MenuPrevious", "MenuNext", "MenuNotifications", "MenuNotificationsClose", "MenuClose" });
+        string pages = JsonArray(Tabs.Select(x => "MenuPage" + x).ToArray());
+        string json = "{\n  \"effect_id\": " + EffectId + ",\n  \"effect_guid\": \"" + EffectGuid + "\",\n  \"effect_key\": " + EffectKey + ",\n  \"bundle\": \"MreHelp.unity3d\",\n  \"prefab_address\": \"Effect\",\n  \"unity_version\": \"" + Application.unityVersion + "\",\n  \"target\": \"StandaloneWindows64\",\n  \"bundle_sha256\": \"" + sha + "\",\n  \"prefab_address_verified\": true,\n  \"schema_version\": 4,\n  \"button_names\": " + buttons + ",\n  \"page_names\": " + pages + ",\n  \"notifications_panel_name\": \"MenuNotificationsPanel\",\n  \"backdrop_alpha\": 0.52,\n  \"font_regular\": \"NotoSans-Regular.ttf\",\n  \"font_semibold\": \"NotoSans-SemiBold.ttf\",\n  \"font_provenance\": \"ui/MreHelp/Assets/MreFonts\",\n  \"window_name\": \"MenuWindow\",\n  \"in_game_verified\": false,\n  \"workshop_published\": false\n}\n";
+        File.WriteAllText(Path.Combine(output, "effect-manifest.json"), json, new System.Text.UTF8Encoding(false));
         Debug.Log("MRE Menu: Windows bundle собран: " + mod + ". Не опубликован и не установлен.");
     }
 
+    private static BuildAssetBundleOptions AssetBundleBuildOptions() { return BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode | BuildAssetBundleOptions.ForceRebuildAssetBundle; }
+
     public static void RenderPreview()
     {
-        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-        string path = Path.Combine(projectRoot, "Build/Windows/MreHelp/MreHelp.unity3d");
-        var bundle = AssetBundle.LoadFromFile(path);
-        if (bundle == null) throw new InvalidOperationException("Не найден собранный MRE Menu bundle: " + path);
-        var prefab = bundle.LoadAsset<GameObject>("Effect");
-        if (prefab == null) throw new InvalidOperationException("Bundle не содержит Effect.");
-        var root = UnityEngine.Object.Instantiate(prefab);
-        var cameraObject = new GameObject("PreviewCamera", typeof(Camera));
-        var texture = new RenderTexture(1920, 1080, 24);
-        try
-        {
-            var camera = cameraObject.GetComponent<Camera>();
-            camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Hex("263531"); camera.orthographic = true; camera.targetTexture = texture;
-            var canvas = root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceCamera; canvas.worldCamera = camera; canvas.planeDistance = 1;
-            Canvas.ForceUpdateCanvases(); camera.Render();
-            RenderTexture.active = texture;
-            var image = new Texture2D(1920, 1080, TextureFormat.RGB24, false); image.ReadPixels(new Rect(0, 0, 1920, 1080), 0, 0); image.Apply();
-            File.WriteAllBytes(Path.Combine(projectRoot, "Build/MreHelp-preview.png"), image.EncodeToPNG());
-            UnityEngine.Object.DestroyImmediate(image);
-            Debug.Log("MRE Menu preview: " + Path.Combine(projectRoot, "Build/MreHelp-preview.png"));
-        }
-        finally { RenderTexture.active = null; cameraObject.GetComponent<Camera>().targetTexture = null; texture.Release(); UnityEngine.Object.DestroyImmediate(texture); UnityEngine.Object.DestroyImmediate(cameraObject); UnityEngine.Object.DestroyImmediate(root); bundle.Unload(true); }
-    }
-
-    private static void BuildTopBar(RectTransform parent)
-    {
-        RectTransform bar = Box("MenuTopBar", parent, 0, 1004, 1920, 76, Hex("0B1510", .96f));
-        Label("MenuTopBrand", bar, "MRE", 30, 17, 180, 45, 34, Lime, FontStyle.Bold, bold);
-        Label("MenuTopTagline", bar, "СЕРВЕР  ·  PEI", 208, 23, 190, 28, 14, Muted, FontStyle.Bold, regular);
-        TopButton(bar, "MenuTopMain", "Основные", 425, 15, 170);
-        TopButton(bar, "MenuTopProgress", "Прогресс", 608, 15, 170);
-        TopButton(bar, "MenuTopSettings", "Настройки", 1654, 15, 188);
-        Box("MenuSelectedTopMain", bar, 425, 15, 3, 46, Lime);
-        Box("MenuSelectedTopProgress", bar, 608, 15, 3, 46, Lime);
-        Box("MenuSelectedTopSettings", bar, 1654, 15, 3, 46, Lime);
-        bar.Find("MenuSelectedTopMain").SetAsLastSibling();
-        bar.Find("MenuSelectedTopProgress").SetAsLastSibling();
-        bar.Find("MenuSelectedTopSettings").SetAsLastSibling();
-        bar.Find("MenuSelectedTopMain").gameObject.SetActive(true);
-        bar.Find("MenuSelectedTopProgress").gameObject.SetActive(false);
-        bar.Find("MenuSelectedTopSettings").gameObject.SetActive(false);
-        Button("MenuClose", bar, "×", 1864, 15, 44, 46, Hex("361C1B"), Hex("FF6666"), 26);
-    }
-
-    private static void BuildSectionBar(RectTransform parent)
-    {
-        RectTransform bar = Box("MenuSectionBar", parent, 20, 936, 1880, 52, Hex("0D1711", .92f));
-        SectionButton(bar, "MenuSectionInformation", "Информация", 10, 7, 164);
-        SectionButton(bar, "MenuSectionGroup", "Группа", 184, 7, 150);
-        SectionButton(bar, "MenuSectionCommands", "Команды", 344, 7, 150);
-        SectionButton(bar, "MenuSectionLinks", "Ссылки", 504, 7, 140);
-        SectionButton(bar, "MenuSectionRewards", "Награды", 10, 7, 164);
-        SectionButton(bar, "MenuSectionTop", "Топ игроков", 184, 7, 164);
-        foreach (string name in new[] { "Information", "Group", "Commands", "Links", "Rewards", "Top" })
-        {
-            int x = name == "Information" || name == "Rewards" ? 10 : name == "Group" || name == "Top" ? 184 : name == "Commands" ? 344 : 504;
-            int width = name == "Information" || name == "Rewards" ? 164 : name == "Links" || name == "Top" ? 140 : 150;
-            Box("MenuSection" + name + "Selected", bar, x, 7, 3, 38, Lime);
-            bar.Find("MenuSection" + name + "Selected").SetAsLastSibling();
-            bar.Find("MenuSection" + name + "Selected").gameObject.SetActive(name == "Information");
-        }
-        bar.Find("MenuSectionRewards").gameObject.SetActive(false);
-        bar.Find("MenuSectionTop").gameObject.SetActive(false);
+        string project = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        MreMenuPreview.RenderStates();
+        File.Copy(Path.Combine(project, "Build/Review/Home-1920x1080.png"), Path.Combine(project, "Build/MreHelp-preview.png"), true);
     }
 
     private static void BuildWindow(RectTransform parent)
     {
-        RectTransform window = Box("MenuWindow", parent, 0, 0, 1190, 740, Back, new Vector2(.5f, .5f), new Vector2(.5f, .5f), true);
-        window.pivot = new Vector2(.5f, .5f);
-        Box("MenuWindowAccent", window, 0, 736, 1190, 4, Lime);
+        // Fractional anchors reproduce 40/28 margins at 1920x1080 and ~32/24 at 1366x768.
+        RectTransform window = Stretch("MenuWindow", parent, 0, 0, 0, 0, new Vector2(.0208333f, .0259259f), new Vector2(.9791667f, .9740741f));
+        Image wi = window.gameObject.AddComponent<Image>(); wi.color = Surface; wi.sprite = RoundSprite(20); AddBorder(wi); wi.type = Image.Type.Sliced; wi.raycastTarget = true;
 
-        RectTransform sidebar = Box("MenuSidebar", window, 0, 0, 238, 740, Hex("0C1712", 1f));
-        Label("MenuTopBrand", sidebar, "MRE", 66, 674, 146, 34, 23, Text, FontStyle.Bold, bold);
-        Box("MenuSidebarBrandMark", sidebar, 16, 672, 40, 40, Lime);
-        Label("MenuSidebarBrandLetter", sidebar, "M", 16, 672, 40, 40, 20, Hex("102219"), FontStyle.Bold, bold, TextAnchor.MiddleCenter);
-        Label("MenuTopTagline", sidebar, "PEI  \u00b7  \u0412\u042b\u0416\u0418\u0412\u0410\u041d\u0418\u0415", 28, 648, 184, 18, 10, Muted, FontStyle.Bold, regular);
-        Label("MenuSidebarHeading", sidebar, "\u041d\u0410\u0412\u0418\u0413\u0410\u0426\u0418\u042f", 28, 600, 184, 18, 10, Muted, FontStyle.Bold, regular);
-        SectionButton(sidebar, "MenuSectionInformation", "\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f", 16, 562, 206, 44);
-        SectionButton(sidebar, "MenuSectionCommands", "\u041a\u043e\u043c\u0430\u043d\u0434\u044b", 16, 512, 206, 44);
-        SectionButton(sidebar, "MenuSectionLinks", "\u0421\u0441\u044b\u043b\u043a\u0438", 16, 462, 206, 44);
-        SectionButton(sidebar, "MenuSectionGroup", "\u0413\u0440\u0443\u043f\u043f\u0430", 16, 412, 206, 44);
-        RectTransform settingsItem = Box("MenuSectionSettings", sidebar, 16, 362, 206, 44, Hex("1B3528", 1f));
-        BuildSectionGlyph(settingsItem, "Settings", Lime);
-        Label("MenuSectionSettingsText", settingsItem, "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438", 42, 0, 154, 44, 14, Text, FontStyle.Bold, regular);
-        settingsItem.gameObject.SetActive(false);
-        RectTransform settingsSelected = Box("MenuSectionSettingsSelected", sidebar, 16, 362, 3, 44, Lime);
-        settingsSelected.gameObject.SetActive(false);
-        SectionButton(sidebar, "MenuSectionRewards", "\u041d\u0430\u0433\u0440\u0430\u0434\u044b", 16, 562, 206, 44);
-        SectionButton(sidebar, "MenuSectionTop", "\u0422\u043e\u043f \u0438\u0433\u0440\u043e\u043a\u043e\u0432", 16, 512, 206, 44);
-        foreach (string name in new[] { "Information", "Group", "Commands", "Links", "Rewards", "Top" })
+        RectTransform header = Rect("MenuHeader", window, 0, 0, 0, 0, new Vector2(0, 1), new Vector2(1, 1)); header.pivot = new Vector2(0, 1); header.offsetMin = new Vector2(32, -112); header.offsetMax = new Vector2(-32, 0);
+        RectTransform brand = Rect("MenuBrand", header, 0, 0, 340, 72, new Vector2(0, .5f), new Vector2(0, .5f));
+        RectTransform logoRect = Rect("MenuBrandLogo", brand, 0, 0, 72, 72, new Vector2(0, .5f), new Vector2(0, .5f)); Image logoImage = logoRect.gameObject.AddComponent<Image>(); logoImage.sprite = logo; logoImage.preserveAspect = true; logoImage.raycastTarget = false;
+        RectTransform titleRect = Rect("MenuBrandTitle", header, 88, 11, 170, 48, new Vector2(0, .5f), new Vector2(0, .5f)); Text title = titleRect.gameObject.AddComponent<Text>(); ConfigureText(title, "MRE", 29, TextColor, semibold, TextAnchor.MiddleLeft);
+        RectTransform subtitleRect = Rect("MenuBrandSubtitle", header, 88, -17, 190, 20, new Vector2(0, .5f), new Vector2(0, .5f)); Text subtitle = subtitleRect.gameObject.AddComponent<Text>(); ConfigureText(subtitle, "Меню сервера", 12, Muted, regular, TextAnchor.MiddleLeft);
+        RectTransform actions = Rect("MenuHeaderActions", header, 0, 0, 108, 46, new Vector2(1, .5f), new Vector2(1, .5f)); actions.anchoredPosition = Vector2.zero;
+        IconButton("MenuNotifications", actions, "bell", 0, 0, Raised);
+        Box("MenuHeaderDivider", header, 0, 0, 1, 24, Line, false, new Vector2(1, .5f), new Vector2(1, .5f)).anchoredPosition = new Vector2(-69, 0);
+        IconButton("MenuClose", actions, "close", 62, 0, Raised);
+        RectTransform headerRule = Rect("MenuHeaderRule", window, 0, 0, 0, 1, new Vector2(0, 1), new Vector2(1, 1)); headerRule.pivot = new Vector2(0, 1); headerRule.offsetMin = new Vector2(32, -105); headerRule.offsetMax = new Vector2(-32, -104); Image headerRuleImage = headerRule.gameObject.AddComponent<Image>(); headerRuleImage.color = Color.clear; headerRuleImage.raycastTarget = false;
+
+        RectTransform navigation = Rect("MenuNavigation", window, 32, -112, -64, 68, new Vector2(0, 1), new Vector2(1, 1)); navigation.pivot = new Vector2(0, 1); navigation.anchoredPosition = new Vector2(32, -112);
+        float tabWidth = .1f;
+        for (int i = 0; i < Tabs.Length; i++)
         {
-            int y = name == "Information" || name == "Rewards" ? 562 : name == "Commands" || name == "Top" ? 512 : name == "Links" ? 462 : 412;
-            RectTransform selected = Box("MenuSection" + name + "Selected", sidebar, 16, y, 3, 44, Lime);
-            selected.SetAsLastSibling();
-            selected.gameObject.SetActive(name == "Information");
+            string tab = Tabs[i]; RectTransform button = Rect("MenuTab" + tab, navigation, 0, 0, 0, 64, new Vector2(i * tabWidth, 0), new Vector2((i + 1) * tabWidth, 1));
+            button.offsetMin = new Vector2(3, 0); button.offsetMax = new Vector2(-3, 0);
+            Image hit = button.gameObject.AddComponent<Image>(); hit.color = Color.clear; hit.raycastTarget = true;
+            Button b = button.gameObject.AddComponent<Button>(); b.targetGraphic = hit;
+            Image icon = ChildIcon("MenuTab" + tab + "Icon", button, tab.ToLowerInvariant(), Muted, 18, 18); icon.rectTransform.anchorMin = icon.rectTransform.anchorMax = new Vector2(0, .5f); icon.rectTransform.pivot = new Vector2(0, .5f); icon.rectTransform.anchoredPosition = new Vector2(14, 0);
+            Label("MenuTab" + tab + "Label", button, Titles[i], 40, 0, 125, 64, 13, Muted, semibold, TextAnchor.MiddleLeft);
+            RectTransform selected = Stretch("MenuSelected" + tab, button, 0, 0, 0, 0);
+            Image selectedBg = selected.gameObject.AddComponent<Image>(); selectedBg.color = Active; selectedBg.sprite = RoundSprite(8); selectedBg.type = Image.Type.Sliced; selectedBg.raycastTarget = false;
+            Image selectedIcon = ChildIcon("MenuSelected" + tab + "Icon", selected, tab.ToLowerInvariant(), Accent, 18, 18); selectedIcon.rectTransform.anchorMin = selectedIcon.rectTransform.anchorMax = new Vector2(0, .5f); selectedIcon.rectTransform.pivot = new Vector2(0, .5f); selectedIcon.rectTransform.anchoredPosition = new Vector2(14, 0);
+            Text selectedLabel = Label("MenuSelected" + tab + "Label", selected, Titles[i], 40, 0, 125, 64, 13, Accent, semibold, TextAnchor.MiddleLeft); selectedLabel.raycastTarget = false;
+            Box("MenuSelected" + tab + "Underline", selected, 12, 0, -24, 3, Accent, false, new Vector2(0, 0), new Vector2(1, 0));
+            selected.SetAsLastSibling(); selected.gameObject.SetActive(i == 0);
         }
-        sidebar.Find("MenuSectionRewards").gameObject.SetActive(false);
-        sidebar.Find("MenuSectionTop").gameObject.SetActive(false);
-        Box("MenuSidebarRule", sidebar, 16, 98, 206, 1, Hex("304138"));
-        Label("MenuSidebarBottomTitle", sidebar, "\u0421\u0435\u0440\u0432\u0435\u0440 MRE", 28, 66, 184, 19, 12, Text, FontStyle.Bold, bold);
-        Label("MenuSidebarBottomText", sidebar, "\u041a\u043e\u043c\u0430\u043d\u0434\u044b \u0438 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f\\n\u0432 \u043e\u0434\u043d\u043e\u043c \u043c\u0435\u0441\u0442\u0435", 28, 22, 184, 38, 11, Muted, FontStyle.Normal, regular, TextAnchor.UpperLeft);
+        Box("MenuNavigationRule", navigation, 0, 0, 0, 1, Line, false, new Vector2(0, 0), new Vector2(1, 0)).offsetMax = new Vector2(0, 0);
 
-        RectTransform titleBar = Box("MenuTitleBar", window, 238, 660, 952, 80, Hex("121F19", 1f));
-        TopButton(titleBar, "MenuTopMain", "\u041e\u0441\u043d\u043e\u0432\u043d\u044b\u0435", 48, 16, 132);
-        TopButton(titleBar, "MenuTopProgress", "\u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441", 184, 16, 132);
-        TopButton(titleBar, "MenuTopSettings", "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438", 320, 16, 132);
-        Box("MenuSelectedTopMain", titleBar, 48, 0, 68, 3, Lime);
-        Box("MenuSelectedTopProgress", titleBar, 184, 0, 68, 3, Lime);
-        Box("MenuSelectedTopSettings", titleBar, 320, 0, 68, 3, Lime);
-        titleBar.Find("MenuSelectedTopMain").gameObject.SetActive(true);
-        titleBar.Find("MenuSelectedTopProgress").gameObject.SetActive(false);
-        titleBar.Find("MenuSelectedTopSettings").gameObject.SetActive(false);
-        Label("MenuTopBrandEcho", titleBar, "MRE / PEI", 740, 24, 132, 24, 10, Muted, FontStyle.Bold, regular, TextAnchor.MiddleRight);
-        Button("MenuClose", titleBar, "X", 888, 16, 38, 38, Hex("192820"), Hex("D7E9DD"), 17);
+        RectTransform pages = Rect("MenuPages", window, 0, 0, 0, 0, new Vector2(0, 0), new Vector2(1, 1)); pages.pivot = new Vector2(0, 1); pages.offsetMin = new Vector2(32, 80); pages.offsetMax = new Vector2(-32, -212);
+        for (int i = 0; i < Tabs.Length; i++)
+        {
+            string tab = Tabs[i]; RectTransform page = Stretch("MenuPage" + tab, pages, 0, 0, 0, 0);
+            Image pageBg = page.gameObject.AddComponent<Image>(); pageBg.color = Hex("151A17"); pageBg.sprite = RoundSprite(16); AddBorder(pageBg); pageBg.type = Image.Type.Sliced; pageBg.raycastTarget = false;
+            RectTransform heading = Rect("MenuPage" + tab + "Heading", page, 0, 0, 0, 0, new Vector2(0, 1), new Vector2(1, 1)); heading.pivot = new Vector2(0, 1); heading.offsetMin = new Vector2(28, -66); heading.offsetMax = new Vector2(-28, 0);
+            Image pageIcon = ChildIcon("MenuPage" + tab + "Icon", heading, tab.ToLowerInvariant(), Accent, 21, 21); pageIcon.rectTransform.anchorMin = pageIcon.rectTransform.anchorMax = new Vector2(0, .5f); pageIcon.rectTransform.pivot = new Vector2(0, .5f); pageIcon.rectTransform.anchoredPosition = Vector2.zero;
+            RectTransform pageTitleRect = Rect("MenuPage" + tab + "Title", heading, 33, 0, 600, 66, new Vector2(0, .5f), new Vector2(0, .5f)); Text pageTitle = pageTitleRect.gameObject.AddComponent<Text>(); ConfigureText(pageTitle, Titles[i], 19, TextColor, semibold, TextAnchor.MiddleLeft);
+            RectTransform pageRule = Rect("MenuPage" + tab + "Rule", heading, 0, 0, 0, 1, Vector2.zero, new Vector2(1, 0)); pageRule.pivot = Vector2.zero; Image pageRuleImage = pageRule.gameObject.AddComponent<Image>(); pageRuleImage.color = Hex("232D26"); pageRuleImage.raycastTarget = false;
+            page.gameObject.SetActive(i == 0);
+        }
 
-        RectTransform body = Box("MenuBody", window, 238, 50, 952, 610, Hex("101A16", 0f));
-        Label("MenuTitle", body, "\u0418\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043e \u0441\u0435\u0440\u0432\u0435\u0440\u0435", 38, 547, 760, 38, 26, Text, FontStyle.Bold, bold);
-        Label("MenuSubtitle", body, "\u0412\u0441\u0451 \u043d\u0435\u043e\u0431\u0445\u043e\u0434\u0438\u043c\u043e\u0435 \u0434\u043b\u044f \u043d\u0430\u0447\u0430\u043b\u0430 \u0438\u0433\u0440\u044b \u0438 \u043d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u0438 \u043f\u043e \u0441\u0435\u0440\u0432\u0435\u0440\u0443.", 38, 522, 760, 24, 13, Muted, FontStyle.Normal, regular);
+        RectTransform footer = Rect("MenuFooter", window, 32, 24, -64, 32, new Vector2(0, 0), new Vector2(1, 0)); footer.anchoredPosition = new Vector2(32, 24);
+        IconButton("MenuPrevious", footer, "left", 0, 0, Raised, true);
+        IconButton("MenuNext", footer, "right", 40, 0, Raised, true);
+        Label("MenuFooterHint", footer, "Переключить вкладку", 84, 0, 220, 32, 12, Muted, regular);
+        Label("MenuFooterBrand", footer, "MRE", 0, 0, 60, 32, 12, Hex("627468"), semibold, TextAnchor.MiddleRight, true);
 
-        RectTransform information = Box("MenuInformationPanel", body, 0, 0, 952, 610, Hex("101A16", 0f));
-        Label("MenuInformationEyebrow", information, "\u0421\u0415\u0420\u0412\u0415\u0420 / \u041e\u0411\u0417\u041e\u0420", 38, 585, 780, 18, 10, Lime, FontStyle.Bold, regular);
-        Label("MenuInformationWelcomeTitle", information, "\u0414\u043e\u0431\u0440\u043e \u043f\u043e\u0436\u0430\u043b\u043e\u0432\u0430\u0442\u044c \u043d\u0430 MRE", 64, 407, 700, 27, 17, Text, FontStyle.Bold, bold);
-        Label("MenuInformationWelcomeDescription", information, "\u0418\u0441\u0441\u043b\u0435\u0434\u0443\u0439\u0442\u0435 PEI, \u0441\u0442\u0440\u043e\u0439\u0442\u0435 \u0431\u0430\u0437\u0443 \u0438 \u0438\u0433\u0440\u0430\u0439\u0442\u0435 \u0432\u043c\u0435\u0441\u0442\u0435 \u0441 \u0434\u0440\u0443\u0437\u044c\u044f\u043c\u0438.", 64, 381, 700, 20, 12, Muted, FontStyle.Normal, regular);
-        RectTransform welcome = Box("MenuInformationWelcome", information, 38, 364, 876, 106, Hex("193428", 1f));
-        welcome.SetAsFirstSibling();
-        RectTransform welcomeIcon = Box("MenuInformationWelcomeIcon", welcome, 824, 21, 40, 64, Hex("234C39", 1f));
-        BuildGlyph(welcomeIcon, 4, Lime);
-        AddInformationCard(information, 1, "\u041d\u0430\u0431\u043e\u0440\u044b \u0432\u0435\u0449\u0435\u0439", "/kits \u2014 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u043d\u0430\u0431\u043e\u0440\u044b \u0438 \u0438\u0445 \u043f\u043e\u043b\u0443\u0447\u0435\u043d\u0438\u0435.", 38, 268, Gold);
-        AddInformationCard(information, 2, "\u0414\u043e\u043c", "/homes \u2014 \u0432\u0430\u0448\u0438 \u043a\u0440\u043e\u0432\u0430\u0442\u0438 \u0438 \u0442\u043e\u0447\u043a\u0438 \u0434\u043e\u043c\u0430.", 486, 268, Lime);
-        AddInformationCard(information, 3, "\u0422\u0435\u043b\u0435\u043f\u043e\u0440\u0442\u0430\u0446\u0438\u044f", "/tpa \u2014 \u0437\u0430\u043f\u0440\u043e\u0441 \u043d\u0430 \u043f\u0435\u0440\u0435\u043d\u043e\u0441 \u043a \u0438\u0433\u0440\u043e\u043a\u0443.", 38, 164, Lime);
-        AddInformationCard(information, 4, "\u0425\u0440\u0430\u043d\u0438\u043b\u0438\u0449\u0435 \u0438 \u043e\u0431\u043c\u0435\u043d", "/s \u0438 /trade \u2014 \u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u0438 \u043e\u0431\u043c\u0435\u043d.", 486, 164, Lime);
-        Label("MenuInformationHint", information, "\u0412\u0441\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u044b \u043d\u0430\u0445\u043e\u0434\u044f\u0442\u0441\u044f \u0432 \u0440\u0430\u0437\u0434\u0435\u043b\u0435 \u00ab\u041a\u043e\u043c\u0430\u043d\u0434\u044b\u00bb.", 38, 119, 876, 20, 11, Muted, FontStyle.Normal, regular);
-
-        RectTransform rows = Box("MenuRowsPanel", body, 0, 0, 952, 610, Hex("101A16", 0f));
-        rows.gameObject.SetActive(false);
-        Label("MenuRowsEyebrow", rows, "", 38, 585, 850, 18, 10, Lime, FontStyle.Bold, regular);
-        Label("MenuRowsHint", rows, "", 38, 492, 850, 21, 12, Muted, FontStyle.Normal, regular);
-        for (int i = 1; i <= 10; i++) MenuRow(rows, i);
-
-        RectTransform planned = Box("MenuPlannedPanel", body, 0, 0, 952, 610, Hex("101A16", 0f));
-        planned.gameObject.SetActive(false);
-        Label("MenuPlannedEyebrow", planned, "\u041f\u041b\u0410\u041d\u042b MRE", 38, 585, 850, 18, 10, Lime, FontStyle.Bold, regular);
-        Label("MenuPlannedTitle", planned, "\u0420\u0430\u0437\u0434\u0435\u043b \u0433\u043e\u0442\u043e\u0432\u0438\u0442\u0441\u044f", 38, 438, 850, 42, 26, Text, FontStyle.Bold, bold);
-        Label("MenuPlannedDescription", planned, "", 38, 326, 820, 92, 16, Muted, FontStyle.Normal, regular, TextAnchor.UpperLeft);
-        Box("MenuPlannedRule", planned, 38, 274, 850, 1, Hex("35433B"));
-        Label("MenuPlannedStatus", planned, "\u0420\u0430\u0437\u0434\u0435\u043b \u0432 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0435.", 38, 230, 850, 24, 13, Gold, FontStyle.Bold, regular);
-
-        RectTransform pager = Rect("MenuCommandPager", rows, 0, 10, 952, 30);
-        pager.gameObject.SetActive(false);
-        Button("MenuCommandsPrevious", pager, "<", 38, 0, 34, 30, Raised, Text, 17);
-        Label("MenuPage", pager, "1 / 1", 80, 0, 72, 30, 12, Text, FontStyle.Bold, regular, TextAnchor.MiddleCenter);
-        Button("MenuCommandsNext", pager, ">", 162, 0, 34, 30, Raised, Text, 17);
-
-        Box("MenuFooterBar", window, 238, 0, 952, 50, Hex("121F19", 1f));
-        Label("MenuFooter", window, "\u041d\u0430\u0436\u043c\u0438\u0442\u0435 X, \u0447\u0442\u043e\u0431\u044b \u0437\u0430\u043a\u0440\u044b\u0442\u044c \u043c\u0435\u043d\u044e", 900, 14, 258, 20, 11, Muted, FontStyle.Normal, regular, TextAnchor.MiddleRight);
+        RectTransform notifications = Rect("MenuNotificationsPanel", window, 0, 0, 360, 280, new Vector2(1, 1), new Vector2(1, 1)); notifications.anchoredPosition = new Vector2(-32, -94); notifications.pivot = new Vector2(1, 1);
+        Image ni = notifications.gameObject.AddComponent<Image>(); ni.color = Hex("19211C"); ni.sprite = RoundSprite(16); AddBorder(ni); ni.type = Image.Type.Sliced; ni.raycastTarget = true;
+        RectTransform nh = Rect("MenuNotificationsHeader", notifications, 0, 0, 0, 0, new Vector2(0, 1), new Vector2(1, 1)); nh.pivot = new Vector2(0, 1); nh.offsetMin = new Vector2(20, -66); nh.offsetMax = new Vector2(-20, -18);
+        RectTransform notificationTitleRect = Rect("MenuNotificationsTitle", nh, 0, 0, 220, 48, new Vector2(0, 1), new Vector2(0, 1)); Text notificationTitle = notificationTitleRect.gameObject.AddComponent<Text>(); ConfigureText(notificationTitle, "Уведомления", 16, TextColor, semibold, TextAnchor.MiddleLeft);
+        IconButton("MenuNotificationsClose", nh, "close", 0, 0, Raised, true);
+        RectTransform closeRect = nh.Find("MenuNotificationsClose").GetComponent<RectTransform>(); closeRect.anchorMin = closeRect.anchorMax = new Vector2(1, .5f); closeRect.pivot = new Vector2(1, .5f); closeRect.anchoredPosition = Vector2.zero;
+        RectTransform notificationRule = Rect("MenuNotificationsRule", notifications, 0, 0, 0, 1, new Vector2(0, 1), new Vector2(1, 1)); notificationRule.pivot = new Vector2(0, 1); notificationRule.offsetMin = new Vector2(0, -67); notificationRule.offsetMax = new Vector2(0, -66); Image notificationRuleImage = notificationRule.gameObject.AddComponent<Image>(); notificationRuleImage.color = Line; notificationRuleImage.raycastTarget = false;
+        Image emptyBell = ChildIcon("MenuNotificationsEmptyIcon", notifications, "bell", Hex("6C8575"), 30, 30);
+        emptyBell.rectTransform.anchorMin = emptyBell.rectTransform.anchorMax = new Vector2(.5f, .5f); emptyBell.rectTransform.pivot = new Vector2(.5f, .5f); emptyBell.rectTransform.anchoredPosition = new Vector2(0, -35);
+        Label("MenuNotificationsEmptyText", notifications, "Новых уведомлений нет", -130, 0, 260, 28, 13, Muted, regular, TextAnchor.MiddleCenter);
+        RectTransform emptyText = notifications.Find("MenuNotificationsEmptyText").GetComponent<RectTransform>(); emptyText.anchorMin = emptyText.anchorMax = new Vector2(.5f, .5f); emptyText.pivot = new Vector2(.5f, .5f); emptyText.anchoredPosition = new Vector2(0, -68);
+        notifications.gameObject.SetActive(false);
+        RectTransform bellSelected = Stretch("MenuNotificationsSelected", actions.Find("MenuNotifications"), 0, 0, 0, 0);
+        Image bellBackground = bellSelected.gameObject.AddComponent<Image>(); bellBackground.sprite = rounded; bellBackground.type = Image.Type.Sliced; bellBackground.color = Active; bellBackground.raycastTarget = false; AddBorder(bellBackground);
+        ChildIcon("MenuNotificationsSelectedIcon", bellSelected, "bell", Accent, 21, 21);
+        bellSelected.gameObject.SetActive(false);
     }
 
-    private static void AddInformationCard(RectTransform parent, int index, string title, string description, int x, int y, Color accent)
+    private static void IconButton(string name, RectTransform parent, string iconName, int x, int y, Color fill, bool small = false)
     {
-        string suffix = index.ToString("00");
-        RectTransform card = Box("MenuInformationCard" + suffix, parent, x, y, 426, 92, Hex("1A2B22", 1f));
-        RectTransform icon = Box("MenuInformationCardIcon" + suffix, card, 18, 27, 38, 38, Hex("284736", 1f));
-        BuildGlyph(icon, index, accent);
-        Label("MenuInformationCardTitle" + suffix, card, title, 68, 50, 340, 22, 14, Text, FontStyle.Bold, bold);
-        Label("MenuInformationCardDescription" + suffix, card, description, 68, 18, 340, 34, 11, Muted, FontStyle.Normal, regular, TextAnchor.UpperLeft);
+        int size = small ? 32 : 46; RectTransform r = Box(name, parent, x, y, size, size, fill, true);
+        r.GetComponent<Image>().sprite = RoundSprite(small ? 8 : 12); AddBorder(r.GetComponent<Image>()); r.GetComponent<Image>().type = Image.Type.Sliced;
+        Button b = r.gameObject.AddComponent<Button>(); b.targetGraphic = r.GetComponent<Image>();
+        ColorBlock colors = b.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(1.3f, 1.3f, 1.3f, 1); colors.pressedColor = new Color(.85f, .85f, .85f, 1); colors.selectedColor = Color.white; b.colors = colors;
+        ChildIcon(name + "Icon", r, iconName, Muted, small ? 16 : 21, small ? 16 : 21);
     }
 
-    private static void BuildGlyph(RectTransform parent, int kind, Color color)
+    private static Image ChildIcon(string name, RectTransform parent, string iconName, Color tint, int w, int h)
     {
-        // Basic line geometry only: no icon-font code points or extra asset dependencies.
-        if (kind == 1) // box
+        RectTransform r = Rect(name, parent, 0, 0, w, h, new Vector2(.5f, .5f), new Vector2(.5f, .5f)); Image image = r.gameObject.AddComponent<Image>();
+        image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/MreMenuArt/shell/" + iconName + ".png"); if (image.sprite == null) throw new InvalidOperationException("Missing shell icon Assets/MreMenuArt/shell/" + iconName + ".png.");
+        image.color = tint; image.preserveAspect = true; image.raycastTarget = false; return image;
+    }
+
+    private static void ImportSprites()
+    {
+        string[] paths = new[] { "Assets/MreMenuArt/server-logo.png" }.Concat(Icons.Select(x => "Assets/MreMenuArt/shell/" + x + ".png")).ToArray();
+        foreach (string path in paths)
         {
-            Stroke(parent, "GlyphTop", 9, 29, 22, 2, 0, color); Stroke(parent, "GlyphBottom", 9, 9, 22, 2, 0, color);
-            Stroke(parent, "GlyphLeft", 9, 9, 2, 22, 0, color); Stroke(parent, "GlyphRight", 29, 9, 2, 22, 0, color);
-            Stroke(parent, "GlyphMiddle", 19, 10, 2, 20, 0, color); Stroke(parent, "GlyphFlapL", 11, 21, 10, 2, -24, color); Stroke(parent, "GlyphFlapR", 20, 21, 10, 2, 24, color);
-        }
-        else if (kind == 2) // home
-        {
-            Stroke(parent, "GlyphWallL", 10, 9, 2, 15, 0, color); Stroke(parent, "GlyphWallR", 28, 9, 2, 15, 0, color); Stroke(parent, "GlyphBase", 10, 9, 20, 2, 0, color);
-            Stroke(parent, "GlyphRoofL", 7, 22, 15, 2, 43, color); Stroke(parent, "GlyphRoofR", 19, 22, 15, 2, -43, color);
-            Stroke(parent, "GlyphDoor", 18, 9, 2, 9, 0, color);
-        }
-        else if (kind == 3) // opposing teleport arrows
-        {
-            Stroke(parent, "GlyphArrowA", 10, 23, 18, 2, 0, color); Stroke(parent, "GlyphArrowATop", 24, 27, 9, 2, 42, color); Stroke(parent, "GlyphArrowABottom", 24, 19, 9, 2, -42, color);
-            Stroke(parent, "GlyphArrowB", 12, 13, 18, 2, 0, color); Stroke(parent, "GlyphArrowBTop", 7, 17, 9, 2, 42, color); Stroke(parent, "GlyphArrowBBottom", 7, 9, 9, 2, -42, color);
-        }
-        else // shield
-        {
-            Stroke(parent, "GlyphShieldTop", 10, 28, 20, 2, 0, color); Stroke(parent, "GlyphShieldL", 9, 17, 14, 2, 78, color);
-            Stroke(parent, "GlyphShieldR", 21, 17, 14, 2, -78, color); Stroke(parent, "GlyphShieldBottomL", 12, 10, 13, 2, -36, color); Stroke(parent, "GlyphShieldBottomR", 18, 10, 13, 2, 36, color);
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter; if (imp == null) throw new InvalidOperationException("Missing menu art " + path + ".");
+            bool changed = imp.textureType != TextureImporterType.Sprite || imp.spriteImportMode != SpriteImportMode.Single || imp.mipmapEnabled || !imp.alphaIsTransparency || imp.textureCompression != TextureImporterCompression.Uncompressed;
+            imp.filterMode = FilterMode.Bilinear; imp.textureType = TextureImporterType.Sprite; imp.spriteImportMode = SpriteImportMode.Single; imp.mipmapEnabled = false; imp.alphaIsTransparency = true; imp.textureCompression = TextureImporterCompression.Uncompressed;
+            if (changed) imp.SaveAndReimport();
         }
     }
 
-    private static void BuildSectionGlyph(RectTransform button, string section, Color color)
+    private static Sprite RoundSprite(int radius)
     {
-        RectTransform icon = Rect(button.name + "Icon", button, 12, 12, 20, 20);
-        if (section == "Information")
-        {
-            Stroke(icon, "GlyphFrameTop", 3, 17, 14, 2, 0, color); Stroke(icon, "GlyphFrameBottom", 3, 3, 14, 2, 0, color);
-            Stroke(icon, "GlyphFrameLeft", 3, 3, 2, 14, 0, color); Stroke(icon, "GlyphFrameRight", 15, 3, 2, 14, 0, color);
-            Stroke(icon, "GlyphInfoStem", 9, 6, 2, 7, 0, color); Stroke(icon, "GlyphInfoDot", 9, 14, 2, 2, 0, color);
-        }
-        else if (section == "Group")
-        {
-            Stroke(icon, "GlyphHeadA", 4, 12, 5, 5, 0, color); Stroke(icon, "GlyphHeadB", 11, 12, 5, 5, 0, color);
-            Stroke(icon, "GlyphBodyA", 2, 4, 8, 2, 0, color); Stroke(icon, "GlyphBodyB", 10, 4, 8, 2, 0, color);
-        }
-        else if (section == "Commands")
-        {
-            Stroke(icon, "GlyphTerminalTop", 2, 15, 16, 2, 0, color); Stroke(icon, "GlyphTerminalBottom", 2, 3, 16, 2, 0, color);
-            Stroke(icon, "GlyphTerminalLeft", 2, 3, 2, 14, 0, color); Stroke(icon, "GlyphTerminalRight", 16, 3, 2, 14, 0, color);
-            Stroke(icon, "GlyphPromptA", 5, 10, 6, 2, 35, color); Stroke(icon, "GlyphPromptB", 5, 7, 6, 2, -35, color); Stroke(icon, "GlyphPromptLine", 12, 7, 3, 2, 0, color);
-        }
-        else if (section == "Links")
-        {
-            Stroke(icon, "GlyphLinkA", 2, 6, 11, 5, 42, color); Stroke(icon, "GlyphLinkB", 8, 9, 11, 5, 42, color);
-            Stroke(icon, "GlyphLinkJoin", 7, 8, 7, 2, 0, color);
-        }
-        else if (section == "Rewards")
-        {
-            Stroke(icon, "GlyphGiftBase", 3, 3, 14, 2, 0, color); Stroke(icon, "GlyphGiftSideL", 3, 3, 2, 9, 0, color); Stroke(icon, "GlyphGiftSideR", 15, 3, 2, 9, 0, color);
-            Stroke(icon, "GlyphGiftTop", 2, 11, 16, 2, 0, color); Stroke(icon, "GlyphGiftRibbon", 9, 3, 2, 10, 0, color);
-        }
-        else if (section == "Top")
-        {
-            Stroke(icon, "GlyphBar1", 3, 3, 3, 7, 0, color); Stroke(icon, "GlyphBar2", 8, 3, 3, 12, 0, color); Stroke(icon, "GlyphBar3", 13, 3, 3, 16, 0, color);
-        }
-        else // settings
-        {
-            Stroke(icon, "GlyphGearV", 8, 2, 4, 16, 0, color); Stroke(icon, "GlyphGearH", 2, 8, 16, 4, 0, color);
-            Stroke(icon, "GlyphGearCore", 7, 7, 6, 6, 0, Hex("101A16"));
-        }
+        Sprite cached;
+        if (roundSprites.TryGetValue(radius, out cached)) return cached;
+        string path = "Assets/MreMenuArt/shell/round-" + radius + ".png";
+        TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer == null) throw new InvalidOperationException("Missing round sprite " + path);
+        importer.textureType = TextureImporterType.Sprite; importer.spriteImportMode = SpriteImportMode.Single;
+        importer.spriteBorder = new Vector4(radius, radius, radius, radius); importer.spritePixelsPerUnit = 100;
+        importer.mipmapEnabled = false; importer.alphaIsTransparency = true; importer.filterMode = FilterMode.Bilinear;
+        importer.textureCompression = TextureImporterCompression.Uncompressed; importer.SaveAndReimport();
+        Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        roundSprites.Add(radius, sprite);
+        return sprite;
     }
-
-    private static void Stroke(Transform parent, string name, int x, int y, int width, int height, float angle, Color color)
+    private static void AddBorder(Image image)
     {
-        RectTransform stroke = Box(parent.name + name, parent, x, y, width, height, color);
-        stroke.pivot = new Vector2(.5f, .5f);
-        stroke.anchoredPosition = new Vector2(x + width / 2f, y + height / 2f);
-        stroke.localRotation = Quaternion.Euler(0f, 0f, angle);
-    }
-
-    private static void MenuRow(RectTransform parent, int index)
-    {
-        string suffix = index.ToString("00");
-        int rowIndex = index - 1;
-        int y = 446 - rowIndex * 38;
-        RectTransform row = Box("MenuRow" + suffix, parent, 38, y, 876, 35, index % 2 == 0 ? Hex("233229") : Hex("1D2B23"));
-        row.gameObject.SetActive(true);
-        Box("MenuRowAccent" + suffix, row, 0, 0, 3, 35, index == 1 ? Lime : Cyan);
-        string[] commands = { "Наборы", "Дом", "TPA", "Хранилище", "Обмен", "Группы", "Ивенты", "Команды", "", "" };
-        string[] descriptions = { "/kits и /kit <имя> — список и получение наборов.", "/homes — сохранённые точки; /home — перенос к кровати.", "/tpa <игрок> — запрос на телепортацию.", "/s — личное виртуальное хранилище.", "/trade <игрок> — безопасный обмен предметами.", "В одной группе может быть до четырёх игроков.", "/whenairdrop показывает время до следующего аирдропа.", "/help открывает этот список; /menu — главное меню.", "", "" };
-        Label("MenuRowTitle" + suffix, row, commands[index - 1], 15, 0, 192, 35, 15, Gold, FontStyle.Bold, bold);
-        Label("MenuRowDescription" + suffix, row, descriptions[index - 1], 222, 1, 642, 33, 13, Text, FontStyle.Normal, regular);
-    }
-
-    private static void TopButton(RectTransform parent, string name, string label, int x, int y, int width)
-    {
-        RectTransform button = Box(name, parent, x, y, width, 46, Raised, button: true);
-        button.gameObject.AddComponent<Button>().targetGraphic = button.GetComponent<Image>();
-        Label(name + "Text", button, label, 6, 0, width - 12, 46, 15, Text, FontStyle.Bold, regular, TextAnchor.MiddleCenter);
-    }
-
-    private static void SectionButton(RectTransform parent, string name, string label, int x, int y, int width)
-    {
-        RectTransform button = Box(name, parent, x, y, width, 44, Hex("101A16", 1f), button: true);
-        button.gameObject.AddComponent<Button>().targetGraphic = button.GetComponent<Image>();
-        BuildSectionGlyph(button, name.Replace("MenuSection", ""), Muted);
-        Label(name + "Text", button, label, 42, 0, width - 54, 44, 13, Text, FontStyle.Bold, regular);
-    }
-
-    private static void Button(string name, RectTransform parent, string value, int x, int y, int w, int h, Color bg, Color fg, int size)
-    {
-        RectTransform rect = Box(name, parent, x, y, w, h, bg, button: true);
-        rect.gameObject.AddComponent<Button>().targetGraphic = rect.GetComponent<Image>();
-        Label(name + "Text", rect, value, 0, 0, w, h, size, fg, FontStyle.Bold, bold, TextAnchor.MiddleCenter);
-    }
-
-    private static RectTransform Box(string name, Transform parent, int x, int y, int w, int h, Color color, Vector2? min = null, Vector2? max = null, bool button = false)
-    {
-        RectTransform rect = Rect(name, parent, x, y, w, h, min ?? Vector2.zero, max ?? Vector2.zero);
-        var image = rect.gameObject.AddComponent<Image>(); image.color = color; image.raycastTarget = button;
-        if (roundedSprite != null && name != "MenuBackdrop")
-        {
-            image.sprite = roundedSprite;
-            image.type = Image.Type.Sliced;
-        }
-        return rect;
-    }
-
-    private static Text Label(string name, Transform parent, string value, int x, int y, int w, int h, int size, Color color, FontStyle style, Font font, TextAnchor align = TextAnchor.MiddleLeft)
-    {
-        RectTransform rect = Rect(name, parent, x, y, w, h);
-        var text = rect.gameObject.AddComponent<Text>();
-        text.text = value; text.font = font; text.fontSize = size; text.fontStyle = style; text.color = color;
-        text.alignment = align; text.horizontalOverflow = HorizontalWrapMode.Wrap; text.verticalOverflow = VerticalWrapMode.Truncate;
-        text.supportRichText = false; text.raycastTarget = false;
-        return text;
-    }
-
-    private static RectTransform Rect(string name, Transform parent, int x, int y, int w, int h, Vector2? min = null, Vector2? max = null)
-    {
-        var go = new GameObject(name, typeof(RectTransform)); go.transform.SetParent(parent, false);
-        var rect = go.GetComponent<RectTransform>(); rect.anchorMin = min ?? Vector2.zero; rect.anchorMax = max ?? Vector2.zero;
-        rect.pivot = new Vector2(0, 0); rect.anchoredPosition = new Vector2(x, y); rect.sizeDelta = new Vector2(w, h);
-        return rect;
+        Outline outline = image.gameObject.AddComponent<Outline>(); outline.effectColor = Line;
+        outline.effectDistance = new Vector2(1, -1); outline.useGraphicAlpha = false;
     }
 
     private static void Validate(GameObject root)
     {
-        var all = root.GetComponentsInChildren<RectTransform>(true);
-        var duplicate = all.GroupBy(x => x.name).FirstOrDefault(x => x.Count() > 1);
-        if (duplicate != null) throw new InvalidOperationException("Повторяется имя элемента: " + duplicate.Key);
-        string[] required = { "MenuContent", "MenuClose", "MenuTitle", "MenuSubtitle", "MenuTopBrand", "MenuTopMain", "MenuTopProgress", "MenuTopSettings", "MenuSelectedTopMain", "MenuSelectedTopProgress", "MenuSelectedTopSettings", "MenuSectionInformation", "MenuSectionGroup", "MenuSectionCommands", "MenuSectionLinks", "MenuSectionRewards", "MenuSectionTop", "MenuSectionInformationSelected", "MenuSectionGroupSelected", "MenuSectionCommandsSelected", "MenuSectionLinksSelected", "MenuSectionRewardsSelected", "MenuSectionTopSelected", "MenuRowsPanel", "MenuPlannedPanel", "MenuPlannedTitle", "MenuPlannedDescription", "MenuCommandPager", "MenuCommandsPrevious", "MenuCommandsNext", "MenuPage", "MenuFooter", "MenuRow01", "MenuRowTitle01", "MenuRowDescription01", "MenuRow10", "MenuRowTitle10", "MenuRowDescription10" };
-        foreach (string name in required) if (!all.Any(x => x.name == name)) throw new InvalidOperationException("Отсутствует элемент " + name);
+        RectTransform[] all = root.GetComponentsInChildren<RectTransform>(true);
+        var duplicate = all.GroupBy(x => x.name).FirstOrDefault(x => x.Count() > 1); if (duplicate != null) throw new InvalidOperationException("Повторяется имя элемента: " + duplicate.Key);
+        foreach (string name in new[] { "MenuContent", "MenuWindow", "MenuBackdrop", "MenuNotificationsPanel", "MenuNotificationsSelected", "MenuNotificationsClose", "MenuPrevious", "MenuNext", "MenuClose" }.Concat(Tabs.SelectMany(x => new[] { "MenuTab" + x, "MenuSelected" + x, "MenuPage" + x, "MenuPage" + x + "Title", "MenuPage" + x + "Icon" })))
+            if (!all.Any(x => x.name == name)) throw new InvalidOperationException("Отсутствует элемент " + name + ".");
+        foreach (string name in new[] { "MenuPrevious", "MenuNext", "MenuClose", "MenuNotifications", "MenuNotificationsClose" }.Concat(Tabs.Select(x => "MenuTab" + x)))
+            if (all.First(x => x.name == name).GetComponent<Button>() == null) throw new InvalidOperationException("Элемент не является кнопкой: " + name);
+        Image window = all.First(x => x.name == "MenuWindow").GetComponent<Image>(); if (window == null || window.color.a < 1) throw new InvalidOperationException("MenuWindow должен быть непрозрачным.");
+        Image backdrop = all.First(x => x.name == "MenuBackdrop").GetComponent<Image>(); if (backdrop.color.a <= 0 || backdrop.color.a >= 1 || !backdrop.raycastTarget) throw new InvalidOperationException("MenuBackdrop должен затемнять мир и перехватывать клики.");
+        if (all.Count(x => x.name.StartsWith("MenuPage") && Tabs.Any(t => x.name == "MenuPage" + t) && x.gameObject.activeSelf) != 1 || !all.First(x => x.name == "MenuPageHome").gameObject.activeSelf) throw new InvalidOperationException("По умолчанию должна быть открыта только MenuPageHome.");
+        foreach (string tab in Tabs)
+        {
+            RectTransform selected = all.First(x => x.name == "MenuSelected" + tab); if (selected.GetComponent<Graphic>() != null && selected.GetComponent<Graphic>().raycastTarget) throw new InvalidOperationException("Маркер выбора не должен блокировать клики: " + selected.name);
+        }
+        if (all.First(x => x.name == "MenuNotificationsPanel").gameObject.activeSelf || all.First(x => x.name == "MenuNotificationsSelected").gameObject.activeSelf) throw new InvalidOperationException("Уведомления и маркер должны быть скрыты по умолчанию.");
         if (root.GetComponent<Canvas>() == null || root.GetComponent<GraphicRaycaster>() == null) throw new InvalidOperationException("Effect должен иметь Canvas и GraphicRaycaster.");
-        foreach (string name in new[] { "MenuClose", "MenuTopMain", "MenuTopProgress", "MenuTopSettings", "MenuSectionInformation", "MenuSectionGroup", "MenuSectionCommands", "MenuSectionLinks", "MenuSectionRewards", "MenuSectionTop", "MenuCommandsPrevious", "MenuCommandsNext" })
-            if (root.transform.Find("MenuContent") == null || !all.Any(x => x.name == name && x.GetComponent<Button>() != null)) throw new InvalidOperationException("Отсутствует кнопка " + name);
     }
 
-    private static Color Hex(string hex, float alpha = 1)
+    private static string JsonArray(string[] values) { return "[" + string.Join(",", values.Select(x => "\"" + x + "\"")) + "]"; }
+    private static Color Hex(string value, float alpha = 1) { Color c; if (!ColorUtility.TryParseHtmlString("#" + value, out c)) throw new ArgumentException(value); c.a = alpha; return c; }
+    private static RectTransform Stretch(string name, Transform parent, float left, float bottom, float right, float top, Vector2? min = null, Vector2? max = null)
     {
-        Color color; if (!ColorUtility.TryParseHtmlString("#" + hex, out color)) throw new ArgumentException(hex); color.a = alpha; return color;
+        RectTransform r = Rect(name, parent, 0, 0, 0, 0, min ?? Vector2.zero, max ?? Vector2.one); r.offsetMin = new Vector2(left, bottom); r.offsetMax = new Vector2(-right, -top); return r;
+    }
+    private static RectTransform Box(string name, Transform parent, int x, int y, int w, int h, Color color, bool raycast = false, Vector2? min = null, Vector2? max = null)
+    {
+        RectTransform r = Rect(name, parent, x, y, w, h, min ?? Vector2.zero, max ?? Vector2.zero); Image i = r.gameObject.AddComponent<Image>(); i.color = color; i.raycastTarget = raycast; if (rounded != null && w >= 8 && h >= 8) { i.sprite = rounded; i.type = Image.Type.Sliced; } return r;
+    }
+    private static Text Label(string name, Transform parent, string value, int x, int y, int w, int h, int size, Color color, Font font, TextAnchor anchor = TextAnchor.MiddleLeft, bool right = false)
+    {
+        RectTransform r = Rect(name, parent, x, y, w, h, right ? new Vector2(1, .5f) : Vector2.zero, right ? new Vector2(1, .5f) : Vector2.zero); Text t = r.gameObject.AddComponent<Text>(); ConfigureText(t, value, size, color, font, anchor); return t;
+    }
+    private static void ConfigureText(Text text, string value, int size, Color color, Font font, TextAnchor anchor)
+    {
+        text.text = value; text.font = font; text.fontSize = size; text.fontStyle = FontStyle.Normal; text.color = color; text.alignment = anchor;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap; text.verticalOverflow = VerticalWrapMode.Truncate; text.supportRichText = false; text.raycastTarget = false;
+    }
+    private static RectTransform Rect(string name, Transform parent, float x, float y, float w, float h, Vector2? min = null, Vector2? max = null)
+    {
+        GameObject go = new GameObject(name, typeof(RectTransform)); go.transform.SetParent(parent, false); RectTransform r = go.GetComponent<RectTransform>(); r.anchorMin = min ?? Vector2.zero; r.anchorMax = max ?? Vector2.zero;
+        r.pivot = r.anchorMin == r.anchorMax ? r.anchorMin : new Vector2(0, 0); r.anchoredPosition = new Vector2(x, y); r.sizeDelta = new Vector2(w, h); return r;
     }
 }

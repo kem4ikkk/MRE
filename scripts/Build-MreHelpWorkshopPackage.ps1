@@ -37,6 +37,16 @@ $hudDat = Join-Path $baseContent 'Bundles\MreHud\MreHud.dat'
 if (-not (Test-Path -LiteralPath $hudBundle -PathType Leaf) -or -not (Test-Path -LiteralPath $hudDat -PathType Leaf)) { throw 'В базовой заготовке отсутствуют файлы MRE HUD.' }
 if ($receipt.bundle_sha256 -ne (Get-FileHash -LiteralPath $hudBundle -Algorithm SHA256).Hash.ToLowerInvariant() -or
     $receipt.dat_sha256 -ne (Get-FileHash -LiteralPath $hudDat -Algorithm SHA256).Hash.ToLowerInvariant()) { throw 'Хэши MRE HUD не совпадают с манифестом базовой заготовки.' }
+$spawnBundle = Join-Path $baseContent 'Bundles\MreSpawnFx\MreSpawnFx.unity3d'
+$spawnDat = Join-Path $baseContent 'Bundles\MreSpawnFx\MreSpawnFx.dat'
+foreach ($path in @($spawnBundle, $spawnDat)) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "В базовой заготовке отсутствует эффект появления: $path" }
+}
+$spawnHash = (Get-FileHash -LiteralPath $spawnBundle -Algorithm SHA256).Hash.ToLowerInvariant()
+$spawnDatHash = (Get-FileHash -LiteralPath $spawnDat -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($receipt.spawn_fx_sha256 -ne $spawnHash -or $receipt.spawn_fx_dat_sha256 -ne $spawnDatHash) {
+    throw 'Хэши эффекта появления не совпадают с базовой заготовкой.'
+}
 
 $outputRoot = Join-Path $runtime 'workshop-packages'
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
@@ -55,6 +65,20 @@ $licenseTarget = Join-Path $content 'Licenses\PTSans'
 New-Item -ItemType Directory -Path $licenseTarget -Force | Out-Null
 Copy-Item -LiteralPath $fontLicense -Destination (Join-Path $licenseTarget 'OFL.txt') -Force
 Copy-Item -LiteralPath $fontNotice -Destination (Join-Path $licenseTarget 'README.md') -Force
+$notoLicenseTarget = Join-Path $content 'Licenses\NotoSans'
+New-Item -ItemType Directory -Path $notoLicenseTarget -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $root 'ui\MreHelp\Assets\MreFonts\NotoSans-OFL.txt') -Destination (Join-Path $notoLicenseTarget 'OFL.txt') -Force
+Copy-Item -LiteralPath (Join-Path $root 'ui\MreHelp\Assets\MreFonts\NotoSans-README.md') -Destination (Join-Path $notoLicenseTarget 'README.md') -Force
+$artNotice = Join-Path $root 'ui\MreHelp\Assets\MreMenuArt\README.md'
+if (Test-Path -LiteralPath $artNotice -PathType Leaf) {
+    $artLicenseTarget = Join-Path $content 'Licenses\MreMenuArt'
+    New-Item -ItemType Directory -Path $artLicenseTarget -Force | Out-Null
+    Copy-Item -LiteralPath $artNotice -Destination (Join-Path $artLicenseTarget 'README.md') -Force
+    $shellNotice = Join-Path $root 'ui\MreHelp\Assets\MreMenuArt\shell\README.md'
+    if (Test-Path -LiteralPath $shellNotice -PathType Leaf) {
+        Copy-Item -LiteralPath $shellNotice -Destination (Join-Path $artLicenseTarget 'shell-README.md') -Force
+    }
+}
 
 $newReceipt = [ordered]@{
     workshop_file_id = 3832074683
@@ -62,6 +86,8 @@ $newReceipt = [ordered]@{
     base_content_path = $baseContent
     hud_bundle_sha256 = (Get-FileHash -LiteralPath $hudBundle -Algorithm SHA256).Hash.ToLowerInvariant()
     help_bundle_sha256 = $bundleHash
+    spawn_fx_bundle_sha256 = $spawnHash
+    spawn_fx_dat_sha256 = $spawnDatHash
     help_effect_id = 48625
     help_effect_guid = $manifest.effect_guid
     compatibility_key = 'compatibility_version'

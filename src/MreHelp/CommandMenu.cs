@@ -18,7 +18,7 @@ namespace MreHelp
         {
             var player = caller as UnturnedPlayer;
             if (player == null) return;
-            if (HelpUi.Open(player, MenuPrimary.Main, MenuSection.Information)) return;
+            if (HelpUi.Open(player, MenuTab.Home)) return;
             MreChat.SayServer(player, "МЕНЮ MRE · ИНФОРМАЦИЯ");
             MreChat.SayServer(player, "Команды: /help. Дом и перемещение: /homes, /home, /tpa.");
             MreChat.SayServer(player, "Наборы: /kits, /kit <имя>. Обмен: /trade <игрок>. Хранилище: /s.");

@@ -96,7 +96,8 @@ namespace SDG.Unturned
 
     public static class Assets
     {
-        public static EffectAsset find(Guid guid) { return new EffectAsset { id = HelpUi.EffectId }; }
+        public static bool Missing;
+        public static EffectAsset find(Guid guid) { return Missing ? null : new EffectAsset { id = HelpUi.EffectId }; }
     }
 
     public static class EffectManager
@@ -107,10 +108,13 @@ namespace SDG.Unturned
 
         public static void ResetRenderState() { Visibility.Clear(); Text.Clear(); }
         public static void RaiseButton(Player player, string name) { if (onEffectButtonClicked != null) onEffectButtonClicked(player, name); }
-        public static void SendUIEffect(EffectAsset asset, short key, object connection, bool reliable) { }
-        public static void sendUIEffectVisibility(short key, object connection, bool reliable, string name, bool visible) { Visibility[name] = visible; }
+        public static int Sends;
+        public static int Clears;
+        public static bool FailRender;
+        public static void SendUIEffect(EffectAsset asset, short key, object connection, bool reliable) { Sends++; }
+        public static void sendUIEffectVisibility(short key, object connection, bool reliable, string name, bool visible) { if (FailRender) throw new InvalidOperationException("fixture render failure"); Visibility[name] = visible; }
         public static void sendUIEffectText(short key, object connection, bool reliable, string name, string text) { Text[name] = text; }
-        public static void ClearEffectByGuid(Guid guid, object connection) { }
+        public static void ClearEffectByGuid(Guid guid, object connection) { Clears++; }
     }
 }
 

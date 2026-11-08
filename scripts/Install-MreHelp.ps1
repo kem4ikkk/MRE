@@ -110,7 +110,7 @@ try {
     try { $commandMap.Save($writer) } finally { $writer.Dispose() }
     [void][xml]([IO.File]::ReadAllText($temporaryMap))
     [IO.File]::Replace($temporaryMap, $commandMapPath, (Join-Path $backupRoot 'Commands.config.xml.previous'))
-    Write-Host "MRE menu установлен. При следующем запуске /menu откроет меню, а /help сразу выберет раздел команд. Резервная копия: $backupRoot"
+    Write-Host "MRE menu установлен. При следующем запуске /menu откроет меню, а /help сразу выберет пустую вкладку «Справка». Резервная копия: $backupRoot"
     Write-Host 'Клиентам нужен EffectAsset ID 48625 из пакета MRE HUD + MreHelp. Текстовая подсказка появляется только если сервер не загрузил asset; получение asset клиентом отдельно не подтверждается.'
 }
 catch {
