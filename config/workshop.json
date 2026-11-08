@@ -33,6 +33,14 @@
       "source": "https://steamcommunity.com/sharedfiles/filedetails/?id=2922152196",
       "use_basis": "Автор разрешает использовать оригинальный Workshop-мод на любом сервере, но запрещает его повторную публикацию.",
       "compatibility": "Подлежат проверке загрузка и сохранение предметов; пакет содержит четыре варианта, включая огромный."
+    },
+    {
+      "id": 3834982706,
+      "name": "MRE Trade",
+      "default_enabled": true,
+      "source": "https://steamcommunity.com/sharedfiles/filedetails/?id=3834982706",
+      "use_basis": "Собственный пакет UI обмена MRE, опубликованный владельцем проекта.",
+      "compatibility": "Серверный пакет и анонимно скачанный Workshop payload совпали по SHA-256; клиентская приёмка и обмен двумя игроками ещё не выполнены."
     }
   ],
   "excluded_without_permission": [
