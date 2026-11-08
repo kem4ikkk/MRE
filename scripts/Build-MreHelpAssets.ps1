@@ -53,12 +53,16 @@ if ($manifest.effect_id -ne 48625 -or $manifest.effect_guid -ne '6e4a31b49c874f4
 $tabNames = @('Home','Help','Team','Events','Stats','Links','Settings','BattlePass','Rewards','Reports')
 $expectedButtons = @($tabNames | ForEach-Object { 'MenuTab' + $_ }) + @('MenuPrevious','MenuNext','MenuNotifications','MenuNotificationsClose','MenuClose')
 $expectedPages = @($tabNames | ForEach-Object { 'MenuPage' + $_ })
-if ($manifest.schema_version -ne 4 -or
+if ($manifest.schema_version -ne 5 -or
     [string]::Join('|', @($manifest.button_names)) -ne [string]::Join('|', $expectedButtons) -or
     [string]::Join('|', @($manifest.page_names)) -ne [string]::Join('|', $expectedPages) -or
     $manifest.font_regular -ne 'NotoSans-Regular.ttf' -or $manifest.font_semibold -ne 'NotoSans-SemiBold.ttf') {
     throw 'Сборка не соответствует согласованной оболочке: нужны десять вкладок и оба шрифта Noto Sans.'
 }
+$homeButtons = @('MenuHomeHelp','MenuHomeTeam','MenuHomeEvents','MenuHomeSettings')
+$homeTexts = @('MenuHomePlayerName','MenuHomeSteamId','MenuHomeGroup','MenuHomeGroupCount','MenuHomeServerName','MenuHomeOnline','MenuHomeMap')
+if ([string]::Join('|', @($manifest.home_button_names)) -ne [string]::Join('|', $homeButtons) -or
+    [string]::Join('|', @($manifest.home_text_names)) -ne [string]::Join('|', $homeTexts)) { throw 'Не совпал контракт полей и кнопок Главной.' }
 $hash = (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($hash -ne $manifest.bundle_sha256) { throw 'Хэш bundle не совпадает с манифестом.' }
 $stream = [IO.File]::OpenRead($bundlePath)

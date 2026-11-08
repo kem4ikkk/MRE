@@ -34,6 +34,7 @@ public static class MreMenuPreview
             bundle = AssetBundle.LoadFromFile(bundlePath); if (bundle == null) throw new InvalidOperationException("Unity не смогла открыть bundle: " + bundlePath);
             GameObject prefab = bundle.LoadAsset<GameObject>("Effect"); if (prefab == null) throw new InvalidOperationException("В bundle отсутствует prefab Effect.");
             root = UnityEngine.Object.Instantiate(prefab); root.name = "MreMenuPreview";
+            if (page == "Home") SetHomeSample(root.transform);
             foreach (string tabName in new[] { "Home", "Help", "Team", "Events", "Stats", "Links", "Settings", "BattlePass", "Rewards", "Reports" })
             {
                 Transform marker = Find(root.transform, "MenuSelected" + tabName); if (marker != null) marker.gameObject.SetActive(tabName == page);
@@ -67,5 +68,24 @@ public static class MreMenuPreview
     {
         foreach (Transform t in root.GetComponentsInChildren<Transform>(true)) if (t.name == name) return t;
         return null;
+    }
+
+    private static void SetHomeSample(Transform root)
+    {
+        SetText(root, "MenuHomePlayerName", "Игрок MRE");
+        SetText(root, "MenuHomeSteamId", "—");
+        SetText(root, "MenuHomeGroup", "Без группы");
+        SetText(root, "MenuHomeGroupCount", "Играете самостоятельно");
+        SetText(root, "MenuHomeServerName", "MRE");
+        SetText(root, "MenuHomeOnline", "1 / 24");
+        SetText(root, "MenuHomeMap", "PEI");
+    }
+
+    private static void SetText(Transform root, string name, string value)
+    {
+        Transform target = Find(root, name);
+        if (target == null) return;
+        UnityEngine.UI.Text text = target.GetComponent<UnityEngine.UI.Text>();
+        if (text != null) text.text = value;
     }
 }

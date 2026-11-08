@@ -99,7 +99,11 @@ namespace MreHelp
             else
             {
                 int index = Array.IndexOf(tabs, session.Tab);
-                if (name == "MenuPrevious") session.Tab = tabs[(index + tabs.Length - 1) % tabs.Length];
+                if (name == "MenuHomeHelp" && session.Tab == MenuTab.Home) session.Tab = MenuTab.Help;
+                else if (name == "MenuHomeTeam" && session.Tab == MenuTab.Home) session.Tab = MenuTab.Team;
+                else if (name == "MenuHomeEvents" && session.Tab == MenuTab.Home) session.Tab = MenuTab.Events;
+                else if (name == "MenuHomeSettings" && session.Tab == MenuTab.Home) session.Tab = MenuTab.Settings;
+                else if (name == "MenuPrevious") session.Tab = tabs[(index + tabs.Length - 1) % tabs.Length];
                 else if (name == "MenuNext") session.Tab = tabs[(index + 1) % tabs.Length];
                 else
                 {
@@ -129,6 +133,34 @@ namespace MreHelp
             }
             EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuNotificationsPanel", session.Notifications);
             EffectManager.sendUIEffectVisibility(EffectKey, connection, true, "MenuNotificationsSelected", session.Notifications);
+            if (session.Tab == MenuTab.Home) RenderHome(session);
+        }
+
+        private static void RenderHome(Session session)
+        {
+            var connection = session.Player.channel.GetOwnerTransportConnection();
+            HomeData data = HomeData.Read(session.Player);
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuHomePlayerName", data.PlayerName);
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuHomeSteamId", data.SteamId);
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuHomeGroup", data.Group);
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuHomeGroupCount", data.GroupCount);
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuHomeServerName", data.ServerName);
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuHomeOnline", data.Online);
+            EffectManager.sendUIEffectText(EffectKey, connection, true, "MenuHomeMap", data.Map);
+        }
+
+        internal static void RefreshHome()
+        {
+            foreach (var viewer in viewers.ToArray())
+            {
+                if (viewer.Value.Tab != MenuTab.Home) continue;
+                try { RenderHome(viewer.Value); }
+                catch (Exception error)
+                {
+                    Logger.LogException(error, "[MRE Menu] Не удалось обновить Главную.");
+                    Close(viewer.Key);
+                }
+            }
         }
 
         private static void Disconnected(CSteamID id) { Close(id.m_SteamID); }

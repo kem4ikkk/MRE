@@ -79,7 +79,9 @@ public static class MreHelpBuilder
         string sha; using (var hash = SHA256.Create()) sha = BitConverter.ToString(hash.ComputeHash(File.ReadAllBytes(bundlePath))).Replace("-", "").ToLowerInvariant();
         string buttons = JsonArray(new[] { "MenuTabHome", "MenuTabHelp", "MenuTabTeam", "MenuTabEvents", "MenuTabStats", "MenuTabLinks", "MenuTabSettings", "MenuTabBattlePass", "MenuTabRewards", "MenuTabReports", "MenuPrevious", "MenuNext", "MenuNotifications", "MenuNotificationsClose", "MenuClose" });
         string pages = JsonArray(Tabs.Select(x => "MenuPage" + x).ToArray());
-        string json = "{\n  \"effect_id\": " + EffectId + ",\n  \"effect_guid\": \"" + EffectGuid + "\",\n  \"effect_key\": " + EffectKey + ",\n  \"bundle\": \"MreHelp.unity3d\",\n  \"prefab_address\": \"Effect\",\n  \"unity_version\": \"" + Application.unityVersion + "\",\n  \"target\": \"StandaloneWindows64\",\n  \"bundle_sha256\": \"" + sha + "\",\n  \"prefab_address_verified\": true,\n  \"schema_version\": 4,\n  \"button_names\": " + buttons + ",\n  \"page_names\": " + pages + ",\n  \"notifications_panel_name\": \"MenuNotificationsPanel\",\n  \"backdrop_alpha\": 0.52,\n  \"font_regular\": \"NotoSans-Regular.ttf\",\n  \"font_semibold\": \"NotoSans-SemiBold.ttf\",\n  \"font_provenance\": \"ui/MreHelp/Assets/MreFonts\",\n  \"window_name\": \"MenuWindow\",\n  \"in_game_verified\": false,\n  \"workshop_published\": false\n}\n";
+        string homeButtons = JsonArray(new[] { "MenuHomeHelp", "MenuHomeTeam", "MenuHomeEvents", "MenuHomeSettings" });
+        string homeText = JsonArray(new[] { "MenuHomePlayerName", "MenuHomeSteamId", "MenuHomeGroup", "MenuHomeGroupCount", "MenuHomeServerName", "MenuHomeOnline", "MenuHomeMap" });
+        string json = "{\n  \"effect_id\": " + EffectId + ",\n  \"effect_guid\": \"" + EffectGuid + "\",\n  \"effect_key\": " + EffectKey + ",\n  \"bundle\": \"MreHelp.unity3d\",\n  \"prefab_address\": \"Effect\",\n  \"unity_version\": \"" + Application.unityVersion + "\",\n  \"target\": \"StandaloneWindows64\",\n  \"bundle_sha256\": \"" + sha + "\",\n  \"prefab_address_verified\": true,\n  \"schema_version\": 5,\n  \"button_names\": " + buttons + ",\n  \"home_button_names\": " + homeButtons + ",\n  \"home_text_names\": " + homeText + ",\n  \"page_names\": " + pages + ",\n  \"notifications_panel_name\": \"MenuNotificationsPanel\",\n  \"backdrop_alpha\": 0.52,\n  \"font_regular\": \"NotoSans-Regular.ttf\",\n  \"font_semibold\": \"NotoSans-SemiBold.ttf\",\n  \"font_provenance\": \"ui/MreHelp/Assets/MreFonts\",\n  \"window_name\": \"MenuWindow\",\n  \"in_game_verified\": false,\n  \"workshop_published\": false\n}\n";
         File.WriteAllText(Path.Combine(output, "effect-manifest.json"), json, new System.Text.UTF8Encoding(false));
         Debug.Log("MRE Menu: Windows bundle собран: " + mod + ". Не опубликован и не установлен.");
     }
@@ -106,7 +108,6 @@ public static class MreHelpBuilder
         RectTransform subtitleRect = Rect("MenuBrandSubtitle", header, 88, -17, 190, 20, new Vector2(0, .5f), new Vector2(0, .5f)); Text subtitle = subtitleRect.gameObject.AddComponent<Text>(); ConfigureText(subtitle, "Меню сервера", 12, Muted, regular, TextAnchor.MiddleLeft);
         RectTransform actions = Rect("MenuHeaderActions", header, 0, 0, 108, 46, new Vector2(1, .5f), new Vector2(1, .5f)); actions.anchoredPosition = Vector2.zero;
         IconButton("MenuNotifications", actions, "bell", 0, 0, Raised);
-        Box("MenuHeaderDivider", header, 0, 0, 1, 24, Line, false, new Vector2(1, .5f), new Vector2(1, .5f)).anchoredPosition = new Vector2(-69, 0);
         IconButton("MenuClose", actions, "close", 62, 0, Raised);
         RectTransform headerRule = Rect("MenuHeaderRule", window, 0, 0, 0, 1, new Vector2(0, 1), new Vector2(1, 1)); headerRule.pivot = new Vector2(0, 1); headerRule.offsetMin = new Vector2(32, -105); headerRule.offsetMax = new Vector2(-32, -104); Image headerRuleImage = headerRule.gameObject.AddComponent<Image>(); headerRuleImage.color = Color.clear; headerRuleImage.raycastTarget = false;
 
@@ -141,6 +142,8 @@ public static class MreHelpBuilder
             page.gameObject.SetActive(i == 0);
         }
 
+        BuildHome(FindRect(parent, "MenuPageHome"));
+
         RectTransform footer = Rect("MenuFooter", window, 32, 24, -64, 32, new Vector2(0, 0), new Vector2(1, 0)); footer.anchoredPosition = new Vector2(32, 24);
         IconButton("MenuPrevious", footer, "left", 0, 0, Raised, true);
         IconButton("MenuNext", footer, "right", 40, 0, Raised, true);
@@ -163,6 +166,77 @@ public static class MreHelpBuilder
         Image bellBackground = bellSelected.gameObject.AddComponent<Image>(); bellBackground.sprite = rounded; bellBackground.type = Image.Type.Sliced; bellBackground.color = Active; bellBackground.raycastTarget = false; AddBorder(bellBackground);
         ChildIcon("MenuNotificationsSelectedIcon", bellSelected, "bell", Accent, 21, 21);
         bellSelected.gameObject.SetActive(false);
+    }
+
+    private static RectTransform FindRect(Transform parent, string name) { return parent.Find("MenuWindow/MenuPages/" + name).GetComponent<RectTransform>(); }
+
+    private static void BuildHome(RectTransform page)
+    {
+        RectTransform player = HomeCard("MenuHomePlayerCard", page, 0f, .5f, 28, 82, 9, 220);
+        RectTransform server = HomeCard("MenuHomeServerCard", page, .5f, 1f, 9, 82, 28, 220);
+        HomeCardHeading(player, "Профиль игрока", "team");
+        HomeCardHeading(server, "Сервер", "home");
+
+        HomeLabel("MenuHomePlayerNameLabel", player, "Никнейм", 24, 57, -48, 22, 13, Muted, regular);
+        HomeLabel("MenuHomePlayerName", player, "—", 24, 78, -48, 40, 28, TextColor, semibold);
+        HomeLabel("MenuHomeSteamIdLabel", player, "SteamID64", 24, 132, 230, 22, 13, Muted, regular);
+        HomeLabel("MenuHomeSteamId", player, "—", 24, 154, 250, 26, 13, TextColor, regular);
+        HomeLabel("MenuHomeGroupLabel", player, "Группа", 24, 132, 220, 22, 13, Muted, regular, TextAnchor.MiddleLeft, true);
+        HomeLabel("MenuHomeGroup", player, "—", 24, 154, 220, 24, 16, TextColor, semibold, TextAnchor.MiddleLeft, true);
+        HomeLabel("MenuHomeGroupCount", player, "—", 24, 182, 220, 24, 13, Muted, regular, TextAnchor.MiddleLeft, true);
+
+        HomeLabel("MenuHomeServerNameLabel", server, "Название сервера", 24, 57, -48, 22, 13, Muted, regular);
+        HomeLabel("MenuHomeServerName", server, "—", 24, 78, -48, 48, 18, TextColor, semibold, TextAnchor.MiddleLeft);
+        HomeLabel("MenuHomeOnlineLabel", server, "Игроки онлайн", 24, 132, 220, 22, 13, Muted, regular);
+        HomeLabel("MenuHomeOnline", server, "—", 24, 154, 220, 40, 28, TextColor, semibold);
+        HomeLabel("MenuHomeMapLabel", server, "Карта", 270, 132, 160, 22, 13, Muted, regular);
+        HomeLabel("MenuHomeMap", server, "—", 270, 154, 200, 40, 16, TextColor, semibold);
+
+        RectTransform quick = Rect("MenuHomeQuickLinks", page, 0, 0, 0, 100, new Vector2(0, 1), new Vector2(1, 1));
+        quick.offsetMin = new Vector2(28, -418); quick.offsetMax = new Vector2(-28, -318);
+        HomeQuickCard("MenuHomeHelp", quick, "Справка", "Основные правила и команды", "help", 0);
+        HomeQuickCard("MenuHomeTeam", quick, "Команда", "Игроки и состав группы", "team", 1);
+        HomeQuickCard("MenuHomeEvents", quick, "Ивенты", "Расписание событий сервера", "events", 2);
+        HomeQuickCard("MenuHomeSettings", quick, "Настройки", "Параметры интерфейса", "settings", 3);
+    }
+
+    private static RectTransform HomeCard(string name, RectTransform parent, float anchorMinX, float anchorMaxX, int left, int top, int right, int height)
+    {
+        RectTransform card = Rect(name, parent, 0, 0, 0, height, new Vector2(anchorMinX, 1), new Vector2(anchorMaxX, 1));
+        card.pivot = new Vector2(anchorMinX, 1); card.offsetMin = new Vector2(left, -top - height); card.offsetMax = new Vector2(-right, -top);
+        Image bg = card.gameObject.AddComponent<Image>(); bg.color = Raised; bg.sprite = RoundSprite(12); bg.type = Image.Type.Sliced; bg.raycastTarget = false; AddBorder(bg);
+        return card;
+    }
+
+    private static void HomeCardHeading(RectTransform card, string title, string icon)
+    {
+        Image glyph = ChildIcon(card.name + "Icon", card, icon, Accent, 20, 20);
+        glyph.rectTransform.anchorMin = glyph.rectTransform.anchorMax = new Vector2(0, 1); glyph.rectTransform.pivot = new Vector2(0, 1); glyph.rectTransform.anchoredPosition = new Vector2(24, -24);
+        HomeLabel(card.name + "Heading", card, title, 54, 12, 340, 32, 16, TextColor, semibold);
+        RectTransform rule = Rect(card.name + "Rule", card, 0, 0, 0, 1, new Vector2(0, 1), new Vector2(1, 1)); rule.pivot = new Vector2(0, 1); rule.offsetMin = new Vector2(20, -49); rule.offsetMax = new Vector2(-20, -48);
+        Image ruleImage = rule.gameObject.AddComponent<Image>(); ruleImage.color = Line; ruleImage.raycastTarget = false;
+    }
+
+    private static void HomeQuickCard(string name, RectTransform page, string title, string description, string icon, int index)
+    {
+        float min = index * .25f, max = (index + 1) * .25f;
+        RectTransform card = Rect(name, page, 0, 0, 0, 100, new Vector2(min, 1), new Vector2(max, 1));
+        card.pivot = new Vector2(min, 1); card.offsetMin = new Vector2(index == 0 ? 0 : 6, -100); card.offsetMax = new Vector2(index == 3 ? 0 : -6, 0);
+        Image bg = card.gameObject.AddComponent<Image>(); bg.color = Raised; bg.sprite = RoundSprite(12); bg.type = Image.Type.Sliced; bg.raycastTarget = true; AddBorder(bg);
+        Button button = card.gameObject.AddComponent<Button>(); button.targetGraphic = bg;
+        Image glyph = ChildIcon(name + "Icon", card, icon, Accent, 20, 20);
+        glyph.rectTransform.anchorMin = glyph.rectTransform.anchorMax = new Vector2(0, 1); glyph.rectTransform.pivot = new Vector2(0, 1); glyph.rectTransform.anchoredPosition = new Vector2(18, -18);
+        HomeLabel(name + "Title", card, title, 47, 9, -59, 30, 15, TextColor, semibold);
+        HomeLabel(name + "Description", card, description, 18, 48, -36, 36, 13, Muted, regular);
+    }
+
+    private static Text HomeLabel(string name, RectTransform parent, string value, int x, int top, int width, int height, int size, Color color, Font font, TextAnchor anchor = TextAnchor.MiddleLeft, bool right = false)
+    {
+        bool stretch = !right && width < 0;
+        Vector2 origin = right ? new Vector2(1, 1) : new Vector2(0, 1);
+        RectTransform r = Rect(name, parent, 0, 0, 0, height, origin, stretch ? new Vector2(1, 1) : origin);
+        r.pivot = right ? new Vector2(1, 1) : new Vector2(0, 1); r.offsetMin = new Vector2(right ? -width - x : x, -top - height); r.offsetMax = new Vector2(right ? -x : (stretch ? width + x : x + width), -top);
+        Text text = r.gameObject.AddComponent<Text>(); ConfigureText(text, value, size, color, font, anchor); return text;
     }
 
     private static void IconButton(string name, RectTransform parent, string iconName, int x, int y, Color fill, bool small = false)
@@ -222,6 +296,11 @@ public static class MreHelpBuilder
             if (!all.Any(x => x.name == name)) throw new InvalidOperationException("Отсутствует элемент " + name + ".");
         foreach (string name in new[] { "MenuPrevious", "MenuNext", "MenuClose", "MenuNotifications", "MenuNotificationsClose" }.Concat(Tabs.Select(x => "MenuTab" + x)))
             if (all.First(x => x.name == name).GetComponent<Button>() == null) throw new InvalidOperationException("Элемент не является кнопкой: " + name);
+        if (all.Any(x => x.name == "MenuHeaderDivider")) throw new InvalidOperationException("MenuHeaderDivider должен быть удален.");
+        foreach (string name in new[] { "MenuHomePlayerName", "MenuHomeSteamId", "MenuHomeGroup", "MenuHomeGroupCount", "MenuHomeServerName", "MenuHomeOnline", "MenuHomeMap" })
+            if (!all.Any(x => x.name == name && x.GetComponent<Text>() != null)) throw new InvalidOperationException("Отсутствует текстовый элемент главной страницы " + name + ".");
+        foreach (string name in new[] { "MenuHomeHelp", "MenuHomeTeam", "MenuHomeEvents", "MenuHomeSettings" })
+            if (!all.Any(x => x.name == name && x.GetComponent<Button>() != null)) throw new InvalidOperationException("Отсутствует кнопка главной страницы " + name + ".");
         Image window = all.First(x => x.name == "MenuWindow").GetComponent<Image>(); if (window == null || window.color.a < 1) throw new InvalidOperationException("MenuWindow должен быть непрозрачным.");
         Image backdrop = all.First(x => x.name == "MenuBackdrop").GetComponent<Image>(); if (backdrop.color.a <= 0 || backdrop.color.a >= 1 || !backdrop.raycastTarget) throw new InvalidOperationException("MenuBackdrop должен затемнять мир и перехватывать клики.");
         if (all.Count(x => x.name.StartsWith("MenuPage") && Tabs.Any(t => x.name == "MenuPage" + t) && x.gameObject.activeSelf) != 1 || !all.First(x => x.name == "MenuPageHome").gameObject.activeSelf) throw new InvalidOperationException("По умолчанию должна быть открыта только MenuPageHome.");

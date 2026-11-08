@@ -14,6 +14,8 @@ internal static class Program
         try
         {
             UnturnedPlayer player = CreatePlayer(76561198000000001UL);
+            player.Player.channel.owner.playerID.characterName = "Первый игрок";
+            Provider.clients.Add(new SteamPlayer { player = player.Player });
             Assert(!HelpUi.Open(player, MenuTab.Home), "Не запускаем UI до подписки на события");
             HelpUi.Start(); HelpUi.Start();
             Assets.Missing = true;
@@ -28,6 +30,35 @@ internal static class Program
             Assert(HelpUi.Open(player, MenuTab.Home), "/menu открывает оболочку");
             Assert(Modal(player), "Меню получает курсор");
             AssertTab("Home");
+            Assert(EffectManager.Text["MenuHomePlayerName"] == "Первый игрок", "Главная показывает собственный ник");
+            Assert(EffectManager.Text["MenuHomeOnline"] == "1 / 24", "Онлайн взят из подключений");
+            Assert(EffectManager.Text["MenuHomeServerName"] == "MRE #1", "В названии нет повторения карты и режима");
+            Assert(EffectManager.Text["MenuHomeMap"] == "PEI", "Карта взята из LevelInfo");
+            Assert(EffectManager.Text["MenuHomeGroup"] == "Без группы", "Отсутствие группы не подменяется данными");
+            foreach (string quick in new[] { "Help", "Team", "Events", "Settings" })
+            {
+                EffectManager.RaiseButton(player.Player, "MenuHome" + quick);
+                AssertTab(quick);
+                EffectManager.RaiseButton(player.Player, "MenuHomeEvents");
+                AssertTab(quick); // Невидимая кнопка Главной не меняет другую вкладку.
+                Assert(HelpUi.Open(player, MenuTab.Home), "Возврат на Главную");
+            }
+            var second = CreatePlayer(76561198000000002UL);
+            second.Player.channel.owner.playerID.characterName = "<color=red>Другой</color>\n";
+            second.Player.quests.groupID = new CSteamID(42);
+            GroupManager.Groups[42] = new GroupInfo { name = "Друзья" };
+            Provider.clients.Add(new SteamPlayer { player = second.Player });
+            Assert(HelpUi.Open(second, MenuTab.Home), "Второй игрок открывает личную Главную");
+            HelpUi.RefreshHome();
+            var firstValues = EffectManager.TextByConnection[player.Player.channel.owner];
+            var secondValues = EffectManager.TextByConnection[second.Player.channel.owner];
+            Assert(firstValues["MenuHomePlayerName"] == "Первый игрок", "Обновление не смешивает профили игроков");
+            Assert(secondValues["MenuHomePlayerName"] == "‹color=red›Другой‹/color›", "Теги и переводы строк в нике безопасны");
+            Assert(secondValues["MenuHomeGroup"] == "Друзья" && secondValues["MenuHomeGroupCount"] == "В сети: 1", "Группа показывает онлайн своих участников");
+            Assert(firstValues["MenuHomeOnline"] == "2 / 24", "Открытая Главная обновляет онлайн");
+            EffectManager.RaiseButton(second.Player, "MenuClose");
+            Provider.clients.RemoveAt(1);
+            EffectManager.RaiseButton(player.Player, "MenuTabHome");
             foreach (string tab in tabNames)
             {
                 EffectManager.RaiseButton(player.Player, "MenuTab" + tab);
@@ -37,7 +68,7 @@ internal static class Program
             EffectManager.RaiseButton(player.Player, "MenuPrevious"); AssertTab("Reports");
             Assert(HelpUi.Open(player, MenuTab.Help), "Повторный /help переключает текущее окно");
             AssertTab("Help");
-            Assert(EffectManager.Sends == 1, "При переключении нет второго экземпляра эффекта");
+            Assert(EffectManager.Sends == 2, "Повторные команды не создают дополнительных эффектов");
             EffectManager.RaiseButton(player.Player, "MenuNotifications"); AssertNotifications(true);
             EffectManager.RaiseButton(player.Player, "MenuNotifications"); AssertNotifications(false);
             EffectManager.RaiseButton(player.Player, "MenuNotifications");
@@ -55,8 +86,8 @@ internal static class Program
             Assert(Modal(player), "События другого Player не закрывают текущий UI"); AssertTab("Home");
             EffectManager.RaiseButton(player.Player, "MenuClose");
             Assert(!Modal(player), "Закрытие освобождает курсор");
-            Assert(EffectManager.Clears == 1, "Закрытие убирает эффект");
-            EffectManager.RaiseButton(player.Player, "MenuNext"); Assert(EffectManager.Clears == 1, "Клики после закрытия игнорируются");
+            Assert(EffectManager.Clears == 2, "Закрытие убирает эффект");
+            EffectManager.RaiseButton(player.Player, "MenuNext"); Assert(EffectManager.Clears == 2, "Клики после закрытия игнорируются");
             Assert(HelpUi.Open(player, MenuTab.Help), "Повторное открытие после закрытия");
             PlayerLife.RaiseDeath(new PlayerLife { channel = player.Player.channel });
             Assert(!Modal(player), "Смерть освобождает курсор");
@@ -94,7 +125,7 @@ internal static class Program
         }
         Assert(EffectManager.Visibility.Count(x => x.Key.StartsWith("MenuPage") && x.Value) == 1, "Ровно одна видимая страница");
         Assert(EffectManager.Visibility.Count(x => x.Key.StartsWith("MenuSelected") && x.Value) == 1, "Ровно одна активная вкладка");
-        Assert(EffectManager.Text.Count == 0, "Пустые страницы не заполняются серверными данными");
+        Assert(EffectManager.Text.Count == 7 && EffectManager.Text.Keys.All(x => x.StartsWith("MenuHome")), "Данные получают только семь полей Главной");
     }
     private static void AssertNotifications(bool active)
     {

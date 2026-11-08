@@ -6,6 +6,7 @@ namespace MreHelp
     public sealed class MreHelpPlugin : RocketPlugin
     {
         private bool commandVerified;
+        private float nextHomeRefresh;
 
         protected override void Load()
         {
@@ -17,7 +18,13 @@ namespace MreHelp
 
         private void Update()
         {
-            if (commandVerified || !SDG.Unturned.Level.isLoaded) return;
+            if (!SDG.Unturned.Level.isLoaded) return;
+            if (UnityEngine.Time.realtimeSinceStartup >= nextHomeRefresh)
+            {
+                nextHomeRefresh = UnityEngine.Time.realtimeSinceStartup + 5;
+                HelpUi.RefreshHome();
+            }
+            if (commandVerified) return;
             var selected = Rocket.Core.R.Commands.GetCommand("help") as Rocket.Core.Commands.RocketCommandManager.RegisteredRocketCommand;
             var menu = Rocket.Core.R.Commands.GetCommand("menu") as Rocket.Core.Commands.RocketCommandManager.RegisteredRocketCommand;
             bool helpOurs = selected != null && selected.Command is CommandHelp;

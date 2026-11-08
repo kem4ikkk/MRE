@@ -12,6 +12,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="FakeApis.cs" />
     <Compile Include="../../src/MreHelp/HelpUi.cs" Link="HelpUi.cs" />
+    <Compile Include="../../src/MreHelp/HomeData.cs" Link="HomeData.cs" />
     <Compile Include="../../src/MreHelp/HelpCatalog.cs" Link="HelpCatalog.cs" />
   </ItemGroup>
 </Project>

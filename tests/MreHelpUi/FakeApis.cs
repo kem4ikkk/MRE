@@ -49,6 +49,7 @@ namespace SDG.Unturned
     public sealed class PlayerId
     {
         public SteamId steamID;
+        public string characterName = "Игрок";
     }
 
     public sealed class SteamId
@@ -71,6 +72,7 @@ namespace SDG.Unturned
     {
         private readonly HashSet<EPluginWidgetFlags> flags = new HashSet<EPluginWidgetFlags>();
         public PlayerChannel channel;
+        public PlayerQuests quests = new PlayerQuests();
         public bool isPluginWidgetFlagActive(EPluginWidgetFlags flag) { return flags.Contains(flag); }
         public void enablePluginWidgetFlag(EPluginWidgetFlags flag) { flags.Add(flag); }
         public void disablePluginWidgetFlag(EPluginWidgetFlags flag) { flags.Remove(flag); }
@@ -85,9 +87,23 @@ namespace SDG.Unturned
 
     public static class Provider
     {
+        public static string serverName = "MRE #1 | PEI | Выживание";
+        public static byte maxPlayers = 24;
+        public static readonly List<SteamPlayer> clients = new List<SteamPlayer>();
         public static event Action<CSteamID> onServerDisconnected;
         public static void RaiseDisconnect(CSteamID id) { if (onServerDisconnected != null) onServerDisconnected(id); }
     }
+
+    public sealed class PlayerQuests { public CSteamID groupID; }
+    public sealed class SteamPlayer { public Player player; }
+    public sealed class GroupInfo { public string name; }
+    public static class GroupManager
+    {
+        public static readonly Dictionary<ulong, GroupInfo> Groups = new Dictionary<ulong, GroupInfo>();
+        public static GroupInfo getGroupInfo(CSteamID id) { GroupInfo group; return Groups.TryGetValue(id.m_SteamID, out group) ? group : null; }
+    }
+    public sealed class LevelInfo { public string name = "PEI"; }
+    public static class Level { public static LevelInfo info = new LevelInfo(); }
 
     public sealed class EffectAsset
     {
@@ -105,6 +121,7 @@ namespace SDG.Unturned
         public static event Action<Player, string> onEffectButtonClicked;
         public static readonly Dictionary<string, bool> Visibility = new Dictionary<string, bool>();
         public static readonly Dictionary<string, string> Text = new Dictionary<string, string>();
+        public static readonly Dictionary<object, Dictionary<string, string>> TextByConnection = new Dictionary<object, Dictionary<string, string>>();
 
         public static void ResetRenderState() { Visibility.Clear(); Text.Clear(); }
         public static void RaiseButton(Player player, string name) { if (onEffectButtonClicked != null) onEffectButtonClicked(player, name); }
@@ -113,7 +130,14 @@ namespace SDG.Unturned
         public static bool FailRender;
         public static void SendUIEffect(EffectAsset asset, short key, object connection, bool reliable) { Sends++; }
         public static void sendUIEffectVisibility(short key, object connection, bool reliable, string name, bool visible) { if (FailRender) throw new InvalidOperationException("fixture render failure"); Visibility[name] = visible; }
-        public static void sendUIEffectText(short key, object connection, bool reliable, string name, string text) { Text[name] = text; }
+        public static void sendUIEffectText(short key, object connection, bool reliable, string name, string text)
+        {
+            if (FailRender) throw new InvalidOperationException("fixture render failure");
+            Text[name] = text;
+            Dictionary<string, string> values;
+            if (!TextByConnection.TryGetValue(connection, out values)) TextByConnection[connection] = values = new Dictionary<string, string>();
+            values[name] = text;
+        }
         public static void ClearEffectByGuid(Guid guid, object connection) { Clears++; }
     }
 }

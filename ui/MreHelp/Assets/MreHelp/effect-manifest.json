@@ -6,9 +6,9 @@
     "prefab_address":  "Effect",
     "unity_version":  "2022.3.62f3",
     "target":  "StandaloneWindows64",
-    "bundle_sha256":  "53aba0892ca17fd11edf9d4b3594dd2a7870fe3b10a77932593999548e8349c2",
+    "bundle_sha256":  "dcee8a6396ee6135011572f796d570c1e2f5db229100ba85af9a28294608a9bc",
     "prefab_address_verified":  true,
-    "schema_version":  4,
+    "schema_version":  5,
     "button_names":  [
                          "MenuTabHome",
                          "MenuTabHelp",
@@ -26,6 +26,21 @@
                          "MenuNotificationsClose",
                          "MenuClose"
                      ],
+    "home_button_names":  [
+                              "MenuHomeHelp",
+                              "MenuHomeTeam",
+                              "MenuHomeEvents",
+                              "MenuHomeSettings"
+                          ],
+    "home_text_names":  [
+                            "MenuHomePlayerName",
+                            "MenuHomeSteamId",
+                            "MenuHomeGroup",
+                            "MenuHomeGroupCount",
+                            "MenuHomeServerName",
+                            "MenuHomeOnline",
+                            "MenuHomeMap"
+                        ],
     "page_names":  [
                        "MenuPageHome",
                        "MenuPageHelp",
@@ -46,5 +61,5 @@
     "window_name":  "MenuWindow",
     "in_game_verified":  false,
     "workshop_published":  true,
-    "published_at_utc":  "2026-11-08T01:37:59.1061158Z"
+    "published_at_utc":  "2026-11-08T01:56:38.4462283Z"
 }
